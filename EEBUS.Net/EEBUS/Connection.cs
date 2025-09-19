@@ -9,6 +9,7 @@ using EEBUS.Messages;
 using EEBUS.Models;
 using EEBUS.SHIP.Messages;
 using EEBUS.SPINE.Commands;
+using EEBUS.Net.EEBUS.UseCases.GridConnectionPoint;
 
 
 namespace EEBUS
@@ -45,7 +46,7 @@ namespace EEBUS
 			FormatMismatch
 		}
 
-		protected class Heart
+		protected class HeartBeatTask
 		{
 			private bool heartbeatSubscribed = false;
 
@@ -97,7 +98,7 @@ namespace EEBUS
 			}
 		}
 
-		protected class ElectricalConnectionCharacteristic
+		protected class ElectricalConnectionCharacteristicTask
 		{
 			// This method is called by the timer delegate.
 			public void SendData( object connectionObj )
@@ -128,6 +129,51 @@ namespace EEBUS
 						eccMessage.SetPayload( JObject.FromObject( reply ) );
 
 						connection.PushDataMessage( eccMessage );
+					}
+				}
+			}
+		}
+
+		protected class MeasurementDataTask
+		{
+			// Dummy data for test purpose
+			MGCPOperationalData dummyData = new MGCPOperationalData();
+
+			// This method is called by the timer delegate.
+			public void SendData( object connectionObj )
+			{
+				Connection connection = (Connection) connectionObj;
+				
+				if ( connection.State == Connection.EState.Connected )
+				{
+					AddressType source		= connection.Local.GetMeasurementDataAddress( true );
+					AddressType destination	= connection.Remote.GetMeasurementDataAddress( false );
+
+					if ( null != source && null != destination )
+					{
+						// Fill dummy data with random values						
+						this.dummyData.FillRandom();
+						List<MGCPOperationalData> dummyList = new();
+						dummyList.Add( this.dummyData );
+						connection.Local.FillData<MGCPOperationalData>( dummyList, connection );
+
+						if ( connection is Server )
+							Debug.WriteLine( "--- Send measurement data via server ---" );
+						else
+							Debug.WriteLine( "--- Send measurement data via client ---" );
+
+						SpineDatagramPayload reply = new SpineDatagramPayload();
+						reply.datagram.header.addressSource		 = source;
+						reply.datagram.header.addressDestination = destination;
+						reply.datagram.header.msgCounter		 = DataMessage.NextCount;
+						reply.datagram.header.cmdClassifier		 = "notify";
+
+						reply.datagram.payload = JObject.FromObject( new MeasurementListData.Class().CreateNotify( connection ) );
+
+						DataMessage dataMessage = new DataMessage();
+						dataMessage.SetPayload( JObject.FromObject( reply ) );
+
+						connection.PushDataMessage( dataMessage );
 					}
 				}
 			}

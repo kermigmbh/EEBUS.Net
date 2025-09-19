@@ -13,11 +13,11 @@ namespace EEBUS.Entities
 		public GridGuardEntity( int index, LocalDevice local, EntitySettings entitySettings )
 			: base( index, local, entitySettings )
 		{
-			Features.Add( Feature.Create( 1, "DeviceDiagnosis",		 "client", this ) );
-			Features.Add( Feature.Create( 2, "LoadControl",			 "client", this ) );
-			Features.Add( Feature.Create( 3, "DeviceConfiguration",  "client", this ) );
-			Features.Add( Feature.Create( 4, "ElectricalConnection", "client", this ) );
-			Features.Add( Feature.Create( 5, "DeviceDiagnosis",		 "server", this ) );
+			GetOrAdd( Feature.Create( "DeviceDiagnosis",	  "client", this ) );
+			GetOrAdd( Feature.Create( "LoadControl",		  "client", this ) );
+			GetOrAdd( Feature.Create( "DeviceConfiguration",  "client", this ) );
+			GetOrAdd( Feature.Create( "ElectricalConnection", "client", this ) );
+			GetOrAdd( Feature.Create( "DeviceDiagnosis",	  "server", this ) );
 		}
 
 		public GridGuardEntity( int index, LocalDevice local, EntityInformationType entityInfo, FeatureInformationType[] featureInfos )

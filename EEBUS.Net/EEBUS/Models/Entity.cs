@@ -152,9 +152,24 @@ namespace EEBUS.Models
 			}
 		}
 
-		public bool HasUseCase( Type usecaseType )
+		public void FillData<T>( List<T> dataList, Connection connection )
 		{
-			return this.UseCases.Any( uc => uc.GetType() == usecaseType );
+			this.UseCases.ForEach( uc => uc.FillData( dataList, connection, this ) );
+		}
+
+		protected virtual int MinIndex { get { return 1; } }
+		
+		public Feature GetOrAdd( Feature feature )
+		{
+			Feature found = this.Features.FirstOrDefault( f => f.Type == feature.Type && f.Role == feature.Role );
+
+			if ( null != found )
+				return found;
+
+			feature.Index = this.Features.Count + MinIndex;
+			this.Features.Add( feature );
+
+			return feature;
 		}
 	}
 }

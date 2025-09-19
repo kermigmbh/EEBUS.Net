@@ -354,3 +354,4 @@ MigrationBackup/
 *.pem
 /EEBUS.vue/EEBUS.vue.Server/.config/dotnet-tools.json
 /EEBUS.vue/EEBUS.vue.Server/Win11-pur.pkcs12
+/EEBUS.vue/EEBUS.vue.Server/*.pkcs12

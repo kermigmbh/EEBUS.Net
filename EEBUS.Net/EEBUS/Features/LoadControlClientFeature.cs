@@ -10,8 +10,8 @@ namespace EEBUS.Features
 			Register( "LoadControl-client", new Class() );
 		}
 
-		public LoadControlClientFeature( int index, Entity owner )
-			: base( index, "LoadControl", "client", owner )
+		public LoadControlClientFeature( Entity owner )
+			: base( "LoadControl", "client", owner )
 		{
 		}
 
@@ -22,9 +22,9 @@ namespace EEBUS.Features
 
 		public new class Class : Feature.Class
 		{
-			public override Feature Create( int index, Entity owner )
+			public override Feature Create( Entity owner )
 			{
-				return new LoadControlClientFeature( index, owner );
+				return new LoadControlClientFeature( owner );
 			}
 
 			public override Feature Create( int index, Entity owner, FeatureInformationType featureInfo )

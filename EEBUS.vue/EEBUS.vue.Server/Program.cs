@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 
 using EEBUS.Models;
+using Microsoft.Extensions.Configuration;
 
 namespace EEBUS.vue.Server
 {
@@ -21,12 +22,13 @@ namespace EEBUS.vue.Server
 			// Add services to the container.
 
 			var services = builder.Services;
+			var settings = builder.Configuration.GetSection( "Settings" );
 
 			services.Configure<KestrelServerOptions>( kestrelOptions =>
 			{
 				kestrelOptions.ConfigureHttpsDefaults( httpOptions =>
 				{
-					httpOptions.ServerCertificate			= CertificateGenerator.GenerateCert( Dns.GetHostName() );
+					httpOptions.ServerCertificate			= CertificateGenerator.GenerateCert( settings.Get<Settings>()?.Certificate );
 					httpOptions.ClientCertificateMode		= ClientCertificateMode.NoCertificate;
 					httpOptions.ClientCertificateValidation	= ValidateClientCert;
 					httpOptions.SslProtocols				= SslProtocols.Tls12;
@@ -36,8 +38,6 @@ namespace EEBUS.vue.Server
 					};
 				} );
 			} );
-
-			var settings = builder.Configuration.GetSection( "Settings" );
 
 			services.AddCors( options =>
 			{
@@ -93,20 +93,13 @@ namespace EEBUS.vue.Server
 
 			app.UseMiddleware<SHIPMiddleware>();
 
-			foreach ( Type type in GetTypesInNamespace( typeof( Settings ).Assembly, "EEBUS.SHIP.Messages" ) )
-				RuntimeHelpers.RunClassConstructor( type.TypeHandle );
-
-			foreach ( Type type in GetTypesInNamespace( typeof( Settings ).Assembly, "EEBUS.SPINE.Commands" ) )
-				RuntimeHelpers.RunClassConstructor( type.TypeHandle );
-
-			foreach ( Type type in GetTypesInNamespace( typeof( Settings ).Assembly, "EEBUS.Entities" ) )
-				RuntimeHelpers.RunClassConstructor( type.TypeHandle );
-
-			foreach ( Type type in GetTypesInNamespace( typeof( Settings ).Assembly, "EEBUS.UseCases.ControllableSystem" ) )
-				RuntimeHelpers.RunClassConstructor( type.TypeHandle );
-
-			foreach ( Type type in GetTypesInNamespace( typeof( Settings ).Assembly, "EEBUS.Features" ) )
-				RuntimeHelpers.RunClassConstructor( type.TypeHandle );
+			foreach ( string ns in new string[] {"EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands", "EEBUS.Entities",
+												 "EEBUS.UseCases.ControllableSystem", "EEBUS.UseCases.GridConnectionPoint",
+												 "EEBUS.Features" } )
+			{
+				foreach ( Type type in GetTypesInNamespace( typeof( Settings ).Assembly, ns ) )
+					RuntimeHelpers.RunClassConstructor( type.TypeHandle );
+			}
 
 			// start our mDNS services
 			mDNSClient.Run( devices );

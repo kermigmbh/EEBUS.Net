@@ -32,7 +32,6 @@ namespace EEBUS.Models
 		public List<KeyValue>	   KeyValues	  = new();
 		public List<UseCaseEvents> UseCaseEvents  = new();
 
-
 		public override bool Equals( object obj )
 		{
 			if ( (obj == null) || ! GetType().Equals( obj.GetType() ) )
@@ -98,9 +97,9 @@ namespace EEBUS.Models
 				this.KeyValues.Add( keyValue );
 		}
 
-		public bool HasUseCase( Type usecaseType )
+		public void FillData<T>( List<T> dataList, Connection connection )
 		{
-			return this.Entities.Any( e => e.HasUseCase( usecaseType ) );
+			this.Entities.ForEach( e => e.FillData( dataList, connection ) );
 		}
 
 		public void AddUseCaseEvents( UseCaseEvents eventsInterface )
@@ -156,6 +155,20 @@ namespace EEBUS.Models
 			foreach ( Entity entity in this.Entities )
 			{
 				Feature feature = entity.Features.Find( f => null != f && f.Type == "ElectricalConnection" && f.Role == role );
+				if ( null != feature )
+					return new AddressType() { device = this.DeviceId, entity = entity.Index, feature = feature.Index };
+			}
+
+			return null;
+		}
+
+		public AddressType GetMeasurementDataAddress( bool source )
+		{
+			string role = source ? "server" : "client";
+
+			foreach ( Entity entity in this.Entities )
+			{
+				Feature feature = entity.Features.Find( f => null != f && f.Type == "Measurement" && f.Role == role );
 				if ( null != feature )
 					return new AddressType() { device = this.DeviceId, entity = entity.Index, feature = feature.Index };
 			}

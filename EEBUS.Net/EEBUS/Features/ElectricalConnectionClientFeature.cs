@@ -10,8 +10,8 @@ namespace EEBUS.Features
 			Register( "ElectricalConnection-client", new Class() );
 		}
 
-		public ElectricalConnectionClientFeature( int index, Entity owner )
-			: base( index, "ElectricalConnection", "client", owner )
+		public ElectricalConnectionClientFeature( Entity owner )
+			: base( "ElectricalConnection", "client", owner )
 		{
 		}
 
@@ -22,9 +22,9 @@ namespace EEBUS.Features
 
 		public new class Class : Feature.Class
 		{
-			public override Feature Create( int index, Entity owner )
+			public override Feature Create( Entity owner )
 			{
-				return new ElectricalConnectionClientFeature( index, owner );
+				return new ElectricalConnectionClientFeature( owner );
 			}
 
 			public override Feature Create( int index, Entity owner, FeatureInformationType featureInfo )

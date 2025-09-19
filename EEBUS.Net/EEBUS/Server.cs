@@ -41,11 +41,14 @@ namespace EEBUS
 
 		public async Task Do()
 		{
-			var heart = new Heart();
-			var beat  = new System.Threading.Timer( heart.Beat, this, 4000, 4000 );
+			var heart	= new HeartBeatTask();
+			var beat	= new System.Threading.Timer( heart.Beat, this, 4000, 4000 );
 
-			var ecc		= new ElectricalConnectionCharacteristic();
-			var eccSend	= new System.Threading.Timer( ecc.SendData, this, 5000, Timeout.Infinite );
+			var ecc		= new ElectricalConnectionCharacteristicTask();
+			var eccSend	= new System.Threading.Timer( ecc.SendData, this, 2000, Timeout.Infinite );
+
+			var md		= new MeasurementDataTask();
+			var mdSend	= new System.Threading.Timer( md.SendData, this, 3000, 3000 );
 
 			try
 			{

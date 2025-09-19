@@ -33,11 +33,15 @@ namespace EEBUS.Models
 
 		public string					   Type		   { get; private set; }
 
-		public List<Scenario>			   Scenarios = new();
+		public List<Scenario>			   Scenarios   = new();
 
 		public Entity					   Owner	   { get; private set; }
 
 		public abstract string			   Actor	   { get; }
 		public abstract UseCaseSupportType Information { get; }
+
+		public virtual void FillData<T>( List<T> dataList, Connection connection, Entity entity )
+		{
+		}
 	}
 }

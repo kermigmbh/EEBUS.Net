@@ -54,7 +54,7 @@ namespace EEBUS
 				MulticastService mdns = new MulticastService();
 				ServiceDiscovery sd   = new ServiceDiscovery( mdns );
 
-				cert = CertificateGenerator.GenerateCert( Dns.GetHostName() );
+				cert = CertificateGenerator.GenerateCert( this.settings.Certificate );
 
 				byte[] hash = SHA1.Create().ComputeHash( cert.GetPublicKey() );
 

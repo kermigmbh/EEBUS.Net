@@ -13,18 +13,6 @@ namespace EEBUS.SPINE.Commands
 
 		public new class Class : SpineCmdPayload<CmdElectricalConnectionCharacteristicListDataType>.Class
 		{
-			//public override SpineCmdPayloadBase CreateAnswer( DatagramType datagram, HeaderType header, Connection connection )
-			//{
-			//	connection.SetHeartbeatAddresses( header.addressSource, header.addressDestination );
-
-			//	DeviceDiagnosisHeartbeatData	 payload = new DeviceDiagnosisHeartbeatData();
-			//	DeviceDiagnosisHeartbeatDataType data	 = payload.cmd[0].deviceDiagnosisHeartbeatData;
-
-			//	data.heartbeatCounter = DeviceDiagnosisHeartbeatData.counter++;
-
-			//	return payload;
-			//}
-
 			public override SpineCmdPayloadBase CreateNotify( Connection connection )
 			{
 				ElectricalConnectionCharacteristicListData payload = new ElectricalConnectionCharacteristicListData();
@@ -34,39 +22,7 @@ namespace EEBUS.SPINE.Commands
 				payload.cmd[0].electricalConnectionCharacteristicListData = new();
 
 				List<ElectricalConnectionCharacteristicDataType> eccs = new();
-
-				uint id = 0;
-
-				if ( connection.Local.HasUseCase( typeof( UseCases.ControllableSystem.LimitationOfPowerConsumption ) ) )
-				{
-					ElectricalConnectionCharacteristicDataType ecc = new();
-					ecc.electricalConnectionId = 0;
-					ecc.parameterId			   = 0;
-					ecc.characteristicId	   = id++;
-					ecc.characteristicContext  = "entity";
-					ecc.characteristicType	   = "contractualConsumptionNominalMax";
-					ecc.value.number		   = connection.Local.GetSettings().GetConsumptionNominalMax();
-					ecc.value.scale			   = 0;
-					ecc.unit				   = "W";
-
-					eccs.Add( ecc );
-				}
-
-				if ( connection.Local.HasUseCase( typeof( UseCases.ControllableSystem.LimitationOfPowerProduction ) ) )
-				{
-					ElectricalConnectionCharacteristicDataType ecc = new();
-					ecc.electricalConnectionId = 0;
-					ecc.parameterId			   = 0;
-					ecc.characteristicId	   = id++;
-					ecc.characteristicContext  = "entity";
-					ecc.characteristicType	   = "contractualProductionNominalMax";
-					ecc.value.number		   = connection.Local.GetSettings().GetProductionNominalMax();
-					ecc.value.scale			   = 0;
-					ecc.unit				   = "W";
-
-					eccs.Add( ecc );
-				}
-
+				connection.Local.FillData<ElectricalConnectionCharacteristicDataType>( eccs, connection );
 				payload.cmd[0].electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData = eccs.ToArray();
 
 				return payload;

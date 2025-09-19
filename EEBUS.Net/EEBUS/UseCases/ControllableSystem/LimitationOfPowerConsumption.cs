@@ -1,4 +1,5 @@
-﻿using System.Xml;
+﻿using System.Collections.Generic;
+using System.Xml;
 using EEBUS.DataStructures;
 using EEBUS.KeyValues;
 using EEBUS.Models;
@@ -20,6 +21,12 @@ namespace EEBUS.UseCases.ControllableSystem
 			Scenarios.Add( new Scenario( 2, true, "Failsafe values" ) );
 			Scenarios.Add( new Scenario( 3, true, "Heartbeat" ) );
 			Scenarios.Add( new Scenario( 4, true, "Constraints" ) );
+
+			entity.GetOrAdd( Feature.Create( "DeviceDiagnosis",		 "client", entity ) );
+			entity.GetOrAdd( Feature.Create( "LoadControl",			 "server", entity ) );
+			entity.GetOrAdd( Feature.Create( "DeviceConfiguration",	 "server", entity ) );
+			entity.GetOrAdd( Feature.Create( "DeviceDiagnosis",		 "server", entity ) );
+			entity.GetOrAdd( Feature.Create( "ElectricalConnection", "server", entity ) );
 
 			bool active			  = false;
 			long limit			  = 0;
@@ -72,6 +79,28 @@ namespace EEBUS.UseCases.ControllableSystem
 
 				return support;
 			}
+		}
+
+		public override void FillData<T>( List<T> dataList, Connection connection, Entity entity )
+		{
+			if ( dataList is not List<ElectricalConnectionCharacteristicDataType> )
+				return;
+
+			List<ElectricalConnectionCharacteristicDataType> eccs = dataList as List<ElectricalConnectionCharacteristicDataType>;
+
+			uint id = (uint) eccs.Count;
+
+			ElectricalConnectionCharacteristicDataType ecc = new();
+			ecc.electricalConnectionId = 0;
+			ecc.parameterId			   = 0;
+			ecc.characteristicId	   = id;
+			ecc.characteristicContext  = "entity";
+			ecc.characteristicType	   = "contractualConsumptionNominalMax";
+			ecc.value.number		   = connection.Local.GetSettings().GetConsumptionNominalMax();
+			ecc.value.scale			   = 0;
+			ecc.unit				   = "W";
+
+			eccs.Add( ecc );
 		}
 	}
 }

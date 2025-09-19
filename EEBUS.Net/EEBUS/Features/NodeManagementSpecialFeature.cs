@@ -10,8 +10,8 @@ namespace EEBUS.Features
 			Register( "NodeManagement-special", new Class() );
 		}
 
-		public NodeManagementSpecialFeature( int index, Entity owner )
-			: base( index, "NodeManagement", "special", owner )
+		public NodeManagementSpecialFeature( Entity owner )
+			: base( "NodeManagement", "special", owner )
 		{
 			this.Functions.Add( new Function( "nodeManagementBindingData",			   true,  false ) );
 			this.Functions.Add( new Function( "nodeManagementDetailedDiscoveryData",   true,  false ) );
@@ -31,9 +31,9 @@ namespace EEBUS.Features
 
 		public new class Class : Feature.Class
 		{
-			public override Feature Create( int index, Entity owner )
+			public override Feature Create( Entity owner )
 			{
-				return new NodeManagementSpecialFeature( index, owner );
+				return new NodeManagementSpecialFeature( owner );
 			}
 
 			public override Feature Create( int index, Entity owner, FeatureInformationType featureInfo )

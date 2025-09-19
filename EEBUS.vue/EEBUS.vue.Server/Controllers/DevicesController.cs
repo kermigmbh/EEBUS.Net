@@ -173,22 +173,6 @@ public class DevicesController : ControllerBase, IDisposable
 
 	private bool ValidateServerCert( object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors )
 	{
-		//// extract SKI
-		//foreach ( X509Extension extension in ((X509Certificate2)certificate).Extensions )
-		//{
-		//	if (extension.Oid.FriendlyName == "Subject Key Identifier" || extension.Oid.FriendlyName == "Schlüsselkennung des Antragstellers")
-		//	{
-		//		X509SubjectKeyIdentifierExtension ext = (X509SubjectKeyIdentifierExtension)extension;
-		//		model.SKI = ext.SubjectKeyIdentifier.ToLowerInvariant();
-
-		//		// add spaces every 4 hex digits (EEBUS requirement)
-		//		for (int i = 4; i < model.SKI.Length; i += 4)
-		//			model.SKI = model.SKI.Insert(i++, " ");
-
-		//		break;
-		//	}
-		//}
-
 		return true;
 	}
 

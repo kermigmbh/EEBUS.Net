@@ -10,8 +10,8 @@ namespace EEBUS.Features
 			Register( "LoadControl-server", new Class() );
 		}
 
-		public LoadControlServerFeature( int index, Entity owner )
-			: base( index, "LoadControl", "server", owner )
+		public LoadControlServerFeature( Entity owner )
+			: base( "LoadControl", "server", owner )
 		{
 			this.Functions.Add( new Function( "loadControlLimitDescriptionListData", true, false ) );
 			this.Functions.Add( new Function( "loadControlLimitListData",			 true, true ) );
@@ -24,9 +24,9 @@ namespace EEBUS.Features
 
 		public new class Class : Feature.Class
 		{
-			public override Feature Create( int index, Entity owner )
+			public override Feature Create( Entity owner )
 			{
-				return new LoadControlServerFeature( index, owner );
+				return new LoadControlServerFeature( owner );
 			}
 
 			public override Feature Create( int index, Entity owner, FeatureInformationType featureInfo )

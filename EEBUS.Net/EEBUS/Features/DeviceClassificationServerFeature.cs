@@ -10,8 +10,8 @@ namespace EEBUS.Features
 			Register( "DeviceClassification-server", new Class() );
 		}
 
-		public DeviceClassificationServerFeature( int index, Entity owner )
-			: base( index, "DeviceClassification", "server", owner )
+		public DeviceClassificationServerFeature( Entity owner )
+			: base( "DeviceClassification", "server", owner )
 		{
 			this.Functions.Add( new Function( "deviceClassificationManufacturerData", true, false ) );
 		}
@@ -24,9 +24,9 @@ namespace EEBUS.Features
 
 		public new class Class : Feature.Class
 		{
-			public override Feature Create( int index, Entity owner )
+			public override Feature Create( Entity owner )
 			{
-				return new DeviceClassificationServerFeature( index, owner );
+				return new DeviceClassificationServerFeature( owner );
 			}
 
 			public override Feature Create( int index, Entity owner, FeatureInformationType featureInfo )

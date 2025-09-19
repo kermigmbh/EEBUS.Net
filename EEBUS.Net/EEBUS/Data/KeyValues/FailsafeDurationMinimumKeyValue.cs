@@ -24,13 +24,13 @@ namespace EEBUS.KeyValues
 		{
 			get
 			{
-				DeviceConfigurationKeyValueDescriptionDataType data = new();
+				DeviceConfigurationKeyValueDescriptionDataType descriptionData = new();
 
-				data.keyId	   = this.device.GetId( this );
-				data.keyName   = this.KeyName;
-				data.valueType = this.Type;
+				descriptionData.keyId	  = this.device.GetId( this );
+				descriptionData.keyName   = this.KeyName;
+				descriptionData.valueType = this.Type;
 
-				return data;
+				return descriptionData;
 			}
 		}
 

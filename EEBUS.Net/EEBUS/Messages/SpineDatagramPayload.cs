@@ -124,6 +124,7 @@ namespace EEBUS.Messages
 
 		public int[]  entity  { get; set; }
 
-		public int	  feature { get; set; }
+		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+		public int?	  feature { get; set; }
 	}
 }

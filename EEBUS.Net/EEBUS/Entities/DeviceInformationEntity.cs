@@ -13,8 +13,8 @@ namespace EEBUS.Entities
 		public DeviceInformationEntity( int index, LocalDevice local, EntitySettings entitySettings )
 			: base( index, local, entitySettings )
 		{
-			Features.Add( Feature.Create( 0, "NodeManagement",		 "special", this ) );
-			Features.Add( Feature.Create( 1, "DeviceClassification", "server", this ) );
+			GetOrAdd( Feature.Create( "NodeManagement",		  "special", this ) );
+			GetOrAdd( Feature.Create( "DeviceClassification", "server",  this ) );
 		}
 
 		public DeviceInformationEntity( int index, LocalDevice local, EntityInformationType entityInfo, FeatureInformationType[] featureInfos )
@@ -34,5 +34,7 @@ namespace EEBUS.Entities
 				return new DeviceInformationEntity( index, local, entityInfo, featureInfos );
 			}
 		}
+
+		protected override int MinIndex { get { return 0; } }
 	}
 }

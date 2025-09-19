@@ -13,11 +13,6 @@ namespace EEBUS.Entities
 		public CEMEntity( int index, LocalDevice local, EntitySettings entitySettings )
 			: base( index, local, entitySettings )
 		{
-			Features.Add( Feature.Create( 1, "DeviceDiagnosis",		 "client", this ) );
-			Features.Add( Feature.Create( 2, "LoadControl",			 "server", this ) );
-			Features.Add( Feature.Create( 3, "DeviceConfiguration",  "server", this ) );
-			Features.Add( Feature.Create( 4, "DeviceDiagnosis",		 "server", this ) );
-			Features.Add( Feature.Create( 5, "ElectricalConnection", "server", this ) );
 		}
 
 		public CEMEntity( int index, LocalDevice local, EntityInformationType entityInfo, FeatureInformationType[] featureInfos )

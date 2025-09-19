@@ -4,9 +4,8 @@ namespace EEBUS.Models
 {
 	public abstract class Feature
 	{
-		protected Feature( int index, string type, string role, Entity owner )
+		protected Feature( string type, string role, Entity owner )
 		{
-			this.Index = index;
 			this.Type  = type;
 			this.Role  = role;
 			this.owner = owner;
@@ -40,14 +39,14 @@ namespace EEBUS.Models
 
 		public abstract class Class
 		{
-			public abstract Feature Create( int index, Entity owner );
+			public abstract Feature Create( Entity owner );
 			public abstract Feature Create( int index, Entity owner, FeatureInformationType featureInfo );
 		}
 
-		static public Feature Create( int index, string type, string role, Entity owner )
+		static public Feature Create( string type, string role, Entity owner )
 		{
 			if ( featureClasses.TryGetValue( type + "-" + role, out Class cls ) )
-				return cls.Create( index, owner );
+				return cls.Create( owner );
 
 			return null;
 		}
@@ -72,7 +71,7 @@ namespace EEBUS.Models
 		}
 
 
-		public int			  Index		  { get; private set; }
+		public int			  Index		  { get; set; }
 		public string		  Type		  { get; private set; }
 		public string		  Role		  { get; private set; }
 		public virtual string Description { get { return null; } }

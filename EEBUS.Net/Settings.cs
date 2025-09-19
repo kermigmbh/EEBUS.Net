@@ -4,6 +4,7 @@ namespace EEBUS
 {
 	public class Settings
 	{
+		public string		  Certificate { get; set; }
 		public DeviceSettings Device      { get; set; }
 
 		public long GetConsumptionNominalMax()
@@ -67,9 +68,10 @@ namespace EEBUS
 
 	public class UseCaseSettings
 	{
-		public string		 Type		{ get; set; }
-		public string		 Actor		{ get; set; }
-		public LimitSettings InitLimits	{ get; set; }
+		public string		 Type					  { get; set; }
+		public string		 Actor					  { get; set; }
+		public LimitSettings InitLimits				  { get; set; }
+		public int			 PvCurtailmentLimitFactor { get; set; }
 	}
 
 	public class LimitSettings

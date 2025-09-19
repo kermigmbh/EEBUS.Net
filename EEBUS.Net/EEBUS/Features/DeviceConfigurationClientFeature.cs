@@ -10,8 +10,8 @@ namespace EEBUS.Features
 			Register( "DeviceConfiguration-client", new Class() );
 		}
 
-		public DeviceConfigurationClientFeature( int index, Entity owner )
-			: base( index, "DeviceConfiguration", "client", owner )
+		public DeviceConfigurationClientFeature( Entity owner )
+			: base( "DeviceConfiguration", "client", owner )
 		{
 		}
 
@@ -22,9 +22,9 @@ namespace EEBUS.Features
 
 		public new class Class : Feature.Class
 		{
-			public override Feature Create( int index, Entity owner )
+			public override Feature Create( Entity owner )
 			{
-				return new DeviceConfigurationClientFeature( index, owner );
+				return new DeviceConfigurationClientFeature( owner );
 			}
 
 			public override Feature Create( int index, Entity owner, FeatureInformationType featureInfo )
