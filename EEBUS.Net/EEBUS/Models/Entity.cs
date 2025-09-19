@@ -78,8 +78,8 @@ namespace EEBUS.Models
 		public List<Feature> Features = new();
 		public List<UseCase> UseCases = new();
 
-		private LocalDevice  local;
-		private Entity		 owner;
+		private LocalDevice  local = null;
+		private Entity		 owner = null;
 
 		public int[] Index
 		{

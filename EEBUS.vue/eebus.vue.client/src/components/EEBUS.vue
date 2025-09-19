@@ -146,14 +146,20 @@
 		}
 
 		private async fetchData() {
-			var response = await fetch( 'https://localhost:7134/devices/getlocal' );
-			if ( response.ok ) {
-				this.local = await response.json();
-			}
+			try {
+				var response = await fetch( '/devices/getlocal' );
+				if ( response.ok ) {
+					this.local = await response.json();
+				}
 
-			response = await fetch('https://localhost:7134/devices/getremotes');
-			if ( response.ok ) {
-				this.remotes = await response.json();
+				response = await fetch( '/devices/getremotes' );
+				if ( response.ok ) {
+					this.remotes = await response.json();
+				}
+			}
+			catch ( ex )
+			{
+				console.error( ex );
 			}
 		}
 
@@ -161,7 +167,7 @@
 			if ( null != this.connection )
 				return;
 
-			this.connection = new WebSocket( "wss://localhost:7134/ws/register" );
+			this.connection = new WebSocket( "/ws/register" );
 
 			let _this: EEBUS = this;
 
@@ -205,7 +211,7 @@
 		}
 
 		public async connect( remote: Device ) {
-			await fetch( 'https://localhost:7134/devices/connect?ski=' + remote.ski );
+			await fetch( '/devices/connect?ski=' + remote.ski );
 		}
 
 		public remoteDeviceFound( data: any ) {
@@ -262,7 +268,7 @@
 				this.local.heartbeat		= true;
 				this.local.heartbeatTimeout	= data.timeout;
 
-				setTimeout( () => this.local.heartbeat = false, 1000 );
+				setTimeout(() => { if (this.local) { this.local.heartbeat = false } }, 1000 );
 			}
 		}
 	}

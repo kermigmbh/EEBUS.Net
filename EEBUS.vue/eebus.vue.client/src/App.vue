@@ -36,10 +36,10 @@
       margin: 0 2rem 0 0;
     }
 
-    header .wrapper {
-      display: flex;
-      place-items: flex-start;
-      flex-wrap: wrap;
-    }
+	header .wrapper {
+		display: flex;
+		place-items: flex-start;
+		flex-wrap: wrap;
+	}
   }
 </style>
