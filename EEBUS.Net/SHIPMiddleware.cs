@@ -1,9 +1,8 @@
-﻿using System.Net.WebSockets;
-using System.Diagnostics;
-
+﻿using EEBUS.Models;
 using Microsoft.AspNetCore.Http;
-
-using EEBUS.Models;
+using System.Diagnostics;
+using System.Net;
+using System.Net.WebSockets;
 
 namespace EEBUS
 {
@@ -69,5 +68,9 @@ namespace EEBUS
 			IList<string> requestedProtocols = httpContext.WebSockets.WebSocketRequestedProtocols;
 			return (0 < requestedProtocols.Count) && requestedProtocols.Contains( "ship" );
 		}
-	}
+
+
+		 
+
+    }
 }

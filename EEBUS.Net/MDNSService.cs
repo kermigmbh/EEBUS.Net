@@ -23,7 +23,7 @@ namespace EEBUS
 		public MDNSService( IConfigurationSection settings )
 		{
 			this.settings = settings.Get<Settings>();
-			this.settings.Device.Port = 7134;
+			//this.settings.Device.Port = 7134;
 
 			this.serviceProfile = new EEBusServiceProfile( Dns.GetHostName(), this.settings.Device.Id, "_ship._tcp", this.settings.Device.Port );
 		}
