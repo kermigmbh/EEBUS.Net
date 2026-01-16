@@ -1,64 +1,68 @@
 ﻿using EEBUS.SHIP.Messages;
-using Makaretu.Dns;
-using Microsoft.AspNetCore.SignalR.Protocol;
 using System.Diagnostics;
-using System.Threading.Tasks;
+using System.Threading.Channels;
 
 namespace EEBUS
 {
-	public class DataMessageQueue : Queue<DataMessage>
-	{
-		public DataMessageQueue( Connection connection )
-		{
-			this.connection   = connection;
-			this.signalEvent  = new AutoResetEvent( false );
-			this.workerThread = new Thread( () => {
-				while ( true )
-				{
-					signalEvent.WaitOne();
-					WorkerAction().GetAwaiter().GetResult();
-				}
-			} );
-			this.workerThread.Start();
-		}
+    public class DataMessageQueue
+    {
+        private readonly Channel<DataMessage> _channel;
+        private readonly Connection _connection;
+        private readonly Task _workerTask;
 
-		private object		   mutex = new();
+        public DataMessageQueue(Connection connection)
+        {
+            _connection = connection;
 
-		private Connection	   connection;
-		private Thread		   workerThread;
-		private AutoResetEvent signalEvent;
+            // Unbounded channel, single reader, multiple writers
+            _channel = Channel.CreateUnbounded<DataMessage>(
+                new UnboundedChannelOptions
+                {
+                    SingleReader = true,
+                    SingleWriter = false
+                });
 
-		public void Push( DataMessage message )
-		{
-			lock( this.mutex )
-			{
-				Enqueue( message );
-			}
+            // Start background consumer
+            _workerTask = Task.Run(WorkerLoop);
+        }
 
-			this.signalEvent.Set();
-		}
+        public ValueTask PushAsync(DataMessage message)
+        {
+            return _channel.Writer.WriteAsync(message);
+        }
 
-		private async Task WorkerAction()
-		{
-			DataMessage message;
+        public void Push (DataMessage message)
+        {
+              bool b = _channel.Writer.TryWrite (message);
 
-			lock ( this.mutex )
-			{
-				if ( 0 == Count )
-					return;
-
-				message = Dequeue();
-			}
-			try
-			{
-                await message.Send(this.connection.WebSocket).ConfigureAwait(false);
+            if (!b)
+            {
+                Debug.WriteLine("Cannot push message");
             }
-			catch (Exception ex)
-			{
+        }
 
-				Debug.WriteLine( ex.ToString());
-			}
-			
-		}
-	}
+        private async Task WorkerLoop()
+        {
+            try
+            {
+                await foreach (var message in _channel.Reader.ReadAllAsync())
+                {
+                    try
+                    {
+                        await message.Send(_connection.WebSocket)
+                                     .ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine(ex.ToString());
+                        _channel.Writer.Complete();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("WorkerLoop crashed: " + ex);
+            }
+        }
+    }
 }

@@ -42,13 +42,13 @@ namespace EEBUS
 		public async Task Do()
 		{
 			var heart	= new HeartBeatTask();
-			var beat	= new System.Threading.Timer( heart.Beat, this, 4000, 4000 );
+			using var beat	= new System.Threading.Timer( heart.Beat, this, 4000, 4000 );
 
 			var ecc		= new ElectricalConnectionCharacteristicTask();
-			var eccSend	= new System.Threading.Timer( ecc.SendData, this, 2000, Timeout.Infinite );
+            using var eccSend	= new System.Threading.Timer( ecc.SendData, this, 2000, Timeout.Infinite );
 
 			var md		= new MeasurementDataTask();
-			var mdSend	= new System.Threading.Timer( md.SendData, this, 3000, 3000 );
+            using var mdSend	= new System.Threading.Timer( md.SendData, this, 3000, 3000 );
 
 			try
 			{
@@ -117,8 +117,10 @@ namespace EEBUS
 			}
 
 			serverMap.TryRemove( this.host, out _ );
-
-			Debug.WriteLine( $"Closed websocket for connectedNode {this.host}. Remaining active connectedNodes : {serverMap.Count}" );
+			this.state = EState.Disconnected;
+			this.subState = ESubState.None;
+			
+            Debug.WriteLine( $"Closed websocket for connectedNode {this.host}. Remaining active connectedNodes : {serverMap.Count}" );
 		}
 	}
 }
