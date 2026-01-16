@@ -67,6 +67,10 @@ namespace EEBUS
 						RequestRemoteDeviceConfiguration();
 				}
 			}
+			catch (Exception ex)
+			{
+
+			}
 			finally
 			{
 				beat.Change( Timeout.Infinite, Timeout.Infinite );

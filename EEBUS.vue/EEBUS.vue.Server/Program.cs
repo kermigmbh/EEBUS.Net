@@ -91,13 +91,17 @@ namespace EEBUS.vue.Server
 
             app.MapFallbackToFile("/index.html");
 
+
             //app.UseMiddleware<SHIPMiddleware>();
+
             var s = settings.Get<Settings>();
-
-
             var listener = new SHIPListener(devices);
-
             listener.StartStandaloneAsync(s.Device.Port);
+
+
+
+
+
 
 
             foreach (string ns in new string[] {"EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands", "EEBUS.Entities",
