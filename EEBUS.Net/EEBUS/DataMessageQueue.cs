@@ -1,6 +1,7 @@
 ﻿using EEBUS.SHIP.Messages;
 using Makaretu.Dns;
 using Microsoft.AspNetCore.SignalR.Protocol;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace EEBUS
@@ -48,8 +49,16 @@ namespace EEBUS
 
 				message = Dequeue();
 			}
+			try
+			{
+                await message.Send(this.connection.WebSocket).ConfigureAwait(false);
+            }
+			catch (Exception ex)
+			{
+
+				Debug.WriteLine( ex.ToString());
+			}
 			
-			await message.Send( this.connection.WebSocket ).ConfigureAwait( false );
 		}
 	}
 }
