@@ -61,10 +61,14 @@ namespace EEBUS
         private async Task StartStandaloneInternalAsync(int port)
         {
 
-             
+            var options = new WebApplicationOptions
+            {
+                Args = new[] { "--hostingStartupAssemblies", "" }
+            };
+            var builder = WebApplication.CreateBuilder(options);
 
-            var builder = WebApplication.CreateBuilder();
 
+            
             builder.WebHost.ConfigureKestrel(options =>
             {
                 options.ConfigureHttpsDefaults(httpOptions =>
