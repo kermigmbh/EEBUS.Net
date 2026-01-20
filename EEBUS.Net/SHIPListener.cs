@@ -155,7 +155,7 @@ namespace EEBUS
 
             app.Urls.Add($"https://0.0.0.0:{port}");
             //app.UseCors("AllowAll");
-            await app.RunAsync();
+            await app.RunAsync(cancellationToken);
 
         }
         private bool ProtocolSupported(HttpContext httpContext)
