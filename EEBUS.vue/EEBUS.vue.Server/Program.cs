@@ -1,15 +1,9 @@
-using System.Net;
-using System.Net.Security;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Security.Authentication;
-using System.Security.Cryptography.X509Certificates;
-
+using EEBUS.Models;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
-
-using EEBUS.Models;
-using Microsoft.Extensions.Configuration;
+using System.Net.Security;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 
 namespace EEBUS.vue.Server
 {
@@ -96,7 +90,7 @@ namespace EEBUS.vue.Server
 
             var s = settings.Get<Settings>();
             var listener = new SHIPListener(devices);
-            listener.StartStandaloneAsync(s.Device.Port);
+            _ = listener.StartAsync(s.Device.Port);
 
 
 
@@ -104,13 +98,6 @@ namespace EEBUS.vue.Server
 
 
 
-            foreach (string ns in new string[] {"EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands", "EEBUS.Entities",
-                                                 "EEBUS.UseCases.ControllableSystem", "EEBUS.UseCases.GridConnectionPoint",
-                                                 "EEBUS.Features" })
-            {
-                foreach (Type type in GetTypesInNamespace(typeof(Settings).Assembly, ns))
-                    RuntimeHelpers.RunClassConstructor(type.TypeHandle);
-            }
 
             // start our mDNS services
             mDNSClient.Run(devices);
@@ -125,11 +112,6 @@ namespace EEBUS.vue.Server
             return true;
         }
 
-        private static Type[] GetTypesInNamespace(Assembly assembly, string nameSpace)
-        {
-            return assembly.GetTypes()
-                            .Where(t => String.Equals(t.Namespace, nameSpace, StringComparison.Ordinal))
-                            .ToArray();
-        }
+       
     }
 }
