@@ -27,6 +27,8 @@ namespace EEBUS.Net
         private readonly MDNSClient _mDNSClient;
         private readonly MDNSService _mDNSService;
 
+        public event EventHandler<RemoteDevice> DeviceFound;
+
         public EEBUSManager(Devices devices, MDNSClient mDNSClient, MDNSService mDNSService)
         {
             this._devices = devices;
@@ -56,6 +58,7 @@ namespace EEBUS.Net
         private void OnRemoteDeviceFound(RemoteDevice device)
         {
             //using var _ = Push(new RemoteDeviceFound(device));
+            DeviceFound?.Invoke(this, device);
         }
 
         private void OnServerStateChanged(Connection.EState state, RemoteDevice device)
@@ -110,8 +113,6 @@ namespace EEBUS.Net
                 //using var _ = Push(new HeartbeatReceived(device, timeout));
             }
         }
-
-
 
         public JObject GetLocal()
         {
@@ -180,8 +181,6 @@ namespace EEBUS.Net
             });
         }
 
-
-       
         public JArray GetRemotes()
         {
             JArray devlist = new();
@@ -201,7 +200,6 @@ namespace EEBUS.Net
 
             return devlist;
         }
-
 
         public async Task<string?> Connect(string ski)
         {
@@ -282,6 +280,11 @@ namespace EEBUS.Net
             {
                 _clients.TryRemove(host, out _);
             }
+        }
+
+        public void StartDeviceSearch()
+        {
+            _mDNSClient.Run(_devices);
         }
     }
 }
