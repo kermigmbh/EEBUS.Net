@@ -2,7 +2,9 @@ using EEBUS.Models;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using System.Net.Security;
+using System.Runtime.ConstrainedExecution;
 using System.Security.Authentication;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
 namespace EEBUS.vue.Server
@@ -101,7 +103,17 @@ namespace EEBUS.vue.Server
 
             // start our mDNS services
             mDNSClient.Run(devices);
-            mDNSService.Run(devices);
+
+
+            var cert = CertificateGenerator.GenerateCert(s.Certificate);
+
+            byte[] hash = SHA1.Create().ComputeHash(cert.GetPublicKey());
+
+            LocalDevice localDevice = devices.GetOrCreateLocal(hash, s.Device);
+
+            mDNSService.Run(localDevice);
+
+
 
             app.Run();
         }

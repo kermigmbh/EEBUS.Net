@@ -4,18 +4,18 @@ namespace EEBUS.Models
 {
 	public class LocalDevice : Device
 	{
-		public LocalDevice( byte[] ski, Settings settings )
-			: base( settings.Device.Id, ski )
+		public LocalDevice( byte[] ski, DeviceSettings settings )
+			: base( settings.Id, ski )
 		{			
-			this.Name			   = settings.Device.Name;
-			this.Brand			   = settings.Device.Brand;
-			this.Type			   = settings.Device.Type;
-			this.Model			   = settings.Device.Model;
-			this.Serial			   = settings.Device.Serial;
-			this.NetworkFeatureSet = settings.Device.NetworkFeatureSet;
+			this.Name			   = settings.Name;
+			this.Brand			   = settings.Brand;
+			this.Type			   = settings.Type;
+			this.Model			   = settings.Model;
+			this.Serial			   = settings.Serial;
+			this.NetworkFeatureSet = settings.NetworkFeatureSet;
 
 			int index = 0;
-			foreach ( EntitySettings entitySettings in settings.Device.Entities )
+			foreach ( EntitySettings entitySettings in settings.Entities )
 			{
 				this.Entities.Add( Entity.Create( index++, this, entitySettings ) );
 			}
@@ -34,7 +34,7 @@ namespace EEBUS.Models
 		public string NetworkFeatureSet { get; private set; }
 
 
-		private readonly Settings settings;
+		private readonly DeviceSettings settings;
 		
 		public string ShipID
 		{
@@ -81,7 +81,7 @@ namespace EEBUS.Models
 			}
 		}
 
-		public Settings GetSettings()
+		public DeviceSettings GetSettings()
 		{
 			return this.settings;
 		}

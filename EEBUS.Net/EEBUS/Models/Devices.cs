@@ -24,7 +24,7 @@
 			RemoteDeviceFound?.Invoke( device );
 		}
 
-		public LocalDevice GetOrCreateLocal( byte[] ski, Settings settings )
+		public LocalDevice GetOrCreateLocal( byte[] ski, DeviceSettings settings )
 		{
 			lock ( this.mutex )
 			{

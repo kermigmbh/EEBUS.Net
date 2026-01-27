@@ -52,7 +52,7 @@ namespace EEBUS
 			}
 		}
 
-		public void Run( Devices devices )
+		public void Run( LocalDevice localDevice)
 		{
 			_ = Task.Run( async() =>
 			{
@@ -61,12 +61,12 @@ namespace EEBUS
 				MulticastService mdns = new MulticastService();
 				ServiceDiscovery sd   = new ServiceDiscovery( mdns );
 
-				cert = CertificateGenerator.GenerateCert( this.settings.Certificate );
+				//cert = CertificateGenerator.GenerateCert( this.settings.Certificate );
 
-				byte[] hash = SHA1.Create().ComputeHash( cert.GetPublicKey() );
+				//byte[] hash = SHA1.Create().ComputeHash( cert.GetPublicKey() );
 
-				LocalDevice localDevice = devices.GetOrCreateLocal( hash, settings );
-
+				//LocalDevice localDevice = devices.GetOrCreateLocal( hash, settings.Device );
+				 
 				// configure our EEBUS mDNS properties
 				AddProperty( "name",     localDevice.Name );
 				AddProperty( "id",       localDevice.DeviceId );
