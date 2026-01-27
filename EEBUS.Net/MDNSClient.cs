@@ -10,7 +10,7 @@ namespace EEBUS
 	{
 		private Devices devices;
 
-		public void Run( Devices devices )
+		public void Run( Devices devices, CancellationToken cancellationToken )
 		{
 			_ = Task.Run( async() =>
 			{
@@ -28,12 +28,12 @@ namespace EEBUS
 				{
 					mdns.Start();
 
-					while ( true )
+					while ( !cancellationToken.IsCancellationRequested )
 					{
 						sd.QueryAllServices();
 						devices.GarbageCollect();
 
-						await Task.Delay( 5000 ).ConfigureAwait( false );
+						await Task.Delay( 5000 , cancellationToken).ConfigureAwait( false );
 					}
 				}
 				catch ( Exception ex )

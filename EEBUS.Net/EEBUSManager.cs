@@ -29,12 +29,11 @@ namespace EEBUS.Net
         private readonly MDNSService _mDNSService;
         public event EventHandler<RemoteDevice> DeviceFound;
         private CancellationTokenSource _cts = new();
+        private CancellationTokenSource _clientCts = new();
         private X509Certificate2 _cert;
+
         public EEBUSManager(Settings settings)
         {
-
-           
-
             this._devices = new Devices();
             this._mDNSClient = new MDNSClient();
 
@@ -44,13 +43,9 @@ namespace EEBUS.Net
 
             this._mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port);
 
-
-          
             LocalDevice localDevice = _devices.GetOrCreateLocal(hash, settings.Device);
 
             this._mDNSService.Run(localDevice, _cts.Token);
-
-
 
             this._devices.RemoteDeviceFound += OnRemoteDeviceFound;
             this._devices.ServerStateChanged += OnServerStateChanged;
@@ -59,11 +54,8 @@ namespace EEBUS.Net
             this._devices.Local.AddUseCaseEvents(this.lpcEventHandler);
             this._devices.Local.AddUseCaseEvents(this.lppEventHandler);
             this._devices.Local.AddUseCaseEvents(this.lpcOrLppEventHandler);
-
-
-
-
         }
+
         public void Dispose()
         {
             _devices.RemoteDeviceFound -= OnRemoteDeviceFound;
@@ -75,6 +67,7 @@ namespace EEBUS.Net
             _devices.Local.RemoveUseCaseEvents(this.lpcOrLppEventHandler);
 
             _cts.Cancel();
+            _clientCts.Cancel();
         }
         private void OnRemoteDeviceFound(RemoteDevice device)
         {
@@ -101,6 +94,7 @@ namespace EEBUS.Net
             public void DataUpdateLimit(int counter, bool active, long limit, TimeSpan duration)
             {
                 //using var _ = Push(new LimitDataChanged(true, active, limit, duration));
+                Console.WriteLine("UpdateLimit");
             }
 
             public void DataUpdateFailsafeConsumptionActivePowerLimit(int counter, long limit)
@@ -325,7 +319,13 @@ namespace EEBUS.Net
 
         public void StartDeviceSearch()
         {
-            _mDNSClient.Run(_devices);
+            _mDNSClient.Run(_devices, _clientCts.Token);
+        }
+
+        public void StopDeviceSearch()
+        {
+            _clientCts.Cancel();
+            _clientCts = new CancellationTokenSource();
         }
     }
 }
