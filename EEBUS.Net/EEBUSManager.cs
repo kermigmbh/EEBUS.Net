@@ -13,6 +13,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Security;
 using System.Net.WebSockets;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Xml;
@@ -27,14 +28,29 @@ namespace EEBUS.Net
         private readonly MDNSClient _mDNSClient;
         private readonly MDNSService _mDNSService;
         public event EventHandler<RemoteDevice> DeviceFound;
-
-        public EEBUSManager(MDNSClient mDNSClient, MDNSService mDNSService)
+        private CancellationTokenSource _cts = new();
+        private X509Certificate2 _cert;
+        public EEBUSManager(Settings settings)
         {
-            this._devices = new Devices();
-            this._mDNSClient = mDNSClient;
-            this._mDNSService = mDNSService;
 
            
+
+            this._devices = new Devices();
+            this._mDNSClient = new MDNSClient();
+
+            _cert = CertificateGenerator.GenerateCert(settings.Certificate);
+
+            byte[] hash = SHA1.Create().ComputeHash(_cert.GetPublicKey());
+
+            this._mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port);
+
+
+          
+            LocalDevice localDevice = _devices.GetOrCreateLocal(hash, settings.Device);
+
+            this._mDNSService.Run(localDevice, _cts.Token);
+
+
 
             this._devices.RemoteDeviceFound += OnRemoteDeviceFound;
             this._devices.ServerStateChanged += OnServerStateChanged;
@@ -43,6 +59,10 @@ namespace EEBUS.Net
             this._devices.Local.AddUseCaseEvents(this.lpcEventHandler);
             this._devices.Local.AddUseCaseEvents(this.lppEventHandler);
             this._devices.Local.AddUseCaseEvents(this.lpcOrLppEventHandler);
+
+
+
+
         }
         public void Dispose()
         {
@@ -53,6 +73,8 @@ namespace EEBUS.Net
             _devices.Local.RemoveUseCaseEvents(this.lpcEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.lppEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.lpcOrLppEventHandler);
+
+            _cts.Cancel();
         }
         private void OnRemoteDeviceFound(RemoteDevice device)
         {
@@ -226,7 +248,7 @@ namespace EEBUS.Net
                     wsClient = new ClientWebSocket();
                     wsClient.Options.AddSubProtocol("ship");
                     wsClient.Options.RemoteCertificateValidationCallback = (object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors) => true;
-                    wsClient.Options.ClientCertificates.Add(this._mDNSService.Cert);
+                    wsClient.Options.ClientCertificates.Add(_cert);
                     await wsClient.ConnectAsync(uri, CancellationToken.None).ConfigureAwait(false);
                     if (wsClient?.State == WebSocketState.Open)
                     {

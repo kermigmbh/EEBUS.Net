@@ -8,22 +8,22 @@ namespace ConsoleDemo
     {
         static void Main(string[] args)
         {
-
-            MDNSClient mDNSClient = new MDNSClient();
-            MDNSService mDNSService = new MDNSService(Options.Create<Settings>(new Settings()
+            var settings = Options.Create<Settings>(new Settings()
             {
                 Device = new DeviceSettings()
                 {
                     Name = "ConsoleDemoDevice",
                     Id = "1",
                     Model = "DemoModel",
-                     Serial = "123456",
-                      Port = 7200
-                     
+                    Serial = "123456",
+                    Port = 7200
+
                 },
 
-            }));
-            var manager = new EEBUSManager(mDNSClient, mDNSService);
+            });
+
+          
+            var manager = new EEBUSManager(  settings.Value);
         }
     }
 }

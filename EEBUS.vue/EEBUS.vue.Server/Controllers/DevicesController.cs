@@ -20,15 +20,17 @@ namespace EEBUS.Controllers;
 public class DevicesController : ControllerBase, IDisposable
 {
 	private readonly ILogger<DevicesController> logger;
+    private readonly X509Certificate2 _cert;
 
-	public DevicesController( Devices devices, MDNSClient mDNSClient, MDNSService mDNSService, ILogger<DevicesController> logger )
+    public DevicesController( Devices devices, MDNSClient mDNSClient, MDNSService mDNSService, ILogger<DevicesController> logger, X509Certificate2 cert )
 	{
 		this.mDNSClient	 = mDNSClient;
 		this.mDNSService = mDNSService;
 		this.devices	 = devices;
 
 		this.logger		 = logger;
-	}
+        this._cert = cert;
+    }
 
 	public void Dispose()
 	{
@@ -39,9 +41,10 @@ public class DevicesController : ControllerBase, IDisposable
 	private readonly MDNSClient	 mDNSClient;
 	private readonly MDNSService mDNSService;
 	private ClientWebSocket?	 wsClient;
+	private X509Certificate2?  clientCert;
 
 
-	[HttpGet("GetLocal")]
+    [HttpGet("GetLocal")]
 	public JObject GetLocal()
 	{
 		LocalDevice? local = this.devices?.Local;
@@ -147,7 +150,7 @@ public class DevicesController : ControllerBase, IDisposable
 			this.wsClient = new ClientWebSocket();
 			this.wsClient.Options.AddSubProtocol( "ship" );
 			this.wsClient.Options.RemoteCertificateValidationCallback = ValidateServerCert;
-			this.wsClient.Options.ClientCertificates.Add( this.mDNSService.Cert );
+			this.wsClient.Options.ClientCertificates.Add(_cert);
 			await this.wsClient.ConnectAsync( uri, CancellationToken.None ).ConfigureAwait( false );
 
 			if ( this.wsClient.State == WebSocketState.Open )

@@ -28,9 +28,9 @@ namespace EEBUS
 			this.serviceProfile = new EEBusServiceProfile( Dns.GetHostName(), this.settings.Device.Id, "_ship._tcp", this.settings.Device.Port );
 		}
 
-        public MDNSService(string deviceId, ushort devicePort, X509Certificate2 cert)
+        public MDNSService(string deviceId, ushort devicePort )
         {
-           
+             
 
             this.serviceProfile = new EEBusServiceProfile(Dns.GetHostName(), deviceId, "_ship._tcp", devicePort);
         }
@@ -44,15 +44,15 @@ namespace EEBUS
 			this.serviceProfile.AddProperty( key, value );
 		}
 
-		public X509Certificate2 Cert
-		{
-			get
-			{
-				return this.cert;
-			}
-		}
+		//public X509Certificate2 Cert
+		//{
+		//	get
+		//	{
+		//		return this.cert;
+		//	}
+		//}
 
-		public void Run( LocalDevice localDevice)
+		public void Run( LocalDevice localDevice, CancellationToken cancellationToken)
 		{
 			_ = Task.Run( async() =>
 			{
@@ -84,7 +84,7 @@ namespace EEBUS
 
 					sd.Advertise( this.serviceProfile );
 
-					await Task.Delay( -1 ).ConfigureAwait( false );
+					await Task.Delay( -1, cancellationToken ).ConfigureAwait( false );
 				}
 				catch ( Exception ex )
 				{

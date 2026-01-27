@@ -58,6 +58,11 @@ namespace EEBUS.vue.Server
             services.AddSingleton<MDNSClient>(mDNSClient);
             services.AddSingleton<MDNSService>(mDNSService);
 
+            var s = settings.Get<Settings>();
+            var cert = CertificateGenerator.GenerateCert(s.Certificate);
+
+            services.AddSingleton<X509Certificate2>(cert);
+
             var app = builder.Build();
 
             app.UseDefaultFiles();
@@ -90,7 +95,7 @@ namespace EEBUS.vue.Server
 
             //app.UseMiddleware<SHIPMiddleware>();
 
-            var s = settings.Get<Settings>();
+           
             var listener = new SHIPListener(devices);
             _ = listener.StartAsync(s.Device.Port);
 
@@ -105,13 +110,13 @@ namespace EEBUS.vue.Server
             mDNSClient.Run(devices);
 
 
-            var cert = CertificateGenerator.GenerateCert(s.Certificate);
+          
 
             byte[] hash = SHA1.Create().ComputeHash(cert.GetPublicKey());
 
             LocalDevice localDevice = devices.GetOrCreateLocal(hash, s.Device);
 
-            mDNSService.Run(localDevice);
+            mDNSService.Run(localDevice, default);
 
 
 
@@ -124,6 +129,6 @@ namespace EEBUS.vue.Server
             return true;
         }
 
-       
+
     }
 }
