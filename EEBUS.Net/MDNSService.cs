@@ -28,7 +28,14 @@ namespace EEBUS
 			this.serviceProfile = new EEBusServiceProfile( Dns.GetHostName(), this.settings.Device.Id, "_ship._tcp", this.settings.Device.Port );
 		}
 
-		private ServiceProfile    serviceProfile;
+        public MDNSService(string deviceId, ushort devicePort, X509Certificate2 cert)
+        {
+           
+
+            this.serviceProfile = new EEBusServiceProfile(Dns.GetHostName(), deviceId, "_ship._tcp", devicePort);
+        }
+
+        private ServiceProfile    serviceProfile;
 		private X509Certificate2  cert;
 		private readonly Settings settings;
 

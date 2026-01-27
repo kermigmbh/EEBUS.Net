@@ -21,21 +21,20 @@ namespace EEBUS.Net
 {
     public class EEBUSManager : IDisposable
     {
-        private ClientWebSocket? _wsClient;
+        
         private ConcurrentDictionary<HostString, Client> _clients = new();
         private Devices _devices;
         private readonly MDNSClient _mDNSClient;
         private readonly MDNSService _mDNSService;
-
         public event EventHandler<RemoteDevice> DeviceFound;
 
-        public EEBUSManager(Devices devices, MDNSClient mDNSClient, MDNSService mDNSService)
+        public EEBUSManager(MDNSClient mDNSClient, MDNSService mDNSService)
         {
-            this._devices = devices;
+            this._devices = new Devices();
             this._mDNSClient = mDNSClient;
             this._mDNSService = mDNSService;
 
-            this._devices = devices;
+           
 
             this._devices.RemoteDeviceFound += OnRemoteDeviceFound;
             this._devices.ServerStateChanged += OnServerStateChanged;
@@ -201,6 +200,12 @@ namespace EEBUS.Net
             return devlist;
         }
 
+
+        /// <summary>
+        /// returns hoststring if success, otherwise null or exception
+        /// </summary>
+        /// <param name="ski"></param>
+        /// <returns></returns>
         public async Task<string?> Connect(string ski)
         {
             SKI Ski = new SKI(ski);
@@ -210,34 +215,48 @@ namespace EEBUS.Net
             {
                 return null;
             }
-
             try
             {
                 Uri uri = new Uri("wss://" + device.Url);
-
-                _wsClient = new ClientWebSocket();
-                _wsClient.Options.AddSubProtocol("ship");
-                _wsClient.Options.RemoteCertificateValidationCallback = (object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors) => true;
-                _wsClient.Options.ClientCertificates.Add(this._mDNSService.Cert);
-                await _wsClient.ConnectAsync(uri, CancellationToken.None).ConfigureAwait(false);
-
                 HostString hostString = new HostString(uri.Host, uri.Port);
 
-                if (_wsClient.State == WebSocketState.Open)
+                ClientWebSocket? wsClient = null;
+                if (!_clients.TryGetValue(hostString, out Client? existingClient))
                 {
-                    Client client = new Client(hostString, _wsClient, _devices, device);
-                    _clients[hostString] = client;
-                    await client.Run().ConfigureAwait(false);
-                    return hostString.ToString();
+                    wsClient = new ClientWebSocket();
+                    wsClient.Options.AddSubProtocol("ship");
+                    wsClient.Options.RemoteCertificateValidationCallback = (object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors) => true;
+                    wsClient.Options.ClientCertificates.Add(this._mDNSService.Cert);
+                    await wsClient.ConnectAsync(uri, CancellationToken.None).ConfigureAwait(false);
+                    if (wsClient?.State == WebSocketState.Open)
+                    {
+                        Client client = new Client(hostString, wsClient, _devices, device);
+                        _clients[hostString] = client;
+                        await client.Run().ConfigureAwait(false);
+                        return hostString.ToString();
+                    }
+                    else
+                    {
+                        await Disconnect(hostString).ConfigureAwait(false);
+                    }
                 }
                 else
                 {
-                    await Disconnect(hostString).ConfigureAwait(false);
+                    wsClient = existingClient.WebSocket as ClientWebSocket;
+                    if (wsClient?.State == WebSocketState.Open)
+                    {
+                        return hostString.ToString();
+                    }
+                    else
+                    {
+                        await Disconnect(hostString).ConfigureAwait(false);
+                    }
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine("Connect Error: " + ex.Message);
+                throw;
             }
             return null;
         }
