@@ -62,9 +62,11 @@ namespace EEBUS.KeyValues
 
 		public override void SendEvent( Connection connection )
 		{
-			LPPEvents lpp = connection.Local.GetUseCaseEvents<LPPEvents>();
-			if ( null != lpp )
-				lpp.DataUpdateFailsafeProductionActivePowerLimit( 0, this.Value );
+			List<LPPEvents> lppEvents = connection.Local.GetUseCaseEvents<LPPEvents>();
+			foreach (var lpp in lppEvents)
+			{
+				lpp.DataUpdateFailsafeProductionActivePowerLimit(0, this.Value);
+			}
 		}
 	}
 }

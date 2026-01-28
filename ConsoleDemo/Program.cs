@@ -92,7 +92,6 @@ namespace ConsoleDemo
             if (local.TryGetValue(address, StringComparison.OrdinalIgnoreCase, out JToken? value))
             {
                 Console.WriteLine($"{address}: {value.ToString()}");
-
             }
         }
 

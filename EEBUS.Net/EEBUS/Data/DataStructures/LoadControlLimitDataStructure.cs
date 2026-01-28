@@ -88,15 +88,19 @@ namespace EEBUS.DataStructures
 		{
 			if ( this.LimitDirection == "consume" )
 			{
-				LPCEvents lpc = connection.Local.GetUseCaseEvents<LPCEvents>();
-				if ( null != lpc )
-					lpc.DataUpdateLimit( 0, this.LimitActive, this.Number, XmlConvert.ToTimeSpan( this.EndTime ) );
+				List<LPCEvents> lpcEvents = connection.Local.GetUseCaseEvents<LPCEvents>();
+				foreach (var lpc in lpcEvents)
+				{
+					lpc.DataUpdateLimit(0, this.LimitActive, this.Number, XmlConvert.ToTimeSpan(this.EndTime));
+				}
 			}
 			else if (this.LimitDirection == "produce")
 			{
-				LPPEvents lpp = connection.Local.GetUseCaseEvents<LPPEvents>();
-				if ( null != lpp )
-					lpp.DataUpdateLimit( 0, this.LimitActive, this.Number, XmlConvert.ToTimeSpan( this.EndTime ) );
+				List<LPPEvents> lppEvents = connection.Local.GetUseCaseEvents<LPPEvents>();
+				foreach (var lpp in lppEvents)
+				{
+					lpp.DataUpdateLimit(0, this.LimitActive, this.Number, XmlConvert.ToTimeSpan(this.EndTime));
+				}
 			}
 		}
 	}

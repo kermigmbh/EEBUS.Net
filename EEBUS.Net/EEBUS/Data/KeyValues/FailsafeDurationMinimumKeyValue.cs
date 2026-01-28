@@ -55,9 +55,11 @@ namespace EEBUS.KeyValues
 
 		public override void SendEvent( Connection connection )
 		{
-			LPCorLPPEvents lpcOrLpp = connection.Local.GetUseCaseEvents<LPCorLPPEvents>();
-			if ( null != lpcOrLpp )
-				lpcOrLpp.DataUpdateFailsafeDurationMinimum( 0, XmlConvert.ToTimeSpan( this.Duration ) );
+			List<LPCorLPPEvents> lpcOrLppEvents = connection.Local.GetUseCaseEvents<LPCorLPPEvents>();
+			foreach (var lpcOrLpp in lpcOrLppEvents)
+			{
+				lpcOrLpp.DataUpdateFailsafeDurationMinimum(0, XmlConvert.ToTimeSpan(this.Duration));
+			}
 		}
 	}
 }

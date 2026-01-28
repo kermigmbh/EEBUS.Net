@@ -63,9 +63,10 @@ namespace EEBUS.KeyValues
 
 		public override void SendEvent( Connection connection )
 		{
-			LPCEvents lpc = connection.Local.GetUseCaseEvents<LPCEvents>();
-			if ( null != lpc )
-				lpc.DataUpdateFailsafeConsumptionActivePowerLimit( 0, this.Value );
+			List<LPCEvents> lpcEvents = connection.Local.GetUseCaseEvents<LPCEvents>();
+			foreach(var lpc in lpcEvents) {
+				lpc.DataUpdateFailsafeConsumptionActivePowerLimit(0, this.Value); 
+			}
 		}
 	}
 }

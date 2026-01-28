@@ -53,9 +53,11 @@ namespace EEBUS.SPINE.Commands
 				DeviceDiagnosisHeartbeatData payload = datagram.payload.ToObject<DeviceDiagnosisHeartbeatData>();
 				string timeout = payload.cmd[0].deviceDiagnosisHeartbeatData.heartbeatTimeout;
 				
-				LPCorLPPEvents lpcOrLpp = connection.Local.GetUseCaseEvents<LPCorLPPEvents>();
-				if ( null != lpcOrLpp )
-					lpcOrLpp.DataUpdateHeartbeat( 0, connection.Remote, (uint) XmlConvert.ToTimeSpan( timeout ).TotalSeconds );
+				List<LPCorLPPEvents> lpcOrLppEvents = connection.Local.GetUseCaseEvents<LPCorLPPEvents>();
+				foreach (var lpcOrLpp in lpcOrLppEvents)
+				{
+					lpcOrLpp.DataUpdateHeartbeat(0, connection.Remote, (uint)XmlConvert.ToTimeSpan(timeout).TotalSeconds);
+				}
 			}
 		}
 	}

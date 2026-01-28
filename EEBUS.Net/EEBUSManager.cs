@@ -303,12 +303,12 @@ namespace EEBUS.Net
 
         public async Task DisconnectAsync(HostString host)
         {
+            var wsClient = _clients.TryGetValue(host, out Client? client) ? client?.WebSocket : null;
+            if (wsClient == null)
+                return;
+
             try
             {
-                var wsClient = _clients.TryGetValue(host, out Client? client) ? client?.WebSocket : null;
-                if (wsClient == null)
-                    return;
-
                 // send close message
                 CloseMessage closeMessage = new CloseMessage(ConnectionClosePhaseType.announce);
                 await closeMessage.Send(wsClient);
@@ -327,8 +327,7 @@ namespace EEBUS.Net
 
                 // now close websocket
                 await wsClient.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None).ConfigureAwait(false);
-                wsClient.Dispose();
-                wsClient = null;
+                
             }
             catch (Exception ex)
             {
@@ -336,8 +335,11 @@ namespace EEBUS.Net
             }
             finally
             {
-                _clients.TryRemove(host, out Client? client);
-                client?.Stop();
+                //We need to dispose the websocket in any case, e.g. it can be that we send a close message, but we do not receive one from the remote partner. In this case, we must close the connection
+                wsClient.Dispose();
+                wsClient = null;
+                _clients.TryRemove(host, out Client? removedClient);
+                removedClient?.Stop();
             }
         }
 

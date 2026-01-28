@@ -112,9 +112,9 @@ namespace EEBUS.Models
 			this.UseCaseEvents.Remove( eventsInterface );
 		}
 
-		public T GetUseCaseEvents<T>() where T: class, UseCaseEvents
+		public List<T> GetUseCaseEvents<T>() where T: class, UseCaseEvents
 		{
-			return this.UseCaseEvents.FirstOrDefault( uce => uce.GetType().GetInterfaces().Any( i => i == typeof( T ) ) ) as T;
+			return this.UseCaseEvents.Where( uce => uce.GetType().GetInterfaces().Any( i => i == typeof( T ) ) ).Cast<T>().ToList();
 		}
 
 		public void SetDiscoveryData( NodeManagementDetailedDiscoveryData payload, Connection connection )
