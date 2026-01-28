@@ -1,4 +1,5 @@
 using EEBUS.Models;
+using EEBUS.Net;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using System.Net.Security;
@@ -96,27 +97,27 @@ namespace EEBUS.vue.Server
             //app.UseMiddleware<SHIPMiddleware>();
 
            
-            var listener = new SHIPListener(devices);
-            _ = listener.StartAsync(s.Device.Port);
+            var manager = new EEBUSManager(s);
+            manager.StartServer();
 
 
-
+            manager.StartDeviceSearch();
 
 
 
 
 
             // start our mDNS services
-            mDNSClient.Run(devices);
+            //mDNSClient.Run(devices);
 
 
           
 
-            byte[] hash = SHA1.Create().ComputeHash(cert.GetPublicKey());
+            //byte[] hash = SHA1.Create().ComputeHash(cert.GetPublicKey());
 
-            LocalDevice localDevice = devices.GetOrCreateLocal(hash, s.Device);
+            //LocalDevice localDevice = devices.GetOrCreateLocal(hash, s.Device);
 
-            mDNSService.Run(localDevice, default);
+            //mDNSService.Run(localDevice, default);
 
 
 

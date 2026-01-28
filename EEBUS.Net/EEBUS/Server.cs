@@ -28,7 +28,7 @@ namespace EEBUS
 
 		static private object mutex = new();
 		
-		static public Server Get( HostString host )
+		static public Server? Get( HostString host )
 		{
 			lock ( mutex )
 			{

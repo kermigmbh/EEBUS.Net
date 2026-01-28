@@ -13,6 +13,8 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Security;
 using System.Net.WebSockets;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -22,11 +24,13 @@ namespace EEBUS.Net
 {
     public class EEBUSManager : IDisposable
     {
-        
+
         private ConcurrentDictionary<HostString, Client> _clients = new();
         private Devices _devices;
         private readonly MDNSClient _mDNSClient;
         private readonly MDNSService _mDNSService;
+        private readonly Settings _settings;
+
         public event EventHandler<RemoteDevice> DeviceFound;
         private CancellationTokenSource _cts = new();
         private CancellationTokenSource _clientCts = new();
@@ -34,6 +38,16 @@ namespace EEBUS.Net
 
         public EEBUSManager(Settings settings)
         {
+
+            foreach (string ns in new string[] {"EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands", "EEBUS.Entities",
+                                                 "EEBUS.UseCases.ControllableSystem", "EEBUS.UseCases.GridConnectionPoint",
+                                                 "EEBUS.Features" })
+            {
+                foreach (Type type in GetTypesInNamespace(typeof(Settings).Assembly, ns))
+                    RuntimeHelpers.RunClassConstructor(type.TypeHandle);
+            }
+
+
             this._devices = new Devices();
             this._mDNSClient = new MDNSClient();
 
@@ -54,6 +68,13 @@ namespace EEBUS.Net
             this._devices.Local.AddUseCaseEvents(this.lpcEventHandler);
             this._devices.Local.AddUseCaseEvents(this.lppEventHandler);
             this._devices.Local.AddUseCaseEvents(this.lpcOrLppEventHandler);
+            this._settings = settings;
+        }
+        private static Type[] GetTypesInNamespace(Assembly assembly, string nameSpace)
+        {
+            return assembly.GetTypes()
+                            .Where(t => String.Equals(t.Namespace, nameSpace, StringComparison.Ordinal))
+                            .ToArray();
         }
 
         public void Dispose()
@@ -61,7 +82,7 @@ namespace EEBUS.Net
             _devices.RemoteDeviceFound -= OnRemoteDeviceFound;
             _devices.ServerStateChanged -= OnServerStateChanged;
             _devices.ClientStateChanged -= OnClientStateChanged;
-            
+
             _devices.Local.RemoveUseCaseEvents(this.lpcEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.lppEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.lpcOrLppEventHandler);
@@ -326,6 +347,19 @@ namespace EEBUS.Net
         {
             _clientCts.Cancel();
             _clientCts = new CancellationTokenSource();
+        }
+
+
+        SHIPListener? _shipListener;
+        public void StartServer()
+        {
+            _shipListener = new SHIPListener(_devices);
+            _shipListener.StartAsync(_settings.Device.Port);
+        }
+
+        public void StopServer()
+        {
+            _shipListener?.StopAsync();
         }
     }
 }

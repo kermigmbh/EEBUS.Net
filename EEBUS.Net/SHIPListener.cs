@@ -27,20 +27,9 @@ namespace EEBUS
             this.devices = devices;
 
 
-            foreach (string ns in new string[] {"EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands", "EEBUS.Entities",
-                                                 "EEBUS.UseCases.ControllableSystem", "EEBUS.UseCases.GridConnectionPoint",
-                                                 "EEBUS.Features" })
-            {
-                foreach (Type type in GetTypesInNamespace(typeof(Settings).Assembly, ns))
-                    RuntimeHelpers.RunClassConstructor(type.TypeHandle);
-            }
+            
         }
-        private static Type[] GetTypesInNamespace(Assembly assembly, string nameSpace)
-        {
-            return assembly.GetTypes()
-                            .Where(t => String.Equals(t.Namespace, nameSpace, StringComparison.Ordinal))
-                            .ToArray();
-        }
+      
 
 
         public Task StartAsync(int port)
@@ -51,8 +40,8 @@ namespace EEBUS
             {
                 try
                 {
-                    var listener = new SHIPListener(devices);
-                    await listener.StartStandaloneInternalAsync(port, _cts.Token);
+                    //var listener = new SHIPListener(devices);
+                    await StartStandaloneInternalAsync(port, _cts.Token);
                 }
                 catch (Exception ex)
                 {
