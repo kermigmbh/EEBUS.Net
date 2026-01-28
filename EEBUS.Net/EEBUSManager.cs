@@ -336,7 +336,8 @@ namespace EEBUS.Net
             }
             finally
             {
-                _clients.TryRemove(host, out _);
+                _clients.TryRemove(host, out Client? client);
+                client?.Stop();
             }
         }
 

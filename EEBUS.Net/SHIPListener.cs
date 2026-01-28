@@ -48,7 +48,10 @@ namespace EEBUS
         public async Task StopAsync()
         {
             _cts.Cancel();
-            await _app.StopAsync();
+            if (_app != null)
+            {
+                await _app.StopAsync();
+            }
         }
 
 

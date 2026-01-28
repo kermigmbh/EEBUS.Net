@@ -58,7 +58,7 @@ namespace EEBUS
 			_cts?.Cancel(); 
 		}
 
-		private void Sd_ServiceInstanceDiscovered( object sender, ServiceInstanceDiscoveryEventArgs ev )
+		private void Sd_ServiceInstanceDiscovered(object? sender, ServiceInstanceDiscoveryEventArgs ev )
 		{
 			if ( ev.ServiceInstanceName.ToString().Contains( "._ship." ) )
 			{
@@ -66,7 +66,7 @@ namespace EEBUS
 
 				IEnumerable<SRVRecord>     servers    = ev.Message.AdditionalRecords.OfType<SRVRecord>();
 				IEnumerable<AddressRecord> addresses  = ev.Message.AdditionalRecords.OfType<AddressRecord>();
-				IEnumerable<string>        txtRecords = ev.Message.AdditionalRecords.OfType<TXTRecord>()?.SelectMany( s => s.Strings );
+				IEnumerable<string>?        txtRecords = ev.Message.AdditionalRecords.OfType<TXTRecord>()?.SelectMany( s => s.Strings );
 
 				if ( servers?.Count() > 0 && addresses?.Count() > 0 && txtRecords?.Count() > 0 )
 				{
