@@ -67,17 +67,24 @@ namespace ConsoleDemo
             while (_remoteDevice == null) { }
             s_EebusManager.StopDeviceSearch();
 
-            _ = s_EebusManager.Connect(_remoteDevice.SKI.ToString());
-            Console.WriteLine("Connection established!");
-
-            while (true)
+            string? hostString = await s_EebusManager.ConnectAsync(_remoteDevice.SKI.ToString());
+            if (hostString == null)
             {
-                Console.Write(":> ");
-                string? input = Console.ReadLine();
-                if (input == null) continue;
-                if (input == "exit") break;
+                Console.WriteLine("Failed to connect to client!");
+            } else
+            {
+                Console.WriteLine("Connection established!");
 
-                Read(input);
+                while (true)
+                {
+                    Console.Write(":> ");
+                    string? input = Console.ReadLine();
+                    if (input == null) continue;
+                    if (input == "exit") break;
+
+                    Read(input);
+                }
+                await s_EebusManager.DisconnectAsync(new Microsoft.AspNetCore.Http.HostString(hostString));
             }
         }
 
