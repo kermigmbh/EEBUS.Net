@@ -22,10 +22,8 @@ public class DevicesController : ControllerBase, IDisposable
 	private readonly ILogger<DevicesController> logger;
     private readonly X509Certificate2 _cert;
 
-    public DevicesController( Devices devices, MDNSClient mDNSClient, MDNSService mDNSService, ILogger<DevicesController> logger, X509Certificate2 cert )
+    public DevicesController( Devices devices, ILogger<DevicesController> logger, X509Certificate2 cert )
 	{
-		this.mDNSClient	 = mDNSClient;
-		this.mDNSService = mDNSService;
 		this.devices	 = devices;
 
 		this.logger		 = logger;
@@ -38,10 +36,7 @@ public class DevicesController : ControllerBase, IDisposable
 
 	private Devices devices;
 
-	private readonly MDNSClient	 mDNSClient;
-	private readonly MDNSService mDNSService;
 	private ClientWebSocket?	 wsClient;
-	private X509Certificate2?  clientCert;
 
 
     [HttpGet("GetLocal")]

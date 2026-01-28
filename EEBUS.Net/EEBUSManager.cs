@@ -29,12 +29,15 @@ namespace EEBUS.Net
         private Devices _devices;
         private readonly MDNSClient _mDNSClient;
         private readonly MDNSService _mDNSService;
+        SHIPListener? _shipListener;
         private readonly Settings _settings;
 
-        public event EventHandler<RemoteDevice> DeviceFound;
+        public event EventHandler<RemoteDevice>? DeviceFound;
         private CancellationTokenSource _cts = new();
         private CancellationTokenSource _clientCts = new();
         private X509Certificate2 _cert;
+
+        public Devices Devices => _devices;
 
         public EEBUSManager(Settings settings)
         {
@@ -243,7 +246,7 @@ namespace EEBUS.Net
         /// </summary>
         /// <param name="ski"></param>
         /// <returns></returns>
-        public async Task<string?> Connect(string ski)
+        public async Task<string?> ConnectAsync(string ski)
         {
             SKI Ski = new SKI(ski);
 
@@ -274,7 +277,7 @@ namespace EEBUS.Net
                     }
                     else
                     {
-                        await Disconnect(hostString).ConfigureAwait(false);
+                        await DisconnectAsync(hostString).ConfigureAwait(false);
                     }
                 }
                 else
@@ -286,7 +289,7 @@ namespace EEBUS.Net
                     }
                     else
                     {
-                        await Disconnect(hostString).ConfigureAwait(false);
+                        await DisconnectAsync(hostString).ConfigureAwait(false);
                     }
                 }
             }
@@ -298,7 +301,7 @@ namespace EEBUS.Net
             return null;
         }
 
-        public async Task Disconnect(HostString host)
+        public async Task DisconnectAsync(HostString host)
         {
             try
             {
@@ -312,7 +315,6 @@ namespace EEBUS.Net
 
                 // wait for close response message from server
                 closeMessage = await CloseMessage.Receive(wsClient);
-
                 if (closeMessage == null)
                 {
                     throw new Exception("Close message parsing failed!");
@@ -340,17 +342,14 @@ namespace EEBUS.Net
 
         public void StartDeviceSearch()
         {
-            _mDNSClient.Run(_devices, _clientCts.Token);
+            _mDNSClient.Run(_devices);
         }
 
         public void StopDeviceSearch()
         {
-            _clientCts.Cancel();
-            _clientCts = new CancellationTokenSource();
+            _mDNSClient.Stop();
         }
 
-
-        SHIPListener? _shipListener;
         public void StartServer()
         {
             _shipListener = new SHIPListener(_devices);

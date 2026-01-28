@@ -51,14 +51,6 @@ namespace ConsoleDemo
                 Certificate = "XCenterEEBUS"
             });
 
-            foreach (string ns in new string[] {"EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands", "EEBUS.Entities",
-                                                 "EEBUS.UseCases.ControllableSystem", "EEBUS.UseCases.GridConnectionPoint",
-                                                 "EEBUS.Features" })
-            {
-                foreach (Type type in GetTypesInNamespace(typeof(Settings).Assembly, ns))
-                    RuntimeHelpers.RunClassConstructor(type.TypeHandle);
-            }
-
             s_EebusManager = new EEBUSManager(settings.Value);
             s_EebusManager.DeviceFound += Manager_DeviceFound;
 
@@ -99,23 +91,8 @@ namespace ConsoleDemo
 
             if (local.TryGetValue(address, StringComparison.OrdinalIgnoreCase, out JToken? value))
             {
-                if (value.Type == JTokenType.Float)
-                {
-                    float floatValue = float.Parse(value.ToString());
-                    Console.WriteLine($"Read value from address [{address}]: {floatValue}");
-                }
+                Console.WriteLine($"{address}: {value.ToString()}");
 
-                if (value.Type == JTokenType.Integer)
-                {
-                    int intValue = int.Parse(value.ToString());
-                    Console.WriteLine($"Read value from address [{address}]: {intValue}");
-                }
-
-                if (value.Type == JTokenType.Boolean)
-                {
-                    bool boolValue = bool.Parse(value.ToString());
-                    Console.WriteLine($"Read value from address [{address}]: {boolValue}");
-                }
             }
         }
 
@@ -128,13 +105,6 @@ namespace ConsoleDemo
                 Console.WriteLine("Found device! " + e.Name);
                 _remoteDevice = e;
             }
-        }
-
-        private static Type[] GetTypesInNamespace(Assembly assembly, string nameSpace)
-        {
-            return assembly.GetTypes()
-                            .Where(t => String.Equals(t.Namespace, nameSpace, StringComparison.Ordinal))
-                            .ToArray();
         }
     }
 }

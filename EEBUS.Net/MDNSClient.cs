@@ -9,43 +9,53 @@ namespace EEBUS
 	public class MDNSClient
 	{
 		private Devices devices;
+		private CancellationTokenSource? _cts;
 
-		public void Run( Devices devices, CancellationToken cancellationToken )
+		public void Run( Devices devices)
 		{
-			_ = Task.Run( async() =>
-			{
-				Thread.CurrentThread.IsBackground = true;
+			_cts?.Cancel();
+			_cts = new CancellationTokenSource();
+            this.devices = devices;
 
-				this.devices = devices;
+            _ = Task.Run(() => RunInternalAsync(_cts.Token));
+		}
 
-				MulticastService mdns = new MulticastService();
-				ServiceDiscovery sd   = new ServiceDiscovery( mdns );
+		private async Task RunInternalAsync(CancellationToken cancellationToken)
+		{
+            Thread.CurrentThread.IsBackground = true;
 
-				sd.ServiceDiscovered         += (s, serviceName) => { mdns.SendQuery( serviceName ); };
-				sd.ServiceInstanceDiscovered += Sd_ServiceInstanceDiscovered;
+            MulticastService mdns = new MulticastService();
+            ServiceDiscovery sd = new ServiceDiscovery(mdns);
 
-				try
-				{
-					mdns.Start();
+            sd.ServiceDiscovered += (s, serviceName) => { mdns.SendQuery(serviceName); };
+            sd.ServiceInstanceDiscovered += Sd_ServiceInstanceDiscovered;
 
-					while ( !cancellationToken.IsCancellationRequested )
-					{
-						sd.QueryAllServices();
-						devices.GarbageCollect();
+            try
+            {
+                mdns.Start();
 
-						await Task.Delay( 5000 , cancellationToken).ConfigureAwait( false );
-					}
-				}
-				catch ( Exception ex )
-				{
-					Console.WriteLine( ex.Message );
-				}
-				finally
-				{
-					sd.Dispose();
-					mdns.Stop();
-				}
-			} );
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    sd.QueryAllServices();
+                    devices.GarbageCollect();
+
+                    await Task.Delay(5000, cancellationToken).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            finally
+            {
+                sd.Dispose();
+                mdns.Stop();
+            }
+        }
+
+		public void Stop()
+		{
+			_cts?.Cancel(); 
 		}
 
 		private void Sd_ServiceInstanceDiscovered( object sender, ServiceInstanceDiscoveryEventArgs ev )

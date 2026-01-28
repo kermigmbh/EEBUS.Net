@@ -50,19 +50,23 @@ namespace EEBUS.vue.Server
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();
 
-            Devices devices = new Devices();
-            MDNSClient mDNSClient = new MDNSClient();
-            MDNSService mDNSService = new MDNSService(settings);
+
+            //Devices devices = new Devices();
+            //MDNSClient mDNSClient = new MDNSClient();
+            //MDNSService mDNSService = new MDNSService(settings);
 
             services.AddSingleton<Settings>();
-            services.AddSingleton<Devices>(devices);
-            services.AddSingleton<MDNSClient>(mDNSClient);
-            services.AddSingleton<MDNSService>(mDNSService);
+            
+            //services.AddSingleton<MDNSClient>(mDNSClient);
+            //services.AddSingleton<MDNSService>(mDNSService);
 
             var s = settings.Get<Settings>();
             var cert = CertificateGenerator.GenerateCert(s.Certificate);
 
             services.AddSingleton<X509Certificate2>(cert);
+
+            var manager = new EEBUSManager(s);
+            services.AddSingleton<Devices>(manager.Devices);
 
             var app = builder.Build();
 
@@ -97,7 +101,6 @@ namespace EEBUS.vue.Server
             //app.UseMiddleware<SHIPMiddleware>();
 
            
-            var manager = new EEBUSManager(s);
             manager.StartServer();
 
 

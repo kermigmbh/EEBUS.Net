@@ -23,15 +23,9 @@ namespace EEBUS
 
         public SHIPListener(Devices devices)
         {
-
             this.devices = devices;
-
-
-            
         }
       
-
-
         public Task StartAsync(int port)
         {
             _cts.Cancel();
@@ -60,7 +54,6 @@ namespace EEBUS
 
         private async Task StartStandaloneInternalAsync(int port, CancellationToken cancellationToken)
         {
-
             var builder = WebApplication.CreateEmptyBuilder(new WebApplicationOptions());
             builder.WebHost.UseKestrel();
             builder.WebHost.ConfigureKestrel(options =>
