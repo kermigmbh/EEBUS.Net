@@ -44,11 +44,11 @@ namespace EEBUS
 			var heart	= new HeartBeatTask();
 			using var beat	= new System.Threading.Timer( heart.Beat, this, 4000, 4000 );
 
-			var ecc		= new ElectricalConnectionCharacteristicTask();
-            using var eccSend	= new System.Threading.Timer( ecc.SendData, this, 2000, Timeout.Infinite );
+			//var ecc		= new ElectricalConnectionCharacteristicTask();
+   //         using var eccSend	= new System.Threading.Timer( ecc.SendData, this, 2000, Timeout.Infinite );
 
-			var md		= new MeasurementDataTask();
-            using var mdSend	= new System.Threading.Timer( md.SendData, this, 3000, 3000 );
+			//var md		= new MeasurementDataTask();
+   //         using var mdSend	= new System.Threading.Timer( md.SendData, this, 3000, 3000 );
 
 			try
 			{
@@ -100,7 +100,7 @@ namespace EEBUS
 			}
 
 			beat.Change( Timeout.Infinite, Timeout.Infinite );
-			eccSend.Change( Timeout.Infinite, Timeout.Infinite );
+			//eccSend.Change( Timeout.Infinite, Timeout.Infinite );
 
 			await Close().ConfigureAwait( false );
 		}
