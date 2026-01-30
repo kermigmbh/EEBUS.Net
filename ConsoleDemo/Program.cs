@@ -48,22 +48,37 @@ namespace ConsoleDemo
                         ]
 
                 },
-                Certificate = "XCenterEEBUS"
+                //Certificate = "XCenterEEBUS"
+                Certificate = "EEBUS.net"
             });
 
             s_EebusManager = new EEBUSManager(settings.Value);
             s_EebusManager.DeviceFound += Manager_DeviceFound;
 
 
-            s_EebusManager.StartDeviceSearch();
-            while (_remoteDevice == null) { }
-            s_EebusManager.StopDeviceSearch();
+
+            //Server start
+            s_EebusManager.Start();
+          
+            Console.WriteLine(  "Server starting - Press key to continue with Client Tests");
+            Console.ReadLine();
+
+
+
+            //Client connect
+           
+            while (_remoteDevice == null)
+            {
+                await Task.Delay(100);
+            }
+           
 
             string? hostString = await s_EebusManager.ConnectAsync(_remoteDevice.SKI.ToString());
             if (hostString == null)
             {
                 Console.WriteLine("Failed to connect to client!");
-            } else
+            }
+            else
             {
                 Console.WriteLine("Connection established!");
 
@@ -78,6 +93,10 @@ namespace ConsoleDemo
                 }
                 await s_EebusManager.DisconnectAsync(new Microsoft.AspNetCore.Http.HostString(hostString));
             }
+
+
+
+
         }
 
         private static void Read(string address)
@@ -99,9 +118,11 @@ namespace ConsoleDemo
         {
             if (_remoteDevice != null) return;
 
+            Console.WriteLine("Found device! " + e.Name);
+
             if (e.Name.Contains("controlbox", StringComparison.OrdinalIgnoreCase))
             {
-                Console.WriteLine("Found device! " + e.Name);
+               
                 _remoteDevice = e;
             }
         }

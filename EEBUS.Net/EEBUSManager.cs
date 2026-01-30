@@ -51,27 +51,27 @@ namespace EEBUS.Net
             }
 
 
-            this._devices = new Devices();
-            this._mDNSClient = new MDNSClient();
+            _devices = new Devices();
+            _mDNSClient = new MDNSClient();
 
             _cert = CertificateGenerator.GenerateCert(settings.Certificate);
 
             byte[] hash = SHA1.Create().ComputeHash(_cert.GetPublicKey());
 
-            this._mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port);
+            _mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port);
 
             LocalDevice localDevice = _devices.GetOrCreateLocal(hash, settings.Device);
 
-            this._mDNSService.Run(localDevice, _cts.Token);
+            _mDNSService.Run(localDevice, _cts.Token);
+            _mDNSClient.Run(_devices);
+            _devices.RemoteDeviceFound += OnRemoteDeviceFound;
+            _devices.ServerStateChanged += OnServerStateChanged;
+            _devices.ClientStateChanged += OnClientStateChanged;
 
-            this._devices.RemoteDeviceFound += OnRemoteDeviceFound;
-            this._devices.ServerStateChanged += OnServerStateChanged;
-            this._devices.ClientStateChanged += OnClientStateChanged;
-
-            this._devices.Local.AddUseCaseEvents(this.lpcEventHandler);
-            this._devices.Local.AddUseCaseEvents(this.lppEventHandler);
-            this._devices.Local.AddUseCaseEvents(this.lpcOrLppEventHandler);
-            this._settings = settings;
+            _devices.Local.AddUseCaseEvents(this.lpcEventHandler);
+            _devices.Local.AddUseCaseEvents(this.lppEventHandler);
+            _devices.Local.AddUseCaseEvents(this.lpcOrLppEventHandler);
+            _settings = settings;
         }
         private static Type[] GetTypesInNamespace(Assembly assembly, string nameSpace)
         {
@@ -343,25 +343,19 @@ namespace EEBUS.Net
             }
         }
 
-        public void StartDeviceSearch()
-        {
-            _mDNSClient.Run(_devices);
-        }
+       
 
-        public void StopDeviceSearch()
-        {
-            _mDNSClient.Stop();
-        }
-
-        public void StartServer()
+        public void Start()
         {
             _shipListener = new SHIPListener(_devices);
             _shipListener.StartAsync(_settings.Device.Port);
         }
 
-        public void StopServer()
+        public void Stop()
         {
+            
             _shipListener?.StopAsync();
+            _mDNSClient.Stop();
         }
     }
 }

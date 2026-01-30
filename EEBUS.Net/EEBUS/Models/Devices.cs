@@ -40,7 +40,7 @@
 			if ( null != Local && Local.SKI == new SKI( ski ) )
 				return null;
 
-			RemoteDevice remote	  = null;
+			RemoteDevice? remote	  = null;
 			bool		 foundNew = false;
 
 			lock ( this.mutex )
@@ -61,7 +61,7 @@
 			return remote;
 		}
 
-		public RemoteDevice GetRemote( string id )
+		public RemoteDevice? GetRemote( string id )
 		{
 			lock ( this.mutex )
 			{

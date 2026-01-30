@@ -142,6 +142,8 @@ namespace EEBUS
             //app.UseCors("AllowAll");
             await app.RunAsync(cancellationToken);
 
+           
+
         }
         private bool ProtocolSupported(HttpContext httpContext)
         {
