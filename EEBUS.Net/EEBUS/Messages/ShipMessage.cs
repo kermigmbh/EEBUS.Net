@@ -33,11 +33,12 @@ namespace EEBUS.Messages
 			var options = new JsonSerializerOptions
 			{
 				PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-				DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+				
+				DefaultIgnoreCondition =  System.Text.Json.Serialization.JsonIgnoreCondition.Never
 			};
 			options.Converters.Add( new System.Text.Json.Serialization.JsonStringEnumConverter() );
 			
-			return JsonSerializer.Serialize( this, options );
+			return JsonSerializer.Serialize<T>((T) this, options );
 		}
 
 		protected virtual byte[] ToJson()
