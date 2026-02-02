@@ -1,5 +1,4 @@
 ﻿using EEBUS.Messages;
-using Newtonsoft.Json;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -104,7 +103,6 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class CmdMeasurementDescriptionListDataType : CmdType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public MeasurementDescriptionListDataType measurementDescriptionListData { get; set; }
 	}
 

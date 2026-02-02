@@ -1,5 +1,4 @@
 ﻿using EEBUS.SPINE.Commands;
-using Newtonsoft.Json.Linq;
 
 namespace EEBUS.Models
 {

@@ -1,7 +1,4 @@
-﻿
-using Newtonsoft.Json;
-
-using EEBUS.Messages;
+﻿using EEBUS.Messages;
 using EEBUS.Models;
 
 namespace EEBUS.SPINE.Commands
@@ -44,7 +41,7 @@ namespace EEBUS.SPINE.Commands
 				if ( datagram.header.cmdClassifier != "reply" )
 					return;
 
-				NodeManagementDetailedDiscoveryData payload = datagram.payload.ToObject<NodeManagementDetailedDiscoveryData>();
+				NodeManagementDetailedDiscoveryData payload = System.Text.Json.JsonSerializer.Deserialize<NodeManagementDetailedDiscoveryData>( datagram.payload.ToJsonString() );
 
 				connection.Remote.SetDiscoveryData( payload, connection );
 			}
@@ -60,16 +57,12 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class NodeManagementDetailedDiscoveryDataType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public SpecificationVersionListType specificationVersionList { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public DeviceInformationType		deviceInformation		 { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public EntityInformationType[]		entityInformation		 { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public FeatureInformationType[]		featureInformation		 { get; set; }
 	}
 
@@ -138,10 +131,8 @@ namespace EEBUS.SPINE.Commands
 		
 		public string				   role				 { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public SupportedFunctionType[] supportedFunction { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public string				   description		 { get; set; }
 	}
 
@@ -166,10 +157,8 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class PossibleOperationsType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public object read  { get; set; }
 		
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public object write { get; set; }
 	}
 }

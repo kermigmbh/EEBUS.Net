@@ -1,5 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
-using Newtonsoft.Json;
+﻿using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using EEBUS.Messages;
 
@@ -16,12 +16,12 @@ namespace EEBUS.SHIP.Messages
 		{
 		}
 
-		public DataMessage( JObject payload )
+		public DataMessage( JsonNode payload )
 		{
 			this.data.payload = payload;
 		}
 
-		public DataMessage( string protocolId, JObject payload )
+		public DataMessage( string protocolId, JsonNode payload )
 		{
 			this.data.header.protocolId = protocolId;
 			this.data.payload			= payload;
@@ -29,7 +29,7 @@ namespace EEBUS.SHIP.Messages
 
 		public DataMessage( SpineDatagramPayload datagram )
 		{
-			this.data.payload = JObject.FromObject( datagram );
+			this.data.payload = SpineDatagramPayload.CreateJsonPayload( datagram );
 		}
 
 		public new class Class : ShipDataMessage<DataMessage>.Class
@@ -57,7 +57,7 @@ namespace EEBUS.SHIP.Messages
 			}
 		}
 
-		public void SetPayload( JObject payload )
+		public void SetPayload( JsonNode payload )
 		{
 			this.data.payload = payload;
 		}
@@ -66,9 +66,9 @@ namespace EEBUS.SHIP.Messages
 		{
 			if ( connection.State == Connection.EState.Connected )
 			{
-				if ( this.data.payload.ContainsKey( "datagram" ) )
+			if ( this.data.payload is JsonObject root && root.ContainsKey( "datagram" ) )
 				{
-					SpineDatagramPayload payload	   = this.data.payload.ToObject<SpineDatagramPayload>();
+				SpineDatagramPayload payload	   = JsonSerializer.Deserialize<SpineDatagramPayload>( this.data.payload.ToJsonString() );
 					string				 cmdClassifier = payload.datagram.header.cmdClassifier;
 
 					payload.Evaluate( connection );
@@ -109,10 +109,9 @@ namespace EEBUS.SHIP.Messages
 	{
 		public ShipHeaderType header	{ get; set; } = new();
 
-		public JObject		  payload	{ get; set; }
+			public JsonNode		  payload	{ get; set; }
 
-		[JsonProperty( NullValueHandling = NullValueHandling.Ignore )]
-		public ExtensionType  extension	{ get; set; }
+			public ExtensionType  extension	{ get; set; }
 	}
 
 	/// <remarks/>

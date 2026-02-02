@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json;
-
-using EEBUS.Messages;
+﻿using EEBUS.Messages;
 using EEBUS.Models;
 
 namespace EEBUS.SPINE.Commands
@@ -44,7 +42,7 @@ namespace EEBUS.SPINE.Commands
 				if ( datagram.header.cmdClassifier != "write" )
 					return;
 
-				DeviceConfigurationKeyValueListData payload = datagram.payload.ToObject<DeviceConfigurationKeyValueListData>();
+				DeviceConfigurationKeyValueListData payload = System.Text.Json.JsonSerializer.Deserialize<DeviceConfigurationKeyValueListData>( datagram.payload.ToJsonString() );
 
 				int		  keyId = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].keyId;
 				ValueType value = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].value;
@@ -83,20 +81,16 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class ValueType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public ScaledNumberType	scaledNumber { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public string			duration	 { get; set; }
 	}
 
 	[System.SerializableAttribute()]
 	public class ScaledNumberType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public long  number	{ get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public short scale	{ get; set; }
 	}
 }

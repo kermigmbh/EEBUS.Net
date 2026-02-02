@@ -1,5 +1,5 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+﻿using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace EEBUS.Messages
 {
@@ -10,6 +10,18 @@ namespace EEBUS.Messages
 		}
 
 		public DatagramType datagram { get; set; } = new();
+
+			// Helper to create a JsonNode payload from an arbitrary object using the same options
+			public static JsonNode CreateJsonPayload( object value )
+			{
+				var options = new JsonSerializerOptions
+				{
+					PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+					DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+				};
+				options.Converters.Add( new System.Text.Json.Serialization.JsonStringEnumConverter() );
+				return JsonSerializer.SerializeToNode( value, options );
+			}
 
 		private string GetAnswerCmdClassifier()
 		{
@@ -30,22 +42,19 @@ namespace EEBUS.Messages
 
 		private SpineCmdPayloadBase.Class GetClass()
 		{
-			if ( ! this.datagram.payload.TryGetValue( "cmd", out JToken cmds ) )
+			if ( this.datagram.payload is not JsonObject root )
 				return null;
-			if ( ! (cmds is JArray) )
-				return null;
-
-			JObject cmd = (cmds as JArray)[0] as JObject;
-			if ( null == cmd )
+			if ( !root.TryGetPropertyValue( "cmd", out JsonNode cmds ) || cmds is not JsonArray cmdArray || cmdArray.Count == 0 )
 				return null;
 
-			JProperty prop = cmd.Properties().FirstOrDefault();
-			if ( null == prop )
+			JsonNode firstCmdNode = cmdArray[0];
+			if ( firstCmdNode is not JsonObject cmd )
 				return null;
 
-			string command = prop.Name;
-			if ( command == "function" )
-				command = prop.Value.Value<string>();
+			KeyValuePair<string, JsonNode?> prop = cmd.First();
+			string command = prop.Key;
+			if ( command == "function" && prop.Value is not null )
+				command = prop.Value.GetValue<string>();
 
 			SpineCmdPayloadBase.Class cls = SpineCmdPayloadBase.GetClass( command );
 			if ( null == cls )
@@ -73,7 +82,7 @@ namespace EEBUS.Messages
 			if ( null == payload )
 				return null;
 
-			reply.datagram.payload = JObject.FromObject( payload );
+			reply.datagram.payload = CreateJsonPayload( payload );
 
 			return reply;
 		}
@@ -93,7 +102,7 @@ namespace EEBUS.Messages
 	{
 		public HeaderType header  { get; set; } = new();
 
-		public JObject	  payload { get; set; }
+			public JsonNode  payload { get; set; }
 	}
 
 	[System.SerializableAttribute()]
@@ -105,26 +114,22 @@ namespace EEBUS.Messages
 
 		public AddressType addressDestination	{ get; set; }
 
-		public ulong	   msgCounter			{ get; set; }
+			public ulong	   msgCounter			{ get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public ulong?	   msgCounterReference	{ get; set; }
+			public ulong?	   msgCounterReference	{ get; set; }
 
-		public string	   cmdClassifier		{ get; set; }
+			public string	   cmdClassifier		{ get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public bool?	   ackRequest			{ get; set; }
+			public bool?	   ackRequest			{ get; set; }
 	}
 
 	[System.SerializableAttribute()]
 	public class AddressType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public string device  { get; set; }
+			public string device  { get; set; }
 
-		public int[]  entity  { get; set; }
+			public int[]  entity  { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public int?	  feature { get; set; }
+			public int?	  feature { get; set; }
 	}
 }

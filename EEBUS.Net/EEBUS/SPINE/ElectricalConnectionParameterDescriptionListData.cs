@@ -1,5 +1,4 @@
 ﻿using EEBUS.Messages;
-using Newtonsoft.Json;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -43,7 +42,6 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class CmdElectricalConnectionParameterDescriptionListDataType : CmdType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public ElectricalConnectionParameterDescriptionListDataType electricalConnectionParameterDescriptionListData { get; set; }
 	}
 
@@ -60,16 +58,12 @@ namespace EEBUS.SPINE.Commands
 		public uint	  measurementId			  { get; set; }
 		public string voltageType			  { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public string acMeasuredPhases		  { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public string acMeasuredInReferenceTo { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public string acMeasurementType		  { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public string acMeasurementVariant	  { get; set; }
 	}
 }

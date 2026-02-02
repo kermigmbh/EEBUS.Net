@@ -3,7 +3,7 @@ using System.Net.WebSockets;
 
 using Microsoft.AspNetCore.Http;
 
-using Newtonsoft.Json.Linq;
+using System.Text.Json.Nodes;
 
 using EEBUS.Messages;
 using EEBUS.Models;
@@ -87,10 +87,11 @@ namespace EEBUS
 						reply.datagram.header.cmdClassifier		 = "notify";
 
 						SpineCmdPayloadBase heartbeat = new DeviceDiagnosisHeartbeatData.Class().CreateNotify( connection );
-						reply.datagram.payload = JObject.FromObject( heartbeat );
+						// TODO: replace anonymous serialization helper when available; for now, rely on existing serialization pipeline
+						reply.datagram.payload = SpineDatagramPayload.CreateJsonPayload( heartbeat );
 					
 						DataMessage heartbeatMessage = new DataMessage();
-						heartbeatMessage.SetPayload( JObject.FromObject( reply ) );
+						heartbeatMessage.SetPayload( SpineDatagramPayload.CreateJsonPayload( reply ) );
 
 						connection.PushDataMessage( heartbeatMessage );
 					}
@@ -123,10 +124,10 @@ namespace EEBUS
 						reply.datagram.header.msgCounter		 = DataMessage.NextCount;
 						reply.datagram.header.cmdClassifier		 = "notify";
 
-						reply.datagram.payload = JObject.FromObject( new ElectricalConnectionCharacteristicListData.Class().CreateNotify( connection ) );
+						reply.datagram.payload = SpineDatagramPayload.CreateJsonPayload( new ElectricalConnectionCharacteristicListData.Class().CreateNotify( connection ) );
 
 						DataMessage eccMessage = new DataMessage();
-						eccMessage.SetPayload( JObject.FromObject( reply ) );
+						eccMessage.SetPayload( SpineDatagramPayload.CreateJsonPayload( reply ) );
 
 						connection.PushDataMessage( eccMessage );
 					}
@@ -168,10 +169,10 @@ namespace EEBUS
 						reply.datagram.header.msgCounter		 = DataMessage.NextCount;
 						reply.datagram.header.cmdClassifier		 = "notify";
 
-						reply.datagram.payload = JObject.FromObject( new MeasurementListData.Class().CreateNotify( connection ) );
+						reply.datagram.payload = SpineDatagramPayload.CreateJsonPayload( new MeasurementListData.Class().CreateNotify( connection ) );
 
 						DataMessage dataMessage = new DataMessage();
-						dataMessage.SetPayload( JObject.FromObject( reply ) );
+						dataMessage.SetPayload( SpineDatagramPayload.CreateJsonPayload( reply ) );
 
 						connection.PushDataMessage( dataMessage );
 					}
@@ -231,10 +232,10 @@ namespace EEBUS
 			read.datagram.header.msgCounter					= DataMessage.NextCount;
 			read.datagram.header.cmdClassifier				= "read";
 
-			read.datagram.payload = JObject.FromObject( new NodeManagementDetailedDiscoveryData.Class().CreateRead( this ) );
+			read.datagram.payload = SpineDatagramPayload.CreateJsonPayload( new NodeManagementDetailedDiscoveryData.Class().CreateRead( this ) );
 
 			DataMessage message = new DataMessage();
-			message.SetPayload( JObject.FromObject( read ) );
+			message.SetPayload( SpineDatagramPayload.CreateJsonPayload( read ) );
 
 			PushDataMessage( message );
 		}
@@ -259,10 +260,10 @@ namespace EEBUS
 			subscriptionRequest.serverAddress	  = this.Remote.GetHeartbeatAddress( true );
 			subscriptionRequest.serverFeatureType = "DeviceDiagnosis";
 
-			call.datagram.payload = JObject.FromObject( payload );
+			call.datagram.payload = SpineDatagramPayload.CreateJsonPayload( payload );
 
 			DataMessage message = new DataMessage();
-			message.SetPayload( JObject.FromObject( call ) );
+			message.SetPayload( SpineDatagramPayload.CreateJsonPayload( call ) );
 
 			PushDataMessage( message );
 		}
@@ -278,10 +279,10 @@ namespace EEBUS
 			read.datagram.header.msgCounter			= DataMessage.NextCount;
 			read.datagram.header.cmdClassifier		= "read";
 
-			read.datagram.payload = JObject.FromObject( new DeviceDiagnosisHeartbeatData.Class().CreateRead( this ) );
+			read.datagram.payload = SpineDatagramPayload.CreateJsonPayload( new DeviceDiagnosisHeartbeatData.Class().CreateRead( this ) );
 
 			DataMessage message = new DataMessage();
-			message.SetPayload( JObject.FromObject( read ) );
+			message.SetPayload( SpineDatagramPayload.CreateJsonPayload( read ) );
 
 			PushDataMessage( message );
 		}

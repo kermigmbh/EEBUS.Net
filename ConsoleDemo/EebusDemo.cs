@@ -1,7 +1,7 @@
 ﻿using EEBUS;
 using EEBUS.Models;
 using EEBUS.Net;
-using Newtonsoft.Json.Linq;
+using System.Text.Json.Nodes;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -69,27 +69,28 @@ namespace ConsoleDemo
             _manager.Dispose();
         }
 
-        private void Read(string address)
-        {
-            var local = _manager?.GetLocal();
-            if (local == null)
-            {
-                Console.WriteLine("No local device found");
-                return;
-            }
+		private void Read(string address)
+		{
+			var local = _manager?.GetLocal();
+			if (local == null)
+			{
+				Console.WriteLine("No local device found");
+				return;
+			}
 
-            if (local.TryGetValue(address, StringComparison.OrdinalIgnoreCase, out JToken? value))
-            {
-                Console.WriteLine($"{address}: {value.ToString()}");
-            }
-        }
+			JsonNode? value = local[address];
+			if (value != null)
+			{
+				Console.WriteLine($"{address}: {value.ToString()}");
+			}
+		}
 
         private void PrintRemotes()
         {
-            JArray? remotes = _manager?.GetRemotes();
+			JsonArray? remotes = _manager?.GetRemotes();
             if (remotes != null)
             {
-                foreach (JToken remote in remotes)
+				foreach (JsonNode? remote in remotes)
                 {
                     Console.WriteLine(remote.ToString());
                 }
@@ -100,13 +101,13 @@ namespace ConsoleDemo
         {
             if (_manager == null) return false;
 
-            JArray? remotes = _manager.GetRemotes();
+			JsonArray? remotes = _manager.GetRemotes();
             if (remotes == null) return false;
 
-            JToken? remote = remotes.ElementAtOrDefault(remoteIndex);
+			JsonNode? remote = remotes.ElementAtOrDefault(remoteIndex);
             if (remote == null) return false;
 
-            string? ski = remote.Value<string>("ski");
+			string? ski = remote?["ski"]?.GetValue<string>();
             if (ski == null) return false;
 
             string? hostString = await _manager.ConnectAsync(ski);

@@ -1,6 +1,6 @@
 ﻿using EEBUS.Messages;
 using EEBUS.UseCases.ControllableSystem;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 using System.Xml;
 
 namespace EEBUS.SPINE.Commands
@@ -50,7 +50,7 @@ namespace EEBUS.SPINE.Commands
 				if ( datagram.header.cmdClassifier != "notify" )
 					return;
 
-				DeviceDiagnosisHeartbeatData payload = datagram.payload.ToObject<DeviceDiagnosisHeartbeatData>();
+				DeviceDiagnosisHeartbeatData payload = System.Text.Json.JsonSerializer.Deserialize<DeviceDiagnosisHeartbeatData>( datagram.payload.ToJsonString() );
 				string timeout = payload.cmd[0].deviceDiagnosisHeartbeatData.heartbeatTimeout;
 				
 				List<LPCorLPPEvents> lpcOrLppEvents = connection.Local.GetUseCaseEvents<LPCorLPPEvents>();
@@ -71,13 +71,10 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class DeviceDiagnosisHeartbeatDataType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public string timestamp		   { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public ulong? heartbeatCounter { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public string heartbeatTimeout { get; set; }
 	}
 }

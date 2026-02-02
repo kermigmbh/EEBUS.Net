@@ -5,7 +5,7 @@ using EEBUS.SHIP.Messages;
 using EEBUS.UseCases.ControllableSystem;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json.Linq;
+using System.Text.Json.Nodes;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -153,12 +153,12 @@ namespace EEBUS.Net
             }
         }
 
-        public JObject GetLocal()
+		public JsonObject GetLocal()
         {
             LocalDevice? local = _devices?.Local;
 
-            if (null == local)
-                return new();
+			if (null == local)
+				return new JsonObject();
 
             bool lpcActive = false;
             long lpcLimit = 0;
@@ -200,42 +200,40 @@ namespace EEBUS.Net
             if (null != lppFailsafeLimitKeyValue)
                 failsafeDuration = XmlConvert.ToTimeSpan(failsafeDurationKeyValue.Duration);
 
-            return JObject.FromObject(new
-            {
-                name = local.Name,
-                ski = local.SKI.ToReadable(),
-                shipId = local.ShipID,
-
-                lpcActive = lpcActive,
-                lpcLimit = lpcLimit,
-                lpcDuration = lpcDuration,
-                lpcFailsafeLimit = lpcFailsafeLimit,
-
-                lppActive = lppActive,
-                lppLimit = lppLimit,
-                lppDuration = lppDuration,
-                lppFailsafeLimit = lppFailsafeLimit,
-
-                failsafeDuration = failsafeDuration
-            });
+			return new JsonObject
+			{
+				["name"] = local.Name,
+				["ski"] = local.SKI.ToReadable(),
+				["shipId"] = local.ShipID,
+				["lpcActive"] = lpcActive,
+				["lpcLimit"] = lpcLimit,
+				["lpcDuration"] = lpcDuration.ToString(),
+				["lpcFailsafeLimit"] = lpcFailsafeLimit,
+				["lppActive"] = lppActive,
+				["lppLimit"] = lppLimit,
+				["lppDuration"] = lppDuration.ToString(),
+				["lppFailsafeLimit"] = lppFailsafeLimit,
+				["failsafeDuration"] = failsafeDuration.ToString()
+			};
         }
 
-        public JArray GetRemotes()
+		public JsonArray GetRemotes()
         {
-            JArray devlist = new();
+			JsonArray devlist = new();
 
-            _devices.Remote.ForEach(rd =>
-            {
-                devlist.Add(JObject.FromObject(new
-                {
-                    id = rd.Id,
-                    name = rd.Name,
-                    ski = rd.SKI.ToReadable(),
-                    url = rd.Url,
-                    serverState = rd.serverState.ToString(),
-                    clientState = rd.clientState.ToString()
-                }));
-            });
+			_devices.Remote.ForEach(rd =>
+			{
+				var obj = new JsonObject
+				{
+					["id"] = rd.Id,
+					["name"] = rd.Name,
+					["ski"] = rd.SKI.ToReadable(),
+					["url"] = rd.Url,
+					["serverState"] = rd.serverState.ToString(),
+					["clientState"] = rd.clientState.ToString()
+				};
+				devlist.Add(obj);
+			});
 
             return devlist;
         }

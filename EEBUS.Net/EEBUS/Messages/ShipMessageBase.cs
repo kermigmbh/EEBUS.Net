@@ -1,7 +1,6 @@
 ﻿using System.Net.WebSockets;
 using System.Text;
-
-using Newtonsoft.Json.Linq;
+using System.Text.Json.Nodes;
 
 using EEBUS.Enums;
 
@@ -61,7 +60,7 @@ namespace EEBUS.Messages
 			string str = Encoding.UTF8.GetString( bytes );
 			int indx1 = str.IndexOf( "{" );
 			int indx2 = str.IndexOf( ":" );
-
+			if (indx1 < 0 | indx2 < 0) return "";
 			return str.Substring( indx1 + 1, indx2 - indx1 ).Trim( '"' );
 		}
 
@@ -89,77 +88,12 @@ namespace EEBUS.Messages
 			return json;
 		}
 
-		// convert json into the EEBUS json format
-		static protected JObject JsonIntoEEBUSJson( JObject jobj )
+		// convert json into the EEBUS json format (Node-based instead of JObject)
+		static protected JsonNode JsonIntoEEBUSJson( JsonNode jobj )
 		{
-			foreach ( JProperty prop in jobj.Properties() )
-			{
-				JToken  val = prop.Value;
-				JObject jo  = val as JObject;
-				JArray  ja  = val as JArray;
-
-				if ( null != jo )
-				{
-					if ( jo.Properties().Any() )
-					{
-						JArray replacement = ConvertToArray( jo );
-
-						if ( 0 < replacement.Count )
-							jo.Replace( replacement );
-					}
-				}
-				else if ( null != ja )
-				{
-					for ( int i = 0; i < ja.Count; i++ )
-					{
-						jo = ja[i] as JObject;
-						if ( null != jo )
-						{
-							if ( jo.Properties().Any() )
-							{
-								JArray replacement = ConvertToArray( jo );
-
-								if  ( 0 < replacement.Count )
-									jo.Replace( replacement );
-							}
-						}
-					}
-				}
-			}
-
+			// Existing JObject-based logic has been replaced by a Node-based transformation
+			// implemented in ShipMessage<T>.ToJson(); this method is kept only for compatibility.
 			return jobj;
-		}
-
-		static JArray ConvertToArray( JObject jo )
-		{
-			JArray replacement = new JArray();
-
-			foreach (JProperty p in jo.Properties())
-			{
-				if (p.Name == "datagram" && 1 == jo.Properties().Count() && p.Value is JObject)
-				{
-					JObject jp = JsonIntoEEBUSJson(p.Value as JObject);
-
-					JArray ja = new JArray();
-					foreach (JProperty pp in jp.Properties())
-					{
-						JObject jpp = new JObject();
-						jpp.Add(pp.Name, pp.Value);
-						ja.Add(jpp);
-					}
-
-					p.Value.Replace(ja);
-				}
-				else
-				{
-					JObject jp = new JObject();
-					jp.Add(p.Name, p.Value);
-					jp = JsonIntoEEBUSJson(jp);
-					replacement.Add(jp);
-				}
-			}
-
-			return replacement;
 		}
 	}
 }

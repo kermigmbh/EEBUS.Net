@@ -1,5 +1,4 @@
 ﻿using EEBUS.Messages;
-using Newtonsoft.Json;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -110,13 +109,10 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class CmdMeasurementListDataType : CmdType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public string				   function			   { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public FilterType[]			   filter			   { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public MeasurementListDataType measurementListData { get; set; }
 	}
 
@@ -133,13 +129,10 @@ namespace EEBUS.SPINE.Commands
 
 		public string			valueType		 { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public string			timestamp		 { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public ScaledNumberType	value			 { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
 		public TimePeriodType	evaluationPeriod { get; set; }
 
 		public string			valueSource		 { get; set; }

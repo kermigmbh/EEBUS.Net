@@ -1,9 +1,7 @@
-﻿
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Xml;
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json.Nodes;
 
 using EEBUS.DataStructures;
 using EEBUS.Messages;
@@ -51,7 +49,7 @@ namespace EEBUS.SPINE.Commands
 				if ( datagram.header.cmdClassifier != "write" )
 					return;
 
-				LoadControlLimitListData command  = datagram.payload.ToObject<LoadControlLimitListData>();
+				LoadControlLimitListData command  = System.Text.Json.JsonSerializer.Deserialize<LoadControlLimitListData>( datagram.payload.ToJsonString() );
 				LoadControlLimitDataType received = command.cmd[0].loadControlLimitListData.loadControlLimitData[0];
 
 				LoadControlLimitDataStructure data = connection.Local.GetDataStructure<LoadControlLimitDataStructure>( received.limitId );
@@ -82,10 +80,10 @@ namespace EEBUS.SPINE.Commands
 
 				data.loadControlLimitData = datas.ToArray();
 
-				notify.datagram.payload = JObject.FromObject( limitData );
+				notify.datagram.payload = SpineDatagramPayload.CreateJsonPayload( limitData );
 
 				DataMessage limitMessage = new DataMessage();
-				limitMessage.SetPayload( JObject.FromObject( notify ) );
+				limitMessage.SetPayload( SpineDatagramPayload.CreateJsonPayload( notify ) );
 
 				connection.PushDataMessage( limitMessage );
 			}
@@ -122,9 +120,8 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class TimePeriodType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public string startTime	{ get; set; }
+			public string startTime	{ get; set; }
 
-		public string endTime	{ get; set; }
+			public string endTime	{ get; set; }
 	}
 }

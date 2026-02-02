@@ -1,7 +1,5 @@
 ﻿using System.Text.Json.Serialization;
 
-using Newtonsoft.Json.Converters;
-
 using EEBUS.Messages;
 
 namespace EEBUS.SHIP.Messages
@@ -114,7 +112,7 @@ namespace EEBUS.SHIP.Messages
 	}
 
 	[System.SerializableAttribute()]
-	[JsonConverter(typeof(StringEnumConverter))]
+		[JsonConverter(typeof(JsonStringEnumConverter))]
 	public enum ConnectionHelloPhaseType
 	{
 		pending,

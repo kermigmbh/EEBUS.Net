@@ -1,9 +1,9 @@
 ﻿using EEBUS.Enums;
 using Makaretu.Dns;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System.Net.WebSockets;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace EEBUS.Messages
 {
@@ -29,19 +29,25 @@ namespace EEBUS.Messages
 
 		public override string ToString()
 		{
-			var jsonSerializerSettings = new JsonSerializerSettings();
-			jsonSerializerSettings.Converters.Add( new Newtonsoft.Json.Converters.StringEnumConverter() );
-
-			return JsonConvert.SerializeObject( this, jsonSerializerSettings );
+			// Configure System.Text.Json to serialize enums as strings to match previous behavior
+			var options = new JsonSerializerOptions
+			{
+				PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+				DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+			};
+			options.Converters.Add( new System.Text.Json.Serialization.JsonStringEnumConverter() );
+			
+			return JsonSerializer.Serialize( this, options );
 		}
 
 		protected virtual byte[] ToJson()
 		{
-			JObject jobj = JObject.Parse( ToString() );
-
+			// Use JsonNode as a lightweight DOM replacement for JObject
+			JsonNode jobj = JsonNode.Parse( ToString() );
+			
 			jobj = JsonIntoEEBUSJson( jobj );
-
-			return Encoding.UTF8.GetBytes( jobj.ToString( Formatting.None ) );
+			
+			return Encoding.UTF8.GetBytes( jobj.ToJsonString( new JsonSerializerOptions { WriteIndented = false } ) );
 		}
 
 		public override T FromJsonVirtual( byte[] data, Connection connection )
@@ -51,19 +57,18 @@ namespace EEBUS.Messages
 
 		static public T FromJson( byte[] data, Connection connection )
 		{
-			var settings = new JsonSerializerSettings
+			var options = new JsonSerializerOptions
 			{
-				NullValueHandling = NullValueHandling.Include,
-				MissingMemberHandling = MissingMemberHandling.Error
+				PropertyNameCaseInsensitive = true
 			};
-
+			
 			if ( data == null || data.Length < 2 )
 				return null;
 
 			string dataStr = Encoding.UTF8.GetString( data );
 			dataStr = JsonFromEEBUSJson( data[0] == template.GetDataType() ? dataStr.Substring( 1 ) : dataStr );
-
-			T obj = JsonConvert.DeserializeObject<T>( dataStr, settings );
+			
+			T obj = JsonSerializer.Deserialize<T>( dataStr, options );
 			obj.connection = connection;
 
 			return obj;
