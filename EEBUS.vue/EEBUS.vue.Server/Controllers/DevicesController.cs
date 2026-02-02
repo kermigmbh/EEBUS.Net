@@ -65,14 +65,14 @@ public class DevicesController : ControllerBase, IDisposable
 			{
 				lpcActive	= data.LimitActive;
 				lpcLimit	= data.Number;
-				lpcDuration	= XmlConvert.ToTimeSpan( data.EndTime );
+				lpcDuration	= data.EndTime == null? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan( data.EndTime );
 			}
 			else if ( data.LimitDirection == "produce" )
 			{
 				lppActive	= data.LimitActive;
 				lppLimit	= data.Number;
-				lppDuration	= XmlConvert.ToTimeSpan( data.EndTime );
-			}
+				lppDuration = data.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(data.EndTime);
+            }
 		}
 
 		FailsafeConsumptionActivePowerLimitKeyValue lpcFailsafeLimitKeyValue = local.GetKeyValue<FailsafeConsumptionActivePowerLimitKeyValue>();

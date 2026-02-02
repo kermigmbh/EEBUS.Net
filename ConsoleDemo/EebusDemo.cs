@@ -1,10 +1,11 @@
 ﻿using EEBUS;
 using EEBUS.Models;
 using EEBUS.Net;
-using Newtonsoft.Json.Linq;
+
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json.Nodes;
 
 namespace ConsoleDemo
 {
@@ -55,7 +56,7 @@ namespace ConsoleDemo
                         Read(tokens.ElementAtOrDefault(1) ?? string.Empty);
                         break;
                     default:
-                        Console.WriteLine("Invalid input!");
+                        Console.WriteLine("Invalid input: valid commands: remotes; connect <index>; read");
                         break;
                 }
             }
@@ -78,7 +79,7 @@ namespace ConsoleDemo
                 return;
             }
 
-            if (local.TryGetValue(address, StringComparison.OrdinalIgnoreCase, out JToken? value))
+            if (local.TryGetPropertyValue(address, out var value))
             {
                 Console.WriteLine($"{address}: {value.ToString()}");
             }
@@ -86,12 +87,12 @@ namespace ConsoleDemo
 
         private void PrintRemotes()
         {
-            JArray? remotes = _manager?.GetRemotes();
+            JsonArray? remotes = _manager?.GetRemotes();
             if (remotes != null)
             {
-                foreach (JToken remote in remotes)
+                foreach (var remote in remotes)
                 {
-                    Console.WriteLine(remote.ToString());
+                    Console.WriteLine(remote?.ToString());
                 }
             }
         }
@@ -100,16 +101,16 @@ namespace ConsoleDemo
         {
             if (_manager == null) return false;
 
-            JArray? remotes = _manager.GetRemotes();
+            JsonArray? remotes = _manager.GetRemotes();
             if (remotes == null) return false;
 
-            JToken? remote = remotes.ElementAtOrDefault(remoteIndex);
+            var remote = remotes.ElementAtOrDefault(remoteIndex);
             if (remote == null) return false;
 
-            string? ski = remote.Value<string>("ski");
+            var ski = remote["ski"];
             if (ski == null) return false;
 
-            string? hostString = await _manager.ConnectAsync(ski);
+            string? hostString = await _manager.ConnectAsync(ski.ToString());
             if (hostString == null) return false;
 
             s_connectedClients.Add(hostString);

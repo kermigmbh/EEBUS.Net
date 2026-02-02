@@ -18,6 +18,9 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using System.Xml;
 
 namespace EEBUS.Net
@@ -153,7 +156,7 @@ namespace EEBUS.Net
             }
         }
 
-        public JObject GetLocal()
+        public JsonObject GetLocal()
         {
             LocalDevice? local = _devices?.Local;
 
@@ -200,7 +203,7 @@ namespace EEBUS.Net
             if (null != lppFailsafeLimitKeyValue)
                 failsafeDuration = XmlConvert.ToTimeSpan(failsafeDurationKeyValue.Duration);
 
-            return JObject.FromObject(new
+            var payload = new
             {
                 name = local.Name,
                 ski = local.SKI.ToReadable(),
@@ -217,28 +220,66 @@ namespace EEBUS.Net
                 lppFailsafeLimit = lppFailsafeLimit,
 
                 failsafeDuration = failsafeDuration
-            });
-        }
+            };
 
-        public JArray GetRemotes()
-        {
-            JArray devlist = new();
-
-            _devices.Remote.ForEach(rd =>
+            
+            var options = new JsonSerializerOptions
             {
-                devlist.Add(JObject.FromObject(new
-                {
-                    id = rd.Id,
-                    name = rd.Name,
-                    ski = rd.SKI.ToReadable(),
-                    url = rd.Url,
-                    serverState = rd.serverState.ToString(),
-                    clientState = rd.clientState.ToString()
-                }));
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                // Include nulls (Newtonsoft included them by default)
+                DefaultIgnoreCondition = JsonIgnoreCondition.Never
+                // If any values in the object are enums and you want them as strings:
+                // Converters = { new JsonStringEnumConverter() }
+            };
+
+            // -> JSON string
+            var json = JsonSerializer.SerializeToNode(payload, options)?.AsObject();
+            return json;
+
+        }
+
+        public JsonArray GetRemotes()
+        {
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                DefaultIgnoreCondition = JsonIgnoreCondition.Never
+            };
+
+            var projection = _devices.Remote.Select(rd => new
+            {
+                id = rd.Id,
+                name = rd.Name,
+                ski = rd.SKI.ToReadable(),
+                url = rd.Url,
+                serverState = rd.serverState,
+                clientState = rd.clientState
             });
 
-            return devlist;
+            // Root will be a JsonArray because projection is an IEnumerable<anonymous>
+            return JsonSerializer.SerializeToNode(projection, options)!.AsArray();
         }
+
+        //public JsonArray GetRemotes()
+        //{
+        //    JsonArray devlist = new();
+
+        //    _devices.Remote.ForEach(rd =>
+        //    {
+        //        devlist.Add( new
+        //        {
+        //            id = rd.Id,
+        //            name = rd.Name,
+        //            ski = rd.SKI.ToReadable(),
+        //            url = rd.Url,
+        //            serverState = rd.serverState.ToString(),
+        //            clientState = rd.clientState.ToString()
+        //        });
+        //    });
+
+        //    return devlist;
+
+        //}
 
 
         /// <summary>
