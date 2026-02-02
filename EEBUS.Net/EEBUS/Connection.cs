@@ -57,8 +57,8 @@ namespace EEBUS
 				
 				if ( connection.State == Connection.EState.Connected )
 				{
-					AddressType source		= connection.Local.GetHeartbeatAddress( true );
-					AddressType destination	= connection.Remote.GetHeartbeatAddress( false );
+					AddressType? source		= connection.Local?.GetHeartbeatAddress( true );
+					AddressType? destination	= connection.Remote?.GetHeartbeatAddress( false );
 
 					if ( null != source && null != destination )
 					{
@@ -199,13 +199,13 @@ namespace EEBUS
 
 		public LocalDevice  Local	  { get { return this.devices.Local; } }
 
-		public RemoteDevice Remote	  { get; protected set; }
+		public RemoteDevice? Remote	  { get; protected set; }
 
 
 		public DataMessageQueue WaitingMessages { get; protected set; }
 
 
-		protected RemoteDevice GetRemote( string id )
+		protected RemoteDevice? GetRemote( string id )
 		{
 			if ( null == id )
 				return null;

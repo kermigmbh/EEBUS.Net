@@ -79,8 +79,14 @@ namespace EEBUS
 					EState oldState = this.state;
 					(this.state, this.subState) = await message.NextServerState( this ).ConfigureAwait( false );
 
-					if ( null == this.Remote )
-						this.Remote = GetRemote( message.GetId() );
+					if (null == this.Remote)
+					{
+						var id = message.GetId();
+						if (id != null)
+						{
+							this.Remote = GetRemote(message.GetId());
+						}
+					}
 
 					if ( null != this.Remote )
 						this.Remote.SetServerState( this.state );

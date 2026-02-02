@@ -44,7 +44,8 @@ namespace ConsoleDemo
                         ]
 
                 },
-                Certificate = "XCenterEEBUS"
+                //Certificate = "XCenterEEBUS"
+                Certificate = "EEBUS.net"
             });
 
             await new EebusDemo().RunAsync(settings.Value);

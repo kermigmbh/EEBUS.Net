@@ -101,7 +101,7 @@ namespace EEBUS.vue.Server
             //app.UseMiddleware<SHIPMiddleware>();
 
            
-            manager.StartServer();
+            manager.Start();
 
 
             manager.StartDeviceSearch();
