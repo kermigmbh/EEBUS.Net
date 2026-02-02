@@ -17,9 +17,7 @@ namespace ConsoleDemo
         public async Task RunAsync(Settings settings)
         {
             _manager = new EEBUSManager(settings);
-
-            _manager.StartServer();
-            _manager.StartDeviceSearch();
+            _manager.Start();
 
             while (true)
             {
@@ -62,7 +60,7 @@ namespace ConsoleDemo
                 }
             }
 
-            _manager.StopDeviceSearch();
+            _manager.Stop();
 
             foreach (string hostString in s_connectedClients)
             {

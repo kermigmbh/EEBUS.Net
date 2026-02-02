@@ -103,13 +103,6 @@ namespace EEBUS.vue.Server
            
             manager.Start();
 
-
-            manager.StartDeviceSearch();
-
-
-
-
-
             // start our mDNS services
             //mDNSClient.Run(devices);
 
