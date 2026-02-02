@@ -13,6 +13,12 @@ namespace ConsoleDemo
         public async Task RunAsync(Settings settings)
         {
             _manager = new EEBUSManager(settings);
+
+            _manager.OnLimitDataChanged += (sender, args) =>
+            {
+                Console.WriteLine($"Limit data changed: {args}");
+            };
+
             _manager.Start();
 
             while (true)

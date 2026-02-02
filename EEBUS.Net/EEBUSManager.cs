@@ -1,6 +1,7 @@
 ﻿using EEBUS.DataStructures;
 using EEBUS.KeyValues;
 using EEBUS.Models;
+using EEBUS.Net.Events;
 using EEBUS.SHIP.Messages;
 using EEBUS.UseCases.ControllableSystem;
 using Microsoft.AspNetCore.Http;
@@ -35,7 +36,9 @@ namespace EEBUS.Net
         SHIPListener? _shipListener;
         private readonly Settings _settings;
 
-        public event EventHandler<RemoteDevice>? DeviceFound;
+        public event EventHandler<RemoteDevice>? OnDeviceFound;
+        public event EventHandler<LimitDataChangedEventArgs>? OnLimitDataChanged;
+
         private CancellationTokenSource _cts = new();
         private CancellationTokenSource _clientCts = new();
         private X509Certificate2 _cert;
@@ -71,6 +74,9 @@ namespace EEBUS.Net
             _devices.ServerStateChanged += OnServerStateChanged;
             _devices.ClientStateChanged += OnClientStateChanged;
 
+            lpcEventHandler = new LPCEventHandler(this);
+            lppEventHandler = new LPPEventHandler(this);
+            lpcOrLppEventHandler = new LPCorLPPEventHandler(this);
             _devices.Local.AddUseCaseEvents(this.lpcEventHandler);
             _devices.Local.AddUseCaseEvents(this.lppEventHandler);
             _devices.Local.AddUseCaseEvents(this.lpcOrLppEventHandler);
@@ -99,7 +105,7 @@ namespace EEBUS.Net
         private void OnRemoteDeviceFound(RemoteDevice device)
         {
             //using var _ = Push(new RemoteDeviceFound(device));
-            DeviceFound?.Invoke(this, device);
+            OnDeviceFound?.Invoke(this, device);
         }
 
         private void OnServerStateChanged(Connection.EState state, RemoteDevice device)
@@ -112,16 +118,17 @@ namespace EEBUS.Net
             //using var _ = Push(new ClientStateChanged(device, state));
         }
 
-        private LPCEventHandler lpcEventHandler = new();
-        private LPPEventHandler lppEventHandler = new();
-        private LPCorLPPEventHandler lpcOrLppEventHandler = new();
+        private LPCEventHandler lpcEventHandler;
+        private LPPEventHandler lppEventHandler;
+        private LPCorLPPEventHandler lpcOrLppEventHandler;
 
-        private class LPCEventHandler : LPCEvents
+        private class LPCEventHandler(EEBUSManager EEBusManager) : LPCEvents
         {
             public void DataUpdateLimit(int counter, bool active, long limit, TimeSpan duration)
             {
                 //using var _ = Push(new LimitDataChanged(true, active, limit, duration));
                 Console.WriteLine("UpdateLimit");
+                EEBusManager.OnLimitDataChanged?.Invoke(EEBusManager, new LimitDataChangedEventArgs() { IsLPC = true, IsActive = active, Limit = limit, Duration = duration });
             }
 
             public void DataUpdateFailsafeConsumptionActivePowerLimit(int counter, long limit)
@@ -130,7 +137,7 @@ namespace EEBUS.Net
             }
         }
 
-        private class LPPEventHandler : LPPEvents
+        private class LPPEventHandler(EEBUSManager EEBusManager) : LPPEvents
         {
             public void DataUpdateLimit(int counter, bool active, long limit, TimeSpan duration)
             {
@@ -143,7 +150,7 @@ namespace EEBUS.Net
             }
         }
 
-        private class LPCorLPPEventHandler : LPCorLPPEvents
+        private class LPCorLPPEventHandler(EEBUSManager EEBusManager) : LPCorLPPEvents
         {
             public void DataUpdateFailsafeDurationMinimum(int counter, TimeSpan duration)
             {
@@ -222,7 +229,7 @@ namespace EEBUS.Net
                 failsafeDuration = failsafeDuration
             };
 
-            
+
             var options = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -368,7 +375,7 @@ namespace EEBUS.Net
 
                 // now close websocket
                 await wsClient.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None).ConfigureAwait(false);
-                
+
             }
             catch (Exception ex)
             {
@@ -384,7 +391,7 @@ namespace EEBUS.Net
             }
         }
 
-       
+
 
         public void Start()
         {
@@ -394,7 +401,7 @@ namespace EEBUS.Net
 
         public void Stop()
         {
-            
+
             _shipListener?.StopAsync();
             _mDNSClient.Stop();
         }
