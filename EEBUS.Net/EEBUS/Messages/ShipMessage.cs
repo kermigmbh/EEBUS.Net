@@ -78,13 +78,13 @@ namespace EEBUS.Messages
 			this.sentData[0] = GetDataType();
 			Buffer.BlockCopy( msg, 0, this.sentData, 1, msg.Length );
 
-            Console.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " --> " + this.ToString() + "\n");
+            //Console.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " --> " + this.ToString() + "\n");
             await ws.SendAsync( this.sentData, WebSocketMessageType.Binary, true, new CancellationTokenSource( SHIPMessageTimeout.CMI_TIMEOUT ).Token ).ConfigureAwait( false );
 		}
 
 		public async Task Resend( WebSocket ws )
 		{
-            Console.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " re --> " + this.ToString() + "\n");
+            //Console.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " re --> " + this.ToString() + "\n");
             await ws.SendAsync( this.sentData, WebSocketMessageType.Binary, true, new CancellationTokenSource( SHIPMessageTimeout.T_HELLO_PROLONG_WAITING_GAP ).Token ).ConfigureAwait( false );
 		}
 

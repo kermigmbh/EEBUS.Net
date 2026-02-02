@@ -91,7 +91,7 @@ namespace EEBUS.DataStructures
 				List<LPCEvents> lpcEvents = connection.Local.GetUseCaseEvents<LPCEvents>();
 				foreach (var lpc in lpcEvents)
 				{
-					lpc.DataUpdateLimit(0, this.LimitActive, this.Number, XmlConvert.ToTimeSpan(this.EndTime));
+					lpc.DataUpdateLimit(0, this.LimitActive, this.Number, this.EndTime == null ?  Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(this.EndTime ));
 				}
 			}
 			else if (this.LimitDirection == "produce")
@@ -99,7 +99,7 @@ namespace EEBUS.DataStructures
 				List<LPPEvents> lppEvents = connection.Local.GetUseCaseEvents<LPPEvents>();
 				foreach (var lpp in lppEvents)
 				{
-					lpp.DataUpdateLimit(0, this.LimitActive, this.Number, XmlConvert.ToTimeSpan(this.EndTime));
+					lpp.DataUpdateLimit(0, this.LimitActive, this.Number, this.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(this.EndTime));
 				}
 			}
 		}
