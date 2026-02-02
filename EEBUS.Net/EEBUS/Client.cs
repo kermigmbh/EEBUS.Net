@@ -63,6 +63,7 @@ namespace EEBUS
                         throw new Exception("Invalid EEBUS payload received, expected message size of at least 2!");
 
                     ShipMessageBase message = ShipMessageBase.Create(receiveBuffer, this);
+                    Console.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " <-- " + message.ToString() + "\n");
                     if (message == null)
                         throw new Exception("Message couldn't be recognized");
                     (this.state, this.subState, string error) = message.ClientTest(this.state);

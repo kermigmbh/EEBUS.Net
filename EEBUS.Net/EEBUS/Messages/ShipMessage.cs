@@ -1,10 +1,9 @@
-﻿using System.Net.WebSockets;
-using System.Text;
-
+﻿using EEBUS.Enums;
+using Makaretu.Dns;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-
-using EEBUS.Enums;
+using System.Net.WebSockets;
+using System.Text;
 
 namespace EEBUS.Messages
 {
@@ -79,12 +78,14 @@ namespace EEBUS.Messages
 			this.sentData[0] = GetDataType();
 			Buffer.BlockCopy( msg, 0, this.sentData, 1, msg.Length );
 
-			await ws.SendAsync( this.sentData, WebSocketMessageType.Binary, true, new CancellationTokenSource( SHIPMessageTimeout.CMI_TIMEOUT ).Token ).ConfigureAwait( false );
+            Console.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " --> " + this.ToString() + "\n");
+            await ws.SendAsync( this.sentData, WebSocketMessageType.Binary, true, new CancellationTokenSource( SHIPMessageTimeout.CMI_TIMEOUT ).Token ).ConfigureAwait( false );
 		}
 
 		public async Task Resend( WebSocket ws )
 		{
-			await ws.SendAsync( this.sentData, WebSocketMessageType.Binary, true, new CancellationTokenSource( SHIPMessageTimeout.T_HELLO_PROLONG_WAITING_GAP ).Token ).ConfigureAwait( false );
+            Console.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " re --> " + this.ToString() + "\n");
+            await ws.SendAsync( this.sentData, WebSocketMessageType.Binary, true, new CancellationTokenSource( SHIPMessageTimeout.T_HELLO_PROLONG_WAITING_GAP ).Token ).ConfigureAwait( false );
 		}
 
 		static public async Task<T> Receive( WebSocket ws, int timeout = SHIPMessageTimeout.CMI_TIMEOUT )

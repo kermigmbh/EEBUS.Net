@@ -13,10 +13,6 @@ namespace ConsoleDemo
 {
     internal class Program
     {
-        private static RemoteDevice? _remoteDevice;
-
-        private static EEBUSManager? s_EebusManager;
-
         static async Task Main(string[] args)
         {
             var settings = Options.Create<Settings>(new Settings()
@@ -24,7 +20,7 @@ namespace ConsoleDemo
                 Device = new DeviceSettings()
                 {
                     Name = "ConsoleDemoDevice",
-                    Id = "Kermi-EEBUS-Demo-Adapter",
+                    Id = "Kermi-EEBUS-Demo-Client",
                     Model = "KermiDemo",
                     Brand = "Kermi",
                     Type = "EnergyManagementSystem",
@@ -51,59 +47,7 @@ namespace ConsoleDemo
                 Certificate = "XCenterEEBUS"
             });
 
-            s_EebusManager = new EEBUSManager(settings.Value);
-            s_EebusManager.DeviceFound += Manager_DeviceFound;
-
-
-            s_EebusManager.StartDeviceSearch();
-            while (_remoteDevice == null) { }
-            s_EebusManager.StopDeviceSearch();
-
-            string? hostString = await s_EebusManager.ConnectAsync(_remoteDevice.SKI.ToString());
-            if (hostString == null)
-            {
-                Console.WriteLine("Failed to connect to client!");
-            } else
-            {
-                Console.WriteLine("Connection established!");
-
-                while (true)
-                {
-                    Console.Write(":> ");
-                    string? input = Console.ReadLine();
-                    if (input == null) continue;
-                    if (input == "exit") break;
-
-                    Read(input);
-                }
-                await s_EebusManager.DisconnectAsync(new Microsoft.AspNetCore.Http.HostString(hostString));
-            }
-        }
-
-        private static void Read(string address)
-        {
-            var local = s_EebusManager?.GetLocal();
-            if (local == null)
-            {
-                Console.WriteLine("No local device found");
-                return;
-            }
-
-            if (local.TryGetValue(address, StringComparison.OrdinalIgnoreCase, out JToken? value))
-            {
-                Console.WriteLine($"{address}: {value.ToString()}");
-            }
-        }
-
-        private static void Manager_DeviceFound(object? sender, EEBUS.Models.RemoteDevice e)
-        {
-            if (_remoteDevice != null) return;
-
-            if (e.Name.Contains("controlbox", StringComparison.OrdinalIgnoreCase))
-            {
-                Console.WriteLine("Found device! " + e.Name);
-                _remoteDevice = e;
-            }
+            await new EebusDemo().RunAsync(settings.Value);
         }
     }
 }

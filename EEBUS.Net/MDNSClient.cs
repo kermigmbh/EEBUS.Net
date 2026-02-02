@@ -3,6 +3,7 @@
 using Makaretu.Dns;
 
 using EEBUS.Models;
+using System.Diagnostics;
 
 namespace EEBUS
 {
@@ -62,7 +63,7 @@ namespace EEBUS
 		{
 			if ( ev.ServiceInstanceName.ToString().Contains( "._ship." ) )
 			{
-				Console.WriteLine( $"EEBUS service instance '{ev.ServiceInstanceName}' discovered." );
+				Debug.WriteLine( $"EEBUS service instance '{ev.ServiceInstanceName}' discovered." );
 
 				IEnumerable<SRVRecord>     servers    = ev.Message.AdditionalRecords.OfType<SRVRecord>();
 				IEnumerable<AddressRecord> addresses  = ev.Message.AdditionalRecords.OfType<AddressRecord>();
