@@ -79,10 +79,7 @@ namespace ConsoleDemo
                 return;
             }
 
-            if (local.TryGetPropertyValue(address, out var value))
-            {
-                Console.WriteLine($"{address}: {value.ToString()}");
-            }
+            Console.WriteLine(local?.ToString());
         }
 
         private void PrintRemotes()
