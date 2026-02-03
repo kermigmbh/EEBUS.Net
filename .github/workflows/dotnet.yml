@@ -23,7 +23,7 @@ jobs:
         run: dotnet restore
 
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build --configuration Release --no-restore ./EEBUS.Net/EEBUS.Net.csproj
 
       - name: Pack NuGet
         run: dotnet pack --configuration Release --no-build -o ./artifacts
