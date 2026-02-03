@@ -1,14 +1,18 @@
-
-name: Build & Publish NuGet
+name: EEBUS.Net CI
 
 on:
   push:
-    tags:
-      - 'v*'   # Publish only when created a version tag
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-pack:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: EEBUS.Net
 
     steps:
       - name: Checkout
@@ -17,22 +21,23 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          # Use the SDK version that matches your local dev (adjust as needed)
+          dotnet-version: '8.0.x'
 
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore EEBUS.Net.csproj
 
       - name: Build
-        run: dotnet build --configuration Release --no-restore ./EEBUS.Net/EEBUS.Net.csproj
+        run: dotnet build EEBUS.Net.csproj --configuration Release --no-restore
 
-      - name: Pack NuGet
-        run: dotnet pack --configuration Release --no-build -o ./artifacts
+      - name: Pack
+        run: dotnet pack EEBUS.Net.csproj --configuration Release --no-build -o ./nupkg
 
-      - name: Upload artifacts
+      - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nuget-packages
-          path: artifacts/*.nupkg
+          name: eebus-net-nuget
+          path: EEBUS.Net/nupkg/*.nupkg
 
       - name: Publish to NuGet
         if: startsWith(github.ref, 'refs/tags/v')
