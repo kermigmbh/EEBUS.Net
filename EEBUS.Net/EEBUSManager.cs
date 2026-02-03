@@ -71,7 +71,7 @@ namespace EEBUS.Net
             byte[] hash = SHA1.Create().ComputeHash(_cert.GetPublicKey());
 
             this._mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port, serviceDiscovery);
-            Console.WriteLine("Local SKI: " + new SKI(hash).ToString());
+           
             LocalDevice localDevice = _devices.GetOrCreateLocal(hash, settings.Device);
 
             _mDNSService.Run(localDevice, _cts.Token);

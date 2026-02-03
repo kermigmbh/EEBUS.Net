@@ -7,7 +7,7 @@ namespace ConsoleDemo
     {
         static async Task Main(string[] args)
         {
-            var settings = Options.Create<Settings>(new Settings()
+            var settings = new Settings()
             {
                 Device = new DeviceSettings()
                 {
@@ -38,9 +38,9 @@ namespace ConsoleDemo
                 },
                 //Certificate = "XCenterEEBUS"
                 Certificate = "EEBUS.net"
-            });
+            };
 
-            await new EebusDemo().RunAsync(settings.Value);
+            await new EebusDemo().RunAsync(settings);
         }
     }
 }

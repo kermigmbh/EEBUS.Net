@@ -1,6 +1,7 @@
 ﻿using EEBUS;
 using EEBUS.Net;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 
 namespace ConsoleDemo
 {
@@ -20,6 +21,21 @@ namespace ConsoleDemo
             };
 
             _manager.Start();
+
+            JsonObject localDevice = _manager.GetLocal();
+            Console.WriteLine("[EEBUS Demo]");
+            localDevice.TryGetPropertyValue("ski", out JsonNode? jsonNode);
+            string ski = string.Empty;
+            if (jsonNode != null)
+            {
+                ski = Regex.Replace(jsonNode.ToString(), @"\s+", "");   //remove whitespaces
+            }
+            Console.WriteLine("Local SKI: " + ski + "\n");
+            Console.WriteLine("Supported Commands:");
+            Console.WriteLine("- remotes: prints all remote devices that were found through mdns");
+            Console.WriteLine("- connect <index>: connects to the remote device with index <index>, starting at 0");
+            Console.WriteLine("- read: prints out all properties of the local device");
+
 
             while (true)
             {
@@ -54,7 +70,7 @@ namespace ConsoleDemo
                         }
                         break;
                     case "read":
-                        Read(tokens.ElementAtOrDefault(1) ?? string.Empty);
+                        Read();
                         break;
                     default:
                         Console.WriteLine("Invalid input: valid commands: remotes; connect <index>; read");
@@ -71,7 +87,7 @@ namespace ConsoleDemo
             _manager.Dispose();
         }
 
-        private void Read(string address)
+        private void Read()
         {
             var local = _manager?.GetLocal();
             if (local == null)
