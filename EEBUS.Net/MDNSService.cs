@@ -28,18 +28,20 @@ namespace EEBUS
 			this.serviceProfile = new EEBusServiceProfile( Dns.GetHostName(), this.settings.Device.Id, "_ship._tcp", this.settings.Device.Port );
 		}
 
-        public MDNSService(string deviceId, ushort devicePort )
+        public MDNSService(string deviceId, ushort devicePort, ServiceDiscovery sd )
         {
              
 
             this.serviceProfile = new EEBusServiceProfile(Dns.GetHostName(), deviceId, "_ship._tcp", devicePort);
+            this._sd = sd;
         }
 
         private ServiceProfile    serviceProfile;
 		private X509Certificate2  cert;
 		private readonly Settings settings;
+        private readonly ServiceDiscovery _sd;
 
-		public void AddProperty( string key, string value )
+        public void AddProperty( string key, string value )
 		{
 			this.serviceProfile.AddProperty( key, value );
 		}
@@ -58,8 +60,8 @@ namespace EEBUS
 			{
 				Thread.CurrentThread.IsBackground = true;
 
-				MulticastService mdns = new MulticastService();
-				ServiceDiscovery sd   = new ServiceDiscovery( mdns );
+				//MulticastService mdns = new MulticastService();
+				//_sd   = new ServiceDiscovery(  );
 
 				//cert = CertificateGenerator.GenerateCert( this.settings.Certificate );
 
@@ -80,9 +82,9 @@ namespace EEBUS
 
 				try
 				{
-					mdns.Start();
+					//mdns.Start();
 
-					sd.Advertise( this.serviceProfile );
+					//_sd.Advertise( this.serviceProfile );
 
 					await Task.Delay( -1, cancellationToken ).ConfigureAwait( false );
 				}
@@ -92,9 +94,10 @@ namespace EEBUS
 				}
 				finally
 				{
-					sd.Dispose();
-					mdns.Stop();
-				}
+                    _sd.Unadvertise(this.serviceProfile);
+                    //sd.Dispose();
+                    //mdns.Stop();
+                }
 			} );
 		}
 	}

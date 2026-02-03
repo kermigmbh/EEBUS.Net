@@ -4,6 +4,7 @@ using EEBUS.Models;
 using EEBUS.Net.Events;
 using EEBUS.SHIP.Messages;
 using EEBUS.UseCases.ControllableSystem;
+using Makaretu.Dns;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
@@ -45,8 +46,13 @@ namespace EEBUS.Net
 
         public Devices Devices => _devices;
 
-        public EEBUSManager(Settings settings)
+        public EEBUSManager(Settings settings, ServiceDiscovery? serviceDiscovery = null)
         {
+
+            if (serviceDiscovery == null)
+            {
+                serviceDiscovery = new ServiceDiscovery();
+            }   
 
             foreach (string ns in new string[] {"EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands", "EEBUS.Entities",
                                                  "EEBUS.UseCases.ControllableSystem", "EEBUS.UseCases.GridConnectionPoint",
@@ -58,13 +64,13 @@ namespace EEBUS.Net
 
 
             _devices = new Devices();
-            _mDNSClient = new MDNSClient();
+            _mDNSClient = new MDNSClient(serviceDiscovery);
 
             _cert = CertificateGenerator.GenerateCert(settings.Certificate);
 
             byte[] hash = SHA1.Create().ComputeHash(_cert.GetPublicKey());
 
-            this._mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port);
+            this._mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port, serviceDiscovery);
             Console.WriteLine("Local SKI: " + new SKI(hash).ToString());
             LocalDevice localDevice = _devices.GetOrCreateLocal(hash, settings.Device);
 
