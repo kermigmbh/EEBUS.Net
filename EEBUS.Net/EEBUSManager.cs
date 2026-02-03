@@ -36,6 +36,8 @@ namespace EEBUS.Net
         private readonly MDNSService _mDNSService;
         SHIPListener? _shipListener;
         private readonly Settings _settings;
+        private readonly ServiceDiscovery? _serviceDiscovery;
+        private bool _serviceDiscoveryNeedsDispose = false;
 
         public event EventHandler<RemoteDevice>? OnDeviceFound;
         public event EventHandler<LimitDataChangedEventArgs>? OnLimitDataChanged;
@@ -51,6 +53,7 @@ namespace EEBUS.Net
 
             if (serviceDiscovery == null)
             {
+                _serviceDiscoveryNeedsDispose = true;
                 serviceDiscovery = new ServiceDiscovery();
             }   
 
@@ -87,6 +90,7 @@ namespace EEBUS.Net
             _devices.Local.AddUseCaseEvents(this.lppEventHandler);
             _devices.Local.AddUseCaseEvents(this.lpcOrLppEventHandler);
             _settings = settings;
+            this._serviceDiscovery = serviceDiscovery;
         }
         private static Type[] GetTypesInNamespace(Assembly assembly, string nameSpace)
         {
@@ -95,19 +99,7 @@ namespace EEBUS.Net
                             .ToArray();
         }
 
-        public void Dispose()
-        {
-            _devices.RemoteDeviceFound -= OnRemoteDeviceFound;
-            _devices.ServerStateChanged -= OnServerStateChanged;
-            _devices.ClientStateChanged -= OnClientStateChanged;
-
-            _devices.Local.RemoveUseCaseEvents(this.lpcEventHandler);
-            _devices.Local.RemoveUseCaseEvents(this.lppEventHandler);
-            _devices.Local.RemoveUseCaseEvents(this.lpcOrLppEventHandler);
-
-            _cts.Cancel();
-            _clientCts.Cancel();
-        }
+      
         private void OnRemoteDeviceFound(RemoteDevice device)
         {
             //using var _ = Push(new RemoteDeviceFound(device));
@@ -410,6 +402,25 @@ namespace EEBUS.Net
 
             _shipListener?.StopAsync();
             _mDNSClient.Stop();
+        }
+
+        public void Dispose()
+        {
+            _devices.RemoteDeviceFound -= OnRemoteDeviceFound;
+            _devices.ServerStateChanged -= OnServerStateChanged;
+            _devices.ClientStateChanged -= OnClientStateChanged;
+
+            _devices.Local.RemoveUseCaseEvents(this.lpcEventHandler);
+            _devices.Local.RemoveUseCaseEvents(this.lppEventHandler);
+            _devices.Local.RemoveUseCaseEvents(this.lpcOrLppEventHandler);
+
+            _cts.Cancel();
+            _clientCts.Cancel();
+
+            if (_serviceDiscoveryNeedsDispose)
+            {
+                _serviceDiscovery?.Dispose();
+            }
         }
     }
 }
