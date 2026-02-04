@@ -1,0 +1,49 @@
+name: EEBUS.Net CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-pack:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: EEBUS.Net
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          # Use the SDK version that matches your local dev (adjust as needed)
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore EEBUS.Net.csproj
+
+      - name: Build
+        run: dotnet build EEBUS.Net.csproj --configuration Release --no-restore
+
+      - name: Pack
+        run: dotnet pack EEBUS.Net.csproj --configuration Release --no-build -o ./nupkg
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eebus-net-nuget
+          path: EEBUS.Net/nupkg/*.nupkg
+
+      - name: Publish to NuGet
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: dotnet nuget push "./artifacts/*.nupkg" \
+                --api-key ${{ secrets.NUGET_API_KEY }} \
+                --source https://api.nuget.org/v3/index.json \
+                --skip-duplicate
+ 
