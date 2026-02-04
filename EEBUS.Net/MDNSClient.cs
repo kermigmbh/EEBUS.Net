@@ -58,7 +58,6 @@ namespace EEBUS
                 //mdns.Stop();
             }
         }
-
         private void Sd_ServiceDiscovered(object? sender, DomainName e)
         {
 
