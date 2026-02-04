@@ -37,7 +37,7 @@ jobs:
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: eebus-net-nuget
+          name: eebus-net
           path: EEBUS.Net/nupkg/*.nupkg
 
       - name: Publish to NuGet
