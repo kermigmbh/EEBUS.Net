@@ -38,7 +38,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: eebus-net
-          path: EEBUS.Net/nupkg/*.nupkg
+          path: nupkg/*.nupkg
 
       
       - name: Publish to NuGet (only on tag)
