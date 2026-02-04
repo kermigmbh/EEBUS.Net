@@ -34,12 +34,14 @@ jobs:
       - name: Pack
         run: dotnet pack EEBUS.Net.csproj --configuration Release --no-build -o ./nupkg
 
-      #- name: Upload package artifact
-      #  uses: actions/upload-artifact@v4
-      #  with:
-      #    name: eebus-net
-      #    path: nupkg/*.nupkg
-
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eebus-net
+          path: nupkg/*.nupkg
+          
+      - name: test
+        run: pwd
       
       - name: Publish to NuGet (only on tag)
         #if: startsWith(github.ref, 'refs/tags/v')
