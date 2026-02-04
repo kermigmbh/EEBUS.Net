@@ -4,6 +4,21 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+
+	  
+	  <PackageId>EEBUS.Net</PackageId>
+	  <Version>1.0.0</Version>
+	  <Authors>Alexander Kerschl</Authors>
+	  <Company>Kermi GmbH</Company>
+	  <Description>C# EEBUS .NET library</Description>
+	  <PackageTags>EEBUS</PackageTags>
+
+	  <!-- Optional but recommended -->
+	  <RepositoryUrl>https://github.com/kermigmbh/EEBUS.Net</RepositoryUrl>
+	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+	  
   </PropertyGroup>
 
   <ItemGroup>
