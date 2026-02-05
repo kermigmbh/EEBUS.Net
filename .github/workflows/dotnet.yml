@@ -1,10 +1,10 @@
 name: EEBUS.Net CI
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  #push:
+  #  branches: [ main ]
+  #pull_request:
+  #  branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -38,11 +38,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: eebus-net
-          path: EEBUS.Net/nupkg/*.nupkg
-
+          path: nupkg/*.nupkg
+          
+      - name: test
+        run: pwd
       
       - name: Publish to NuGet (only on tag)
-        if: startsWith(github.ref, 'refs/tags/v')
+        #if: startsWith(github.ref, 'refs/tags/v')
         # PowerShell: keep it on one line
-        run: dotnet nuget push "./nupkg/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source "https://api.nuget.org/v3/index.json" --skip-duplicate
+        run: dotnet nuget push ".\nupkg\*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source "https://api.nuget.org/v3/index.json" --skip-duplicate
 
