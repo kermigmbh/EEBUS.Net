@@ -12,7 +12,7 @@ namespace EEBUS.Messages
          
         public abstract class Class
 		{
-			public virtual SpineCmdPayloadBase CreateAnswer( DatagramType datagram, HeaderType header, Connection connection )
+			public virtual async ValueTask<SpineCmdPayloadBase> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
 				return null;
 			}
@@ -32,7 +32,7 @@ namespace EEBUS.Messages
 				return null;
 			}
 
-			public virtual void Evaluate( Connection connection, DatagramType datagram )
+			public virtual async ValueTask EvaluateAsync( Connection connection, DatagramType datagram )
 			{
 			}
 

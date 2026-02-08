@@ -58,7 +58,7 @@ namespace EEBUS.Messages
 			return cls;
 		}
 
-		public SpineDatagramPayload? CreateAnswer( ulong counter, Connection connection )
+		public async ValueTask<SpineDatagramPayload?> CreateAnswerAsync( ulong counter, Connection connection )
 		{
 			SpineCmdPayloadBase.Class? cls = GetClass();
 			if ( null == cls )
@@ -73,7 +73,7 @@ namespace EEBUS.Messages
 			reply.datagram.header.cmdClassifier		   = GetAnswerCmdClassifier();
 			reply.datagram.header.ackRequest		   = cls.GetAnswerAckRequest();
 
-			SpineCmdPayloadBase payload = cls.CreateAnswer( this.datagram, reply.datagram.header, connection );
+			SpineCmdPayloadBase payload = await cls.CreateAnswerAsync( this.datagram, reply.datagram.header, connection );
 			if ( null == payload )
 				return null;
 
@@ -82,13 +82,13 @@ namespace EEBUS.Messages
 			return reply;
 		}
 
-		public void Evaluate( Connection connection )
+		public async ValueTask EvaluateAsync( Connection connection )
 		{
 			SpineCmdPayloadBase.Class? cls = GetClass();
 			if ( null == cls )
 				return;
 
-			cls.Evaluate( connection, this.datagram );
+			await cls.EvaluateAsync( connection, this.datagram );
 		}
 	}
 

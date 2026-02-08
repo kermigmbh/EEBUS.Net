@@ -13,7 +13,7 @@ namespace EEBUS.SPINE.Commands
 
 		public new class Class : SpineCmdPayload<CmdDeviceConfigurationKeyValueDescriptionListDataType>.Class
 		{
-			public override SpineCmdPayloadBase CreateAnswer( DatagramType datagram, HeaderType header, Connection connection )
+			public override async ValueTask<SpineCmdPayloadBase> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
 				DeviceConfigurationKeyValueDescriptionListData	   payload = new DeviceConfigurationKeyValueDescriptionListData();
 				DeviceConfigurationKeyValueDescriptionListDataType data	   = payload.cmd[0].deviceConfigurationKeyValueDescriptionListData;

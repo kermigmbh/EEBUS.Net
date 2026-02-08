@@ -16,7 +16,7 @@ namespace EEBUS.SPINE.Commands
 
 		public new class Class : SpineCmdPayload<CmdDeviceDiagnosisHeartbeatDataType>.Class
 		{
-			public override SpineCmdPayloadBase CreateAnswer( DatagramType datagram, HeaderType header, Connection connection )
+			public override async ValueTask<SpineCmdPayloadBase> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
 				DeviceDiagnosisHeartbeatData	 payload = new DeviceDiagnosisHeartbeatData();
 				DeviceDiagnosisHeartbeatDataType data	 = payload.cmd[0].deviceDiagnosisHeartbeatData;
@@ -45,7 +45,7 @@ namespace EEBUS.SPINE.Commands
 				return new DeviceDiagnosisHeartbeatData();
 			}
 
-			public override void Evaluate( Connection connection, DatagramType datagram )
+			public override async ValueTask EvaluateAsync( Connection connection, DatagramType datagram )
 			{
 				if ( datagram.header.cmdClassifier != "notify" )
 					return;

@@ -72,14 +72,14 @@ namespace EEBUS.SHIP.Messages
 					SpineDatagramPayload? payload	   = this.data.payload.Deserialize<SpineDatagramPayload>();
 					string?				 cmdClassifier = payload?.datagram?.header?.cmdClassifier;
 
-					payload.Evaluate( connection );
+					await payload.EvaluateAsync( connection );
 
 					if ( cmdClassifier == "reply" || cmdClassifier == "notify" )
 					{
 						return (connection.State, connection.SubState);
 					}
 					
-					SpineDatagramPayload? answer = payload.CreateAnswer( NextCount, this.connection );
+					SpineDatagramPayload? answer = await payload.CreateAnswerAsync( NextCount, this.connection );
 
 					if ( null != answer )
 					{

@@ -14,7 +14,7 @@ namespace EEBUS.SPINE.Commands
 
 		public new class Class : SpineCmdPayload<CmdNodeManagementDetailedDiscoveryDataType>.Class
 		{
-			public override SpineCmdPayloadBase CreateAnswer( DatagramType datagram, HeaderType header, Connection connection )
+			public override async ValueTask<SpineCmdPayloadBase> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
 				NodeManagementDetailedDiscoveryData		payload = new NodeManagementDetailedDiscoveryData();
 				NodeManagementDetailedDiscoveryDataType data	= payload.cmd[0].nodeManagementDetailedDiscoveryData;
@@ -38,7 +38,7 @@ namespace EEBUS.SPINE.Commands
 				return new NodeManagementDetailedDiscoveryData();
 			}
 
-			public override void Evaluate( Connection connection, DatagramType datagram )
+			public override async ValueTask EvaluateAsync( Connection connection, DatagramType datagram )
 			{
 				if ( datagram.header.cmdClassifier != "reply" )
 					return;
