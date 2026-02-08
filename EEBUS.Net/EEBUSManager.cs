@@ -160,7 +160,7 @@ namespace EEBUS.Net
             }
         }
 
-        public JsonObject GetLocal()
+        public JsonObject? GetLocal()
         {
             LocalDevice? local = _devices?.Local;
 

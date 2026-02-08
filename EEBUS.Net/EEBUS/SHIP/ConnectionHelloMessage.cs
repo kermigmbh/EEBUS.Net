@@ -28,7 +28,7 @@ namespace EEBUS.SHIP.Messages
 
 		public new class Class : ShipControlMessage<ConnectionHelloMessage>.Class
 		{
-			public override ConnectionHelloMessage Create( byte[] data, Connection connection )
+			public override ConnectionHelloMessage Create(ReadOnlySpan<byte> data, Connection connection )
 			{
 				return template.FromJsonVirtual( data, connection );
 			}

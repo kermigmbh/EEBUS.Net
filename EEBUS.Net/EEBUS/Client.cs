@@ -94,7 +94,7 @@ namespace EEBUS
                     // Use only the filled part of the buffer
                     ReadOnlySpan<byte> messageSpan = receiveBuffer.AsSpan(0, totalCount);
 
-                    ShipMessageBase message = ShipMessageBase.Create(messageSpan, this);
+                    ShipMessageBase? message = ShipMessageBase.Create(messageSpan, this);
                     if (message == null)
                         throw new Exception("Message couldn't be recognized");
 

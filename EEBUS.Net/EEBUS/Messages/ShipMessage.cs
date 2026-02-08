@@ -45,12 +45,12 @@ namespace EEBUS.Messages
 			return Encoding.UTF8.GetBytes(json);
 		}
 
-		public override T FromJsonVirtual( byte[] data, Connection connection )
+		public override T FromJsonVirtual(ReadOnlySpan<byte> data, Connection connection )
 		{
 			return FromJson( data, connection );
 		}
 
-		static public T FromJson( byte[] data, Connection connection )
+		static public T? FromJson(ReadOnlySpan<byte> data, Connection connection )
 		{
 			if ( data == null || data.Length < 2 )
 				return null;

@@ -10,7 +10,7 @@ namespace EEBUS.Messages
 	{
 		public abstract class Class
 		{
-			public abstract ShipMessageBase Create( byte[] data, Connection connection );
+			public abstract ShipMessageBase Create(ReadOnlySpan<byte> data, Connection connection );
 		}
 
 		static protected Dictionary<string, Class> messages = new Dictionary<string, Class>();
@@ -22,12 +22,12 @@ namespace EEBUS.Messages
 			return null;
 		}
 
-		public abstract ShipMessageBase FromJsonVirtual( byte[] data, Connection connection );
+		public abstract ShipMessageBase FromJsonVirtual(ReadOnlySpan<byte> data, Connection connection );
 
-		static public ShipMessageBase Create( ReadOnlySpan<byte> data, Connection connection )
+		static public ShipMessageBase? Create( ReadOnlySpan<byte> data, Connection connection )
 		{
 			Class cls = GetClass( data );
-			return cls != null ? cls.Create( data.ToArray(), connection ) : null;
+			return cls != null ? cls.Create( data, connection ) : null;
 		}
 
 		public virtual (Connection.EState, Connection.ESubState, string) ServerTest( Connection.EState state )

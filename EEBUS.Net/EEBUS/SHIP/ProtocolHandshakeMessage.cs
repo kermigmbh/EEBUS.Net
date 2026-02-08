@@ -24,7 +24,7 @@ namespace EEBUS.SHIP.Messages
 
 		public new class Class : ShipControlMessage<ProtocolHandshakeMessage>.Class
 		{
-			public override ProtocolHandshakeMessage Create( byte[] data, Connection connection )
+			public override ProtocolHandshakeMessage Create(ReadOnlySpan<byte> data, Connection connection )
 			{
 				return template.FromJsonVirtual( data, connection );
 			}

@@ -22,7 +22,7 @@ namespace EEBUS.SHIP.Messages
 
 		public new class Class : ShipEndMessage<CloseMessage>.Class
 		{
-			public override CloseMessage Create( byte[] data, Connection connection )
+			public override CloseMessage Create(ReadOnlySpan<byte> data, Connection connection )
 			{
 				return template.FromJsonVirtual( data, connection );
 			}
