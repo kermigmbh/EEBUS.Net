@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+﻿using System.Text.Json.Serialization;
 
 using EEBUS.Messages;
 
@@ -38,7 +38,7 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class DeviceConfigurationKeyValueDescriptionListDataType
 	{
-		public DeviceConfigurationKeyValueDescriptionDataType[] deviceConfigurationKeyValueDescriptionData { get; set; }
+		public DeviceConfigurationKeyValueDescriptionDataType[]? deviceConfigurationKeyValueDescriptionData { get; set; }
 	}
 
 	[System.SerializableAttribute()]
@@ -50,7 +50,6 @@ namespace EEBUS.SPINE.Commands
 
 		public string valueType	{ get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public string unit		{ get; set; }
+		public string? unit		{ get; set; }
 	}
 }

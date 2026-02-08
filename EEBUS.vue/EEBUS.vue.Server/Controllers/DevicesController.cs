@@ -4,8 +4,8 @@ using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 
 using Microsoft.AspNetCore.Mvc;
-
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using EEBUS.Models;
 using EEBUS.SHIP.Messages;
@@ -39,13 +39,13 @@ public class DevicesController : ControllerBase, IDisposable
 	private ClientWebSocket?	 wsClient;
 
 
-    [HttpGet("GetLocal")]
-	public JObject GetLocal()
+	[HttpGet("GetLocal")]
+	public JsonObject GetLocal()
 	{
 		LocalDevice? local = this.devices?.Local;
 
 		if ( null == local )
-			return new();
+			return new JsonObject();
 
 		bool	 lpcActive		  = false;
 		long	 lpcLimit		  = 0;
@@ -87,7 +87,7 @@ public class DevicesController : ControllerBase, IDisposable
 		if ( null != lppFailsafeLimitKeyValue )
 			failsafeDuration = XmlConvert.ToTimeSpan( failsafeDurationKeyValue.Duration );
 
-		return JObject.FromObject( new
+		var payload = new
 		{
 			name			 = local.Name,
 			ski				 = local.SKI.ToReadable(),
@@ -104,29 +104,38 @@ public class DevicesController : ControllerBase, IDisposable
 			lppFailsafeLimit = lppFailsafeLimit,
 
 			failsafeDuration = failsafeDuration
-		} );
+		};
+
+		var options = new JsonSerializerOptions
+		{
+			PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+			DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never
+		};
+
+		return JsonSerializer.SerializeToNode(payload, options)!.AsObject();
 	}
 
 
 	[HttpGet("GetRemotes")]
-	public JArray GetRemotes()
+	public JsonArray GetRemotes()
 	{
-		JArray devlist = new();
-
-		this.devices?.Remote.ForEach( rd =>
+		var options = new JsonSerializerOptions
 		{
-			devlist.Add( JObject.FromObject( new
-			{
-				id			= rd.Id,
-				name		= rd.Name,
-				ski			= rd.SKI.ToReadable(),
-				url			= rd.Url,
-				serverState	= rd.serverState.ToString(),
-				clientState	= rd.clientState.ToString()
-			} ) );
-		} );
+			PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+			DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never
+		};
 
-		return devlist;
+		var projection = this.devices?.Remote.Select(rd => new
+		{
+			id			= rd.Id,
+			name		= rd.Name,
+			ski			= rd.SKI.ToReadable(),
+			url			= rd.Url,
+			serverState	= rd.serverState.ToString(),
+			clientState	= rd.clientState.ToString()
+		});
+
+		return JsonSerializer.SerializeToNode(projection ?? Enumerable.Empty<object>(), options)!.AsArray();
 	}
 
 	[HttpGet("Connect")]

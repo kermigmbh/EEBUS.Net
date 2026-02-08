@@ -1,7 +1,5 @@
 ﻿using System.Text.Json.Serialization;
 
-using Newtonsoft.Json.Converters;
-
 using EEBUS.Messages;
 
 namespace EEBUS.SHIP.Messages
@@ -33,7 +31,7 @@ namespace EEBUS.SHIP.Messages
 		public ConnectionCloseType[] connectionClose { get; set; } = [new()];
 	}
 
-	[System.SerializableAttribute()]
+	 
 	public class ConnectionCloseType
 	{
 		public ConnectionClosePhaseType	 phase			  { get; set; }
@@ -47,8 +45,7 @@ namespace EEBUS.SHIP.Messages
 		public bool						 reasonSpecified  { get; set; }
 	}
 
-	[System.SerializableAttribute()]
-	[JsonConverter(typeof(StringEnumConverter))]
+	[JsonConverter(typeof(JsonStringEnumConverter))]
 	public enum ConnectionClosePhaseType
 	{
 		announce,
@@ -56,8 +53,7 @@ namespace EEBUS.SHIP.Messages
 	}
 
 	/// <remarks/>
-	[System.SerializableAttribute()]
-	[JsonConverter(typeof(StringEnumConverter))]
+	[JsonConverter(typeof(JsonStringEnumConverter))]
 	public enum ConnectionCloseReasonType
 	{
 		unspecific,

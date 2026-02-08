@@ -1,7 +1,5 @@
 ﻿using System.Text.Json.Serialization;
 
-using Newtonsoft.Json.Converters;
-
 using EEBUS.Messages;
 
 namespace EEBUS.SHIP.Messages
@@ -113,9 +111,8 @@ namespace EEBUS.SHIP.Messages
 		public bool						prolongationRequest	{ get; set; }
 	}
 
-	[System.SerializableAttribute()]
-	[JsonConverter(typeof(StringEnumConverter))]
-	public enum ConnectionHelloPhaseType
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public enum ConnectionHelloPhaseType
 	{
 		pending,
 		ready,

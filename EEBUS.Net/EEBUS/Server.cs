@@ -41,43 +41,76 @@ namespace EEBUS
 
 		public async Task Do()
 		{
-			var heart	= new HeartBeatTask();
-			using var beat	= new System.Threading.Timer( heart.Beat, this, 4000, 4000 );
+			var heart = new HeartBeatTask();
+			using var beat = new System.Threading.Timer(heart.Beat, this, 4000, 4000);
 
-			//var ecc		= new ElectricalConnectionCharacteristicTask();
-   //         using var eccSend	= new System.Threading.Timer( ecc.SendData, this, 2000, Timeout.Infinite );
+			//var ecc        = new ElectricalConnectionCharacteristicTask();
+			//using var eccSend   = new System.Threading.Timer( ecc.SendData, this, 2000, Timeout.Infinite );
 
-			//var md		= new MeasurementDataTask();
-   //         using var mdSend	= new System.Threading.Timer( md.SendData, this, 3000, 3000 );
+			//var md         = new MeasurementDataTask();
+			//using var mdSend   = new System.Threading.Timer( md.SendData, this, 3000, 3000 );
+
+			// Reuse a single receive buffer for all messages
+			byte[] receiveBuffer = new byte[10240];
 
 			try
 			{
-				while ( this.ws.State == WebSocketState.Open )
+				while (this.ws.State == WebSocketState.Open)
 				{
-					byte[] receiveBuffer = new byte[10240];
-					WebSocketReceiveResult result = await this.ws.ReceiveAsync( receiveBuffer, new CancellationTokenSource( /*SHIPMessageTimeout.CMI_TIMEOUT*/ ).Token ).ConfigureAwait( false );
+					int totalCount = 0;
+					WebSocketReceiveResult result;
 
-					if ( result.CloseStatus.HasValue )
-						break; // close received
-					else if ( result.Count < 2 )
-						throw new Exception( "Invalid EEBUS payload received, expected message size of at least 2!" );
+					// If you want a timeout, plug SHIPMessageTimeout.CMI_TIMEOUT back in
+					using CancellationTokenSource cts = new CancellationTokenSource();
+					CancellationToken token = cts.Token;
 
-					ShipMessageBase message = ShipMessageBase.Create( receiveBuffer, this );
+					// Accumulate frames until EndOfMessage
+					do
+					{
+						if (totalCount >= receiveBuffer.Length)
+							throw new Exception("EEBUS payload too large for receive buffer.");
+
+						var segment = new ArraySegment<byte>(
+							receiveBuffer,
+							totalCount,
+							receiveBuffer.Length - totalCount);
+
+						result = await this.ws.ReceiveAsync(segment, token).ConfigureAwait(false);
+
+						if (result.CloseStatus.HasValue || result.MessageType == WebSocketMessageType.Close)
+						{
+							this.state = EState.Stopped;
+							break;
+						}
+
+						totalCount += result.Count;
+
+					} while (!result.EndOfMessage && !token.IsCancellationRequested);
+
+					if (this.state == EState.Stopped || token.IsCancellationRequested)
+						break;
+
+					if (totalCount < 2)
+						throw new Exception("Invalid EEBUS payload received, expected message size of at least 2!");
+
+					ReadOnlySpan<byte> messageSpan = receiveBuffer.AsSpan(0, totalCount);
+
+					ShipMessageBase message = ShipMessageBase.Create(messageSpan, this);
 					//Console.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " <-- " + message.ToString() + "\n");
-					if ( message == null )
-						throw new Exception( "Message couldn't be recognized" );
+					if (message == null)
+						throw new Exception("Message couldn't be recognized");
 
-					Debug.WriteLine( "===> " + message.ToString() );
+					Debug.WriteLine("===> " + message.ToString());
 
-					(this.state, this.subState, string error) = message.ServerTest( this.state );
+					(this.state, this.subState, string error) = message.ServerTest(this.state);
 
-					if ( this.state == EState.Stopped && error != null )
-						throw new Exception( error );
-					if ( error != null )
-						Console.WriteLine( error );
+					if (this.state == EState.Stopped && error != null)
+						throw new Exception(error);
+					if (error != null)
+						Console.WriteLine(error);
 
 					EState oldState = this.state;
-					(this.state, this.subState) = await message.NextServerState( this ).ConfigureAwait( false );
+					(this.state, this.subState) = await message.NextServerState(this).ConfigureAwait(false);
 
 					if (null == this.Remote)
 					{
@@ -88,28 +121,28 @@ namespace EEBUS
 						}
 					}
 
-					if ( null != this.Remote )
-						this.Remote.SetServerState( this.state );
+					if (null != this.Remote)
+						this.Remote.SetServerState(this.state);
 
-					if ( this.state == EState.Connected && this.state != oldState )
+					if (this.state == EState.Connected && this.state != oldState)
 						RequestRemoteDeviceConfiguration();
 
-					if ( this.state == EState.Stopped )
-						throw new Exception( "Communication stopped!" );
+					if (this.state == EState.Stopped)
+						throw new Exception("Communication stopped!");
 				}
 			}
-			catch ( Exception ex )
+			catch (Exception ex)
 			{
-				if ( null != this.Remote )
-					this.Remote.SetServerState( EState.Stopped );
+				if (null != this.Remote)
+					this.Remote.SetServerState(EState.Stopped);
 
-				Debug.WriteLine( "Exception: " + ex.Message );
+				Debug.WriteLine("Exception: " + ex.Message);
 			}
 
-			beat.Change( Timeout.Infinite, Timeout.Infinite );
+			beat.Change(Timeout.Infinite, Timeout.Infinite);
 			//eccSend.Change( Timeout.Infinite, Timeout.Infinite );
 
-			await Close().ConfigureAwait( false );
+			await Close().ConfigureAwait(false);
 		}
 
 		public async Task Close()

@@ -1,7 +1,5 @@
 ﻿using System.Text.Json.Serialization;
 
-using Newtonsoft.Json.Converters;
-
 using EEBUS.Messages;
 
 namespace EEBUS.SHIP.Messages
@@ -103,10 +101,9 @@ namespace EEBUS.SHIP.Messages
 		public bool			inputPermissionSpecified { get; set; }
 	}
 
-	/// <remarks/>
-	[System.SerializableAttribute()]
-	[JsonConverter(typeof(StringEnumConverter))]
-	public enum PinStateType
+    /// <remarks/>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public enum PinStateType
 	{
 		required,
 		optional,

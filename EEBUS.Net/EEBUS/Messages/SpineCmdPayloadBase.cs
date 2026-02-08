@@ -1,12 +1,16 @@
-﻿namespace EEBUS.Messages
+﻿using System.Text.Json;
+using System.Text.Json.Nodes;
+
+namespace EEBUS.Messages
 {
-	public class SpineCmdPayloadBase
+	public abstract class SpineCmdPayloadBase
 	{
 		public SpineCmdPayloadBase()
 		{
 		}
-
-		public abstract class Class
+		public abstract JsonNode? ToJsonNode();
+         
+        public abstract class Class
 		{
 			public virtual SpineCmdPayloadBase CreateAnswer( DatagramType datagram, HeaderType header, Connection connection )
 			{

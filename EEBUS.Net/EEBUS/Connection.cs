@@ -1,9 +1,11 @@
 ﻿using System.Diagnostics;
 using System.Net.WebSockets;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using Microsoft.AspNetCore.Http;
 
-using Newtonsoft.Json.Linq;
+
 
 using EEBUS.Messages;
 using EEBUS.Models;
@@ -86,11 +88,12 @@ namespace EEBUS
 						reply.datagram.header.msgCounter		 = DataMessage.NextCount;
 						reply.datagram.header.cmdClassifier		 = "notify";
 
-						SpineCmdPayloadBase heartbeat = new DeviceDiagnosisHeartbeatData.Class().CreateNotify( connection );
-						reply.datagram.payload = JObject.FromObject( heartbeat );
+					SpineCmdPayloadBase heartbeat = new DeviceDiagnosisHeartbeatData.Class().CreateNotify( connection );
+					// serialize heartbeat into a JsonNode payload
+					reply.datagram.payload = JsonSerializer.SerializeToNode(heartbeat);
 					
-						DataMessage heartbeatMessage = new DataMessage();
-						heartbeatMessage.SetPayload( JObject.FromObject( reply ) );
+					DataMessage heartbeatMessage = new DataMessage();
+					heartbeatMessage.SetPayload(JsonSerializer.SerializeToNode(reply));
 
 						connection.PushDataMessage( heartbeatMessage );
 					}
@@ -123,12 +126,14 @@ namespace EEBUS
 						reply.datagram.header.msgCounter		 = DataMessage.NextCount;
 						reply.datagram.header.cmdClassifier		 = "notify";
 
-						reply.datagram.payload = JObject.FromObject( new ElectricalConnectionCharacteristicListData.Class().CreateNotify( connection ) );
+						var eccPayload = new ElectricalConnectionCharacteristicListData.Class().CreateNotify( connection );
+						reply.datagram.payload = eccPayload.ToJsonNode();// JsonSerializer.SerializeToNode(eccPayload);
 
 						DataMessage eccMessage = new DataMessage();
-						eccMessage.SetPayload( JObject.FromObject( reply ) );
+                        //eccMessage.SetPayload(JsonSerializer.SerializeToNode(reply));
+                        eccMessage.SetPayload(JsonSerializer.SerializeToNode(reply));
 
-						connection.PushDataMessage( eccMessage );
+                        connection.PushDataMessage( eccMessage );
 					}
 				}
 			}
@@ -168,10 +173,11 @@ namespace EEBUS
 						reply.datagram.header.msgCounter		 = DataMessage.NextCount;
 						reply.datagram.header.cmdClassifier		 = "notify";
 
-						reply.datagram.payload = JObject.FromObject( new MeasurementListData.Class().CreateNotify( connection ) );
+						var measurementPayload = new MeasurementListData.Class().CreateNotify( connection );
+						reply.datagram.payload = measurementPayload.ToJsonNode();//JsonSerializer.SerializeToNode(measurementPayload);
 
 						DataMessage dataMessage = new DataMessage();
-						dataMessage.SetPayload( JObject.FromObject( reply ) );
+						dataMessage.SetPayload(JsonSerializer.SerializeToNode(reply));
 
 						connection.PushDataMessage( dataMessage );
 					}
@@ -231,10 +237,11 @@ namespace EEBUS
 			read.datagram.header.msgCounter					= DataMessage.NextCount;
 			read.datagram.header.cmdClassifier				= "read";
 
-			read.datagram.payload = JObject.FromObject( new NodeManagementDetailedDiscoveryData.Class().CreateRead( this ) );
+			var discoveryPayload = new NodeManagementDetailedDiscoveryData.Class().CreateRead( this );
+			read.datagram.payload = discoveryPayload.ToJsonNode();// JsonSerializer.SerializeToNode(discoveryPayload);
 
 			DataMessage message = new DataMessage();
-			message.SetPayload( JObject.FromObject( read ) );
+			message.SetPayload(JsonSerializer.SerializeToNode(read));
 
 			PushDataMessage( message );
 		}
@@ -259,10 +266,10 @@ namespace EEBUS
 			subscriptionRequest.serverAddress	  = this.Remote.GetHeartbeatAddress( true );
 			subscriptionRequest.serverFeatureType = "DeviceDiagnosis";
 
-			call.datagram.payload = JObject.FromObject( payload );
+			call.datagram.payload = payload.ToJsonNode();//JsonSerializer.SerializeToNode(payload);
 
 			DataMessage message = new DataMessage();
-			message.SetPayload( JObject.FromObject( call ) );
+			message.SetPayload(JsonSerializer.SerializeToNode(call));
 
 			PushDataMessage( message );
 		}
@@ -278,10 +285,11 @@ namespace EEBUS
 			read.datagram.header.msgCounter			= DataMessage.NextCount;
 			read.datagram.header.cmdClassifier		= "read";
 
-			read.datagram.payload = JObject.FromObject( new DeviceDiagnosisHeartbeatData.Class().CreateRead( this ) );
+			var heartbeatReadPayload = new DeviceDiagnosisHeartbeatData.Class().CreateRead( this );
+			read.datagram.payload = heartbeatReadPayload.ToJsonNode();// JsonSerializer.SerializeToNode(heartbeatReadPayload);
 
 			DataMessage message = new DataMessage();
-			message.SetPayload( JObject.FromObject( read ) );
+			message.SetPayload(JsonSerializer.SerializeToNode(read));
 
 			PushDataMessage( message );
 		}

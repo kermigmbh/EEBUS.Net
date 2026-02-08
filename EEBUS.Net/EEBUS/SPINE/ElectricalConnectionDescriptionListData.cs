@@ -1,5 +1,5 @@
 ﻿using EEBUS.Messages;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -51,23 +51,19 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class ElectricalConnectionDescriptionListDataType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public ElectricalConnectionDescriptionDataType[] electricalConnectionDescriptionData { get; set; }
+		[JsonPropertyName("electricalConnectionDescriptionData")]
+		public ElectricalConnectionDescriptionDataType[]? electricalConnectionDescriptionData { get; set; }
 	}
 
 	[System.SerializableAttribute()]
 	public class ElectricalConnectionDescriptionDataType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public uint	  electricalConnectionId  { get; set; }
+		public uint?   electricalConnectionId  { get; set; }
 		
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public string powerSupplyType		  { get; set; }
+		public string? powerSupplyType		  { get; set; }
 		
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public uint	  acConnectedPhases		  { get; set; }
-
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public string positiveEnergyDirection { get; set; }
+		public uint?   acConnectedPhases		  { get; set; }
+		
+		public string? positiveEnergyDirection { get; set; }
 	}
 }

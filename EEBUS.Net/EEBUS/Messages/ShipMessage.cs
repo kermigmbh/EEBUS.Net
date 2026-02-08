@@ -1,9 +1,9 @@
 ﻿using EEBUS.Enums;
 using Makaretu.Dns;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System.Net.WebSockets;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace EEBUS.Messages
 {
@@ -29,19 +29,20 @@ namespace EEBUS.Messages
 
 		public override string ToString()
 		{
-			var jsonSerializerSettings = new JsonSerializerSettings();
-			jsonSerializerSettings.Converters.Add( new Newtonsoft.Json.Converters.StringEnumConverter() );
-
-			return JsonConvert.SerializeObject( this, jsonSerializerSettings );
+			var options = new JsonSerializerOptions
+			{
+				Converters = { new JsonStringEnumConverter() }
+			};
+			return JsonSerializer.Serialize((T)this, options);
 		}
-
+		
 		protected virtual byte[] ToJson()
 		{
-			JObject jobj = JObject.Parse( ToString() );
-
-			jobj = JsonIntoEEBUSJson( jobj );
-
-			return Encoding.UTF8.GetBytes( jobj.ToString( Formatting.None ) );
+			// Serialize this instance to JSON using System.Text.Json
+			string json = ToString();
+			// Convert into EEBUS-specific JSON structure using string-based helper
+			json = JsonIntoEEBUSJson(json);
+			return Encoding.UTF8.GetBytes(json);
 		}
 
 		public override T FromJsonVirtual( byte[] data, Connection connection )
@@ -51,19 +52,17 @@ namespace EEBUS.Messages
 
 		static public T FromJson( byte[] data, Connection connection )
 		{
-			var settings = new JsonSerializerSettings
-			{
-				NullValueHandling = NullValueHandling.Include,
-				MissingMemberHandling = MissingMemberHandling.Error
-			};
-
 			if ( data == null || data.Length < 2 )
 				return null;
 
 			string dataStr = Encoding.UTF8.GetString( data );
 			dataStr = JsonFromEEBUSJson( data[0] == template.GetDataType() ? dataStr.Substring( 1 ) : dataStr );
 
-			T obj = JsonConvert.DeserializeObject<T>( dataStr, settings );
+			var options = new JsonSerializerOptions
+			{
+				PropertyNameCaseInsensitive = true
+			};
+			T obj = JsonSerializer.Deserialize<T>( dataStr, options );
 			obj.connection = connection;
 
 			return obj;

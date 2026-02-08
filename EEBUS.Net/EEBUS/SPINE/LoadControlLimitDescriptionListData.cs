@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+﻿using System.Text.Json.Serialization;
 
 using EEBUS.DataStructures;
 using EEBUS.Messages;
@@ -57,10 +57,8 @@ namespace EEBUS.SPINE.Commands
 		
 		public string unit			 { get; set; }
 		
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)] 
-		public string scopeType		 { get; set; }
+		public string? scopeType		 { get; set; }
 		
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)] 
-		public string label			 { get; set; }
+		public string? label			 { get; set; }
 	}
 }

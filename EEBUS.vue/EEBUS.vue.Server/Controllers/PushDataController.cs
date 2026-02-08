@@ -4,10 +4,9 @@ using System.Text;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 
-using Newtonsoft.Json.Linq;
-
 using EEBUS.Models;
 using EEBUS.UseCases.ControllableSystem;
+using System.Text.Json.Nodes;
 using System.Collections.Generic;
 
 namespace EEBUS.Controllers
@@ -164,12 +163,12 @@ namespace EEBUS.Controllers
 			Console.WriteLine( "Listener ausgetragen" );
 		}
 
-		static public async Task Push( JToken data )
+		static public async Task Push( PushData data )
 		{
 			if ( 0 == webSockets.Count )
 				return;
 
-			string json   = data.ToString();
+			string json   = data.Payload.ToJsonString();
 			byte[] buffer = Encoding.UTF8.GetBytes( json );
 			int	   count  = buffer.Length;
 
