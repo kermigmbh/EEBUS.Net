@@ -1,5 +1,6 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+﻿using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace EEBUS.Messages
 {
@@ -28,24 +29,27 @@ namespace EEBUS.Messages
 			}
 		}
 
-		private SpineCmdPayloadBase.Class GetClass()
+		private SpineCmdPayloadBase.Class? GetClass()
 		{
-			if ( ! this.datagram.payload.TryGetValue( "cmd", out JToken cmds ) )
+			// payload is a JsonNode representing the datagram body
+			if (this.datagram.payload is not JsonObject payloadObj)
 				return null;
-			if ( ! (cmds is JArray) )
+			if (!payloadObj.TryGetPropertyValue("cmd", out JsonNode? cmdsNode))
 				return null;
-
-			JObject cmd = (cmds as JArray)[0] as JObject;
-			if ( null == cmd )
-				return null;
-
-			JProperty prop = cmd.Properties().FirstOrDefault();
-			if ( null == prop )
+			if (cmdsNode is not JsonArray cmdsArray || cmdsArray.Count == 0)
 				return null;
 
-			string command = prop.Name;
-			if ( command == "function" )
-				command = prop.Value.Value<string>();
+			if (cmdsArray[0] is not JsonObject cmdObj)
+				return null;
+
+			// take first property of the command object
+			var prop = cmdObj.FirstOrDefault();
+			if (prop.Equals(default(KeyValuePair<string, JsonNode?>)))
+				return null;
+
+			string command = prop.Key;
+			if (command == "function" && prop.Value is JsonValue v && v.TryGetValue<string>(out var fn))
+				command = fn;
 
 			SpineCmdPayloadBase.Class cls = SpineCmdPayloadBase.GetClass( command );
 			if ( null == cls )
@@ -54,9 +58,9 @@ namespace EEBUS.Messages
 			return cls;
 		}
 
-		public SpineDatagramPayload CreateAnswer( ulong counter, Connection connection )
+		public async ValueTask<SpineDatagramPayload?> CreateAnswerAsync( ulong counter, Connection connection )
 		{
-			SpineCmdPayloadBase.Class cls = GetClass();
+			SpineCmdPayloadBase.Class? cls = GetClass();
 			if ( null == cls )
 				return null;
 
@@ -69,22 +73,22 @@ namespace EEBUS.Messages
 			reply.datagram.header.cmdClassifier		   = GetAnswerCmdClassifier();
 			reply.datagram.header.ackRequest		   = cls.GetAnswerAckRequest();
 
-			SpineCmdPayloadBase payload = cls.CreateAnswer( this.datagram, reply.datagram.header, connection );
+			SpineCmdPayloadBase payload = await cls.CreateAnswerAsync( this.datagram, reply.datagram.header, connection );
 			if ( null == payload )
 				return null;
 
-			reply.datagram.payload = JObject.FromObject( payload );
+			reply.datagram.payload = payload.ToJsonNode();//JsonSerializer.SerializeToNode(payload);
 
 			return reply;
 		}
 
-		public void Evaluate( Connection connection )
+		public async ValueTask EvaluateAsync( Connection connection )
 		{
-			SpineCmdPayloadBase.Class cls = GetClass();
+			SpineCmdPayloadBase.Class? cls = GetClass();
 			if ( null == cls )
 				return;
 
-			cls.Evaluate( connection, this.datagram );
+			await cls.EvaluateAsync( connection, this.datagram );
 		}
 	}
 
@@ -93,7 +97,7 @@ namespace EEBUS.Messages
 	{
 		public HeaderType header  { get; set; } = new();
 
-		public JObject	  payload { get; set; }
+		public JsonNode? payload { get; set; }
 	}
 
 	[System.SerializableAttribute()]
@@ -107,24 +111,24 @@ namespace EEBUS.Messages
 
 		public ulong	   msgCounter			{ get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+		[JsonPropertyName("msgCounterReference")]
 		public ulong?	   msgCounterReference	{ get; set; }
 
 		public string	   cmdClassifier		{ get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+		[JsonPropertyName("ackRequest")]
 		public bool?	   ackRequest			{ get; set; }
 	}
 
 	[System.SerializableAttribute()]
 	public class AddressType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public string device  { get; set; }
+		[JsonPropertyName("device")]
+		public string? device  { get; set; }
 
 		public int[]  entity  { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+		[JsonPropertyName("feature")]
 		public int?	  feature { get; set; }
 	}
 }

@@ -57,7 +57,8 @@ namespace EEBUS.KeyValues
 
 		public override void SetValue( ValueType value )
 		{
-			this.Value = value.scaledNumber.number;
+			// value.scaledNumber.number is nullable, fall back to existing Value if null
+			this.Value = value.scaledNumber?.number ?? this.Value;
 		}
 
 		public override void SendEvent( Connection connection )

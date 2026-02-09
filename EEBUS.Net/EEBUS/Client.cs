@@ -41,31 +41,63 @@ namespace EEBUS
 
             var heart = new HeartBeatTask();
             var beat = new System.Threading.Timer(heart.Beat, this, 4000, 4000);
-
             //var ecc = new ElectricalConnectionCharacteristicTask();
             //var eccSend = new System.Threading.Timer(ecc.SendData, this, 2000, Timeout.Infinite);
 
             //var md = new MeasurementDataTask();
             //var mdSend = new System.Threading.Timer(md.SendData, this, 3000, 3000);
+            // Reuse a single receive buffer
+            byte[] receiveBuffer = new byte[10240];
 
             try
             {
                 while (this.state != EState.Stopped && !cancellationToken.IsCancellationRequested)
                 {
-                    byte[] receiveBuffer = new byte[10240];
-                    CancellationToken timeoutToken = new CancellationTokenSource(SHIPMessageTimeout.CMI_TIMEOUT).Token;
-                    CancellationTokenSource linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource([timeoutToken, cancellationToken]);
-                    WebSocketReceiveResult result = await this.ws.ReceiveAsync(receiveBuffer, linkedTokenSource.Token).ConfigureAwait(false);
+                    int totalCount = 0;
+                    WebSocketReceiveResult result;
 
-                    if (result.CloseStatus.HasValue)
-                        break; // close received
-                    else if (result.Count < 2)
+                    using CancellationTokenSource timeoutCts = new CancellationTokenSource(SHIPMessageTimeout.CMI_TIMEOUT);
+                    using CancellationTokenSource linkedTokenSource =
+                        CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+
+                    // Accumulate frames until EndOfMessage
+                    do
+                    {
+                        if (totalCount >= receiveBuffer.Length)
+                            throw new Exception("EEBUS payload too large for receive buffer.");
+                        
+                        var segment = new ArraySegment<byte>(
+                            receiveBuffer,
+                            totalCount,
+                            receiveBuffer.Length - totalCount);
+
+                        result = await this.ws
+                            .ReceiveAsync(segment, linkedTokenSource.Token)
+                            .ConfigureAwait(false);
+
+                        if (result.CloseStatus.HasValue || result.MessageType == WebSocketMessageType.Close)
+                        {
+                            this.state = EState.Stopped;
+                            break;
+                        }
+
+                        totalCount += result.Count;
+
+                    } while (!result.EndOfMessage && !linkedTokenSource.IsCancellationRequested);
+
+                    if (this.state == EState.Stopped || linkedTokenSource.IsCancellationRequested)
+                        break;
+
+                    if (totalCount < 2)
                         throw new Exception("Invalid EEBUS payload received, expected message size of at least 2!");
 
-                    ShipMessageBase message = ShipMessageBase.Create(receiveBuffer, this);
-                    //Console.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " <-- " + message.ToString() + "\n");
+                    // Use only the filled part of the buffer
+                    ReadOnlySpan<byte> messageSpan = receiveBuffer.AsSpan(0, totalCount);
+
+                    ShipMessageBase? message = ShipMessageBase.Create(messageSpan, this);
                     if (message == null)
                         throw new Exception("Message couldn't be recognized");
+
                     (this.state, this.subState, string error) = message.ClientTest(this.state);
 
                     if (this.state == EState.Stopped && error != null)
@@ -85,12 +117,11 @@ namespace EEBUS
             }
             catch (Exception ex)
             {
-
+                // consider logging ex
             }
             finally
             {
                 beat.Change(Timeout.Infinite, Timeout.Infinite);
-                //eccSend.Change(Timeout.Infinite, Timeout.Infinite);
 
                 if (null != this.Remote)
                     this.Remote.SetClientState(EState.Stopped);

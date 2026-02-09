@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+﻿using System.Text.Json.Serialization;
 
 using EEBUS.Messages;
 
@@ -29,7 +29,7 @@ namespace EEBUS.SHIP.Messages
 
 		public new class Class : ShipControlMessage<AccessMethodsMessage>.Class
 		{
-			public override AccessMethodsMessage Create( byte[] data, Connection connection )
+			public override AccessMethodsMessage Create(ReadOnlySpan<byte> data, Connection connection )
 			{
 				return template.FromJsonVirtual( data, connection );
 			}
@@ -60,14 +60,14 @@ namespace EEBUS.SHIP.Messages
 	[System.SerializableAttribute()]
 	public class AccessMethodsType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)] 
+		[JsonPropertyName("id")]
 		public string					   id		  { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)] 
-		public AccessMethodsTypeDnsSd_mDns dnsSd_mDns { get; set; }
+		[JsonPropertyName("dnsSd_mDns")]
+		public AccessMethodsTypeDnsSd_mDns? dnsSd_mDns { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)] 
-		public AccessMethodsTypeDns		   dns		  { get; set; }
+		[JsonPropertyName("dns")]
+		public AccessMethodsTypeDns?		   dns		  { get; set; }
 	}
 
 	/// <remarks/>

@@ -7,7 +7,6 @@ using EEBUS.UseCases.ControllableSystem;
 using Makaretu.Dns;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -161,7 +160,7 @@ namespace EEBUS.Net
             }
         }
 
-        public JsonObject GetLocal()
+        public JsonObject? GetLocal()
         {
             LocalDevice? local = _devices?.Local;
 

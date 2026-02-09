@@ -1,9 +1,7 @@
-﻿
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Xml;
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json.Serialization;
 
 using EEBUS.DataStructures;
 using EEBUS.Messages;
@@ -21,7 +19,7 @@ namespace EEBUS.SPINE.Commands
 
 		public new class Class : SpineCmdPayload<CmdLoadControlLimitListDataType>.Class
 		{
-			public override SpineCmdPayloadBase CreateAnswer( DatagramType datagram, HeaderType header, Connection connection )
+			public override async ValueTask<SpineCmdPayloadBase> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
 				if ( datagram.header.cmdClassifier == "read" )
 				{
@@ -46,18 +44,24 @@ namespace EEBUS.SPINE.Commands
 				}
 			}
 
-			public override void Evaluate( Connection connection, DatagramType datagram )
+			public override async ValueTask EvaluateAsync( Connection connection, DatagramType datagram )
 			{
 				if ( datagram.header.cmdClassifier != "write" )
 					return;
 
-				LoadControlLimitListData command  = datagram.payload.ToObject<LoadControlLimitListData>();
+				var command = datagram.payload == null
+					? null
+					: System.Text.Json.JsonSerializer.Deserialize<LoadControlLimitListData>(datagram.payload);
+				if (command == null || command.cmd == null || command.cmd.Length == 0)
+					return;
+
 				LoadControlLimitDataType received = command.cmd[0].loadControlLimitListData.loadControlLimitData[0];
 
 				LoadControlLimitDataStructure data = connection.Local.GetDataStructure<LoadControlLimitDataStructure>( received.limitId );
 
 				data.LimitActive = received.isLimitActive;
-				data.Number		 = received.value.number;
+				// received.value.number is nullable, keep existing number if null
+				data.Number		 = received.value.number ?? data.Number;
 				data.EndTime	 = received.timePeriod.endTime;
 
 				data.SendEvent( connection );
@@ -82,10 +86,8 @@ namespace EEBUS.SPINE.Commands
 
 				data.loadControlLimitData = datas.ToArray();
 
-				notify.datagram.payload = JObject.FromObject( limitData );
-
 				DataMessage limitMessage = new DataMessage();
-				limitMessage.SetPayload( JObject.FromObject( notify ) );
+				limitMessage.SetPayload(System.Text.Json.JsonSerializer.SerializeToNode(limitData));
 
 				connection.PushDataMessage( limitMessage );
 			}
@@ -122,9 +124,10 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class TimePeriodType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+		[JsonPropertyName("startTime")]
 		public string startTime	{ get; set; }
 
+		[JsonPropertyName("endTime")]
 		public string endTime	{ get; set; }
 	}
 }

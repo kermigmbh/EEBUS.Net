@@ -1,7 +1,5 @@
 ﻿using System.Text.Json.Serialization;
 
-using Newtonsoft.Json.Converters;
-
 using EEBUS.Messages;
 
 namespace EEBUS.SHIP.Messages
@@ -24,7 +22,7 @@ namespace EEBUS.SHIP.Messages
 
 		public new class Class : ShipControlMessage<PinCheckMessage>.Class
 		{
-			public override PinCheckMessage Create( byte[] data, Connection connection )
+			public override PinCheckMessage Create(ReadOnlySpan<byte> data, Connection connection )
 			{
 				return template.FromJsonVirtual( data, connection );
 			}
@@ -103,10 +101,9 @@ namespace EEBUS.SHIP.Messages
 		public bool			inputPermissionSpecified { get; set; }
 	}
 
-	/// <remarks/>
-	[System.SerializableAttribute()]
-	[JsonConverter(typeof(StringEnumConverter))]
-	public enum PinStateType
+    /// <remarks/>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public enum PinStateType
 	{
 		required,
 		optional,

@@ -1,5 +1,5 @@
 ﻿using EEBUS.Messages;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -14,7 +14,7 @@ namespace EEBUS.SPINE.Commands
 
 		public new class Class : SpineCmdPayload<CmdMeasurementDescriptionListDataType>.Class
 		{
-			public override SpineCmdPayloadBase CreateAnswer( DatagramType datagram, HeaderType header, Connection connection )
+			public override async ValueTask<SpineCmdPayloadBase> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
 				if ( datagram.header.cmdClassifier == "read" )
 				{
@@ -104,7 +104,7 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class CmdMeasurementDescriptionListDataType : CmdType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+		[JsonPropertyName("measurementDescriptionListData")]
 		public MeasurementDescriptionListDataType measurementDescriptionListData { get; set; }
 	}
 
