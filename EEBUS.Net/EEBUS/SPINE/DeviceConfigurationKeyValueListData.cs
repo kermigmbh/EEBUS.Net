@@ -51,11 +51,12 @@ namespace EEBUS.SPINE.Commands
 				int		  keyId = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].keyId;
 				ValueType value = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].value;
 
-				KeyValue keyValue = connection.Local.KeyValues.FirstOrDefault( kv => kv.Data.keyId == keyId );
-				if ( null != keyValue )
-					keyValue.SetValue( value );
-
-				keyValue.SendEvent( connection );
+				KeyValue? keyValue = connection.Local.KeyValues.FirstOrDefault( kv => kv.Data.keyId == keyId );
+				if (null != keyValue)
+				{
+					keyValue.SetValue(value);
+					keyValue.SendEvent(connection);
+				}
 			}
 		}
 	}
