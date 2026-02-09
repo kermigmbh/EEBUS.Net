@@ -84,10 +84,11 @@ namespace EEBUS.SPINE.Commands
 				foreach (LoadControlLimitDataStructure structure in connection.Local.GetDataStructures<LoadControlLimitDataStructure>())
 					datas.Add(structure.Data);
 
-				data.loadControlLimitData = datas.ToArray();
+                data.loadControlLimitData = datas.ToArray();
+                notify.datagram.payload = limitData.ToJsonNode();
 
-				DataMessage limitMessage = new DataMessage();
-				limitMessage.SetPayload(System.Text.Json.JsonSerializer.SerializeToNode(limitData));
+                DataMessage limitMessage = new DataMessage();
+				limitMessage.SetPayload(System.Text.Json.JsonSerializer.SerializeToNode(notify));
 
 				connection.PushDataMessage( limitMessage );
 			}
