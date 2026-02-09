@@ -57,7 +57,7 @@
 
 			if ( foundNew )
 				FireRemoteDeviceFound( remote );
-
+			remote.ReNewAge();
 			return remote;
 		}
 
