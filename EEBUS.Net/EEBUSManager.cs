@@ -1,8 +1,10 @@
 ﻿using EEBUS.DataStructures;
 using EEBUS.KeyValues;
+using EEBUS.Messages;
 using EEBUS.Models;
 using EEBUS.Net.Events;
 using EEBUS.SHIP.Messages;
+using EEBUS.SPINE.Commands;
 using EEBUS.UseCases.ControllableSystem;
 using Makaretu.Dns;
 using Microsoft.AspNetCore.Http;
@@ -272,6 +274,42 @@ namespace EEBUS.Net
             DataStructure? structure = local.GetDataStructures(type).FirstOrDefault();
             return structure;
         }
+
+        //public void SendReadMessage(string host, int port, int[] sourceEntityAddress, int sourceFeatureIndex, SKI targetSki, int[] destinationEntityAddress, int destinationFeatureIndex, string payloadType)
+        //{
+        //    RemoteDevice? remote = _devices.Remote.FirstOrDefault(r => r.SKI == targetSki);
+        //    if (remote == null) return;
+
+        //    AddressType source = new AddressType { device = _devices.Local.DeviceId, entity = sourceEntityAddress, feature = sourceFeatureIndex };
+        //    AddressType destination = new AddressType { device = remote.DeviceId, entity = destinationEntityAddress, feature = destinationFeatureIndex };
+        //    HostString hs = new HostString(host, port);
+
+        //    Connection? activeConnection = null;
+
+        //    activeConnection = Server.Get(hs);  //Try to either get the server...
+        //    if (activeConnection == null)
+        //    {
+        //        activeConnection = _clients.GetValueOrDefault(hs);  //...or the client connection
+        //    }
+
+        //    if (activeConnection == null) return;
+
+        //    SpineDatagramPayload read = new SpineDatagramPayload();
+        //    read.datagram.header.addressSource = source;
+        //    read.datagram.header.addressDestination = destination;
+        //    read.datagram.header.msgCounter = DataMessage.NextCount;
+        //    read.datagram.header.cmdClassifier = "read";
+
+        //   // var payload = new DeviceDiagnosisHeartbeatData.Class().CreateRead(activeConnection);
+        //    var cmdClass = SpineCmdPayloadBase.GetClass(payloadType);
+
+        //    read.datagram.payload = payload.ToJsonNode();// JsonSerializer.SerializeToNode(heartbeatReadPayload);
+
+        //    DataMessage message = new DataMessage();
+        //    message.SetPayload(JsonSerializer.SerializeToNode(read) ?? throw new Exception("Failed to serialize read message"));
+
+        //    activeConnection.PushDataMessage(message);
+        //}
 
         //public JsonArray GetRemotes()
         //{
