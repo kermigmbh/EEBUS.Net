@@ -265,6 +265,15 @@ namespace EEBUS.Net
             return JsonSerializer.SerializeToNode(projection, options)!.AsArray();
         }
 
+        public DataStructure? GetLocalData(string type)
+        {
+            LocalDevice? local = _devices?.Local;
+            if (local == null) return null;
+
+            DataStructure? structure = local.GetDataStructures(type).FirstOrDefault();
+            return structure;
+        }
+
         //public JsonArray GetRemotes()
         //{
         //    JsonArray devlist = new();

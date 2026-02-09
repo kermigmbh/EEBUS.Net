@@ -84,7 +84,7 @@ namespace EEBUS
 				{
 					//mdns.Start();
 
-					//_sd.Advertise( this.serviceProfile );
+					_sd.Advertise( this.serviceProfile );
 
 					await Task.Delay( -1, cancellationToken ).ConfigureAwait( false );
 				}
