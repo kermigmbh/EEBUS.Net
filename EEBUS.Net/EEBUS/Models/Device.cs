@@ -32,7 +32,9 @@ namespace EEBUS.Models
 		public List<KeyValue>	   KeyValues	  = new();
 		public List<UseCaseEvents> UseCaseEvents  = new();
 
-		public override bool Equals( object obj )
+		public DateTimeOffset HeartbeatValidUntil { get; set; } = DateTimeOffset.MaxValue;
+
+        public override bool Equals( object obj )
 		{
 			if ( (obj == null) || ! GetType().Equals( obj.GetType() ) )
 				return false;

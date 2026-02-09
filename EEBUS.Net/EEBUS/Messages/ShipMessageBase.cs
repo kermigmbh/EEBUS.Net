@@ -10,24 +10,24 @@ namespace EEBUS.Messages
 	{
 		public abstract class Class
 		{
-			public abstract ShipMessageBase Create(ReadOnlySpan<byte> data, Connection connection );
+			public abstract ShipMessageBase Create(ReadOnlySpan<byte> data/*, Connection connection */);
 		}
 
 		static protected Dictionary<string, Class> messages = new Dictionary<string, Class>();
 
-		protected Connection connection;
+		//protected Connection connection;
 
 		public virtual string GetId()
 		{
 			return null;
 		}
 
-		public abstract ShipMessageBase FromJsonVirtual(ReadOnlySpan<byte> data, Connection connection );
+		public abstract ShipMessageBase FromJsonVirtual(ReadOnlySpan<byte> data/*, Connection connection */);
 
-		static public ShipMessageBase? Create( ReadOnlySpan<byte> data, Connection connection )
+		static public ShipMessageBase? Create( ReadOnlySpan<byte> data/*, Connection connection */)
 		{
 			Class cls = GetClass( data );
-			return cls != null ? cls.Create( data, connection ) : null;
+			return cls != null ? cls.Create( data/*, connection */) : null;
 		}
 
 		public virtual (Connection.EState, Connection.ESubState, string) ServerTest( Connection.EState state )
@@ -80,6 +80,7 @@ namespace EEBUS.Messages
 
 		static protected string JsonFromEEBUSJson( string json )
 		{
+			
 			json = json.Replace( "[{", "{" );
 			json = json.Replace( "},{", "," );
 			json = json.Replace( "}]", "}" );

@@ -35,9 +35,9 @@ namespace EEBUS.SHIP.Messages
 
 		public new class Class : ShipDataMessage<DataMessage>.Class
 		{
-			public override DataMessage Create(ReadOnlySpan<byte> data, Connection connection )
+			public override DataMessage Create(ReadOnlySpan<byte> data/*, Connection connection */)
 			{
-				DataMessage dm = template.FromJsonVirtual( data, connection );
+				DataMessage dm = template.FromJsonVirtual( data/*, connection*/ );
 				return dm;
 			}
 		}
@@ -79,7 +79,7 @@ namespace EEBUS.SHIP.Messages
 						return (connection.State, connection.SubState);
 					}
 					
-					SpineDatagramPayload? answer = await payload.CreateAnswerAsync( NextCount, this.connection );
+					SpineDatagramPayload? answer = await payload.CreateAnswerAsync( NextCount,  connection );
 
 					if ( null != answer )
 					{

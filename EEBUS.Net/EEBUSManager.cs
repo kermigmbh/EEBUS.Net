@@ -220,12 +220,17 @@ namespace EEBUS.Net
                 lpcDuration = lpcDuration,
                 lpcFailsafeLimit = lpcFailsafeLimit,
 
+                //heartbeatTimeout = 
+
+
                 lppActive = lppActive,
                 lppLimit = lppLimit,
                 lppDuration = lppDuration,
                 lppFailsafeLimit = lppFailsafeLimit,
 
                 failsafeDuration = failsafeDuration
+
+
             };
 
 
@@ -259,7 +264,8 @@ namespace EEBUS.Net
                 ski = rd.SKI.ToReadable(),
                 url = rd.Url,
                 serverState = rd.serverState,
-                clientState = rd.clientState
+                clientState = rd.clientState,
+
             });
 
             // Root will be a JsonArray because projection is an IEnumerable<anonymous>
