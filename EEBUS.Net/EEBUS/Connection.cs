@@ -224,6 +224,56 @@ namespace EEBUS
             this.WaitingMessages.Push(message);
         }
 
+
+        private byte[] _receiveBuffer = new byte[10240];
+        protected async Task<ShipMessageBase> ReceiveAsync(CancellationToken cancellationToken)
+        {
+            int totalCount = 0;
+            WebSocketReceiveResult result;
+
+            //using CancellationTokenSource timeoutCts = new CancellationTokenSource(SHIPMessageTimeout.CMI_TIMEOUT);
+            //using CancellationTokenSource linkedTokenSource =
+            //    CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+
+            // Accumulate frames until EndOfMessage
+            do
+            {
+                if (totalCount >= _receiveBuffer.Length)
+                    throw new Exception("EEBUS payload too large for receive buffer.");
+
+                var segment = new ArraySegment<byte>(
+                    _receiveBuffer,
+                    totalCount,
+                    _receiveBuffer.Length - totalCount);
+
+                result = await ws.ReceiveAsync(segment, cancellationToken).ConfigureAwait(false);
+
+                if (result.CloseStatus.HasValue || result.MessageType == WebSocketMessageType.Close)
+                {
+                    this.state = EState.Stopped;
+                    break;
+                }
+
+                totalCount += result.Count;
+
+            } while (!result.EndOfMessage && !cancellationToken.IsCancellationRequested);
+
+            if (this.state == EState.Stopped || cancellationToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException();
+            }
+
+            ReadOnlySpan<byte> messageSpan = _receiveBuffer.AsSpan(0, totalCount);
+
+            ShipMessageBase? message = ShipMessageBase.Create(messageSpan);
+            if (message == null)
+            {
+                throw new Exception("Message couldn't be recognized");
+            }
+            return message;
+        }
+
+
         public void RequestRemoteDeviceConfiguration()
         {
             SpineDatagramPayload read = new SpineDatagramPayload();
@@ -293,5 +343,9 @@ namespace EEBUS
 
             PushDataMessage(message);
         }
+
+
+
+
     }
 }

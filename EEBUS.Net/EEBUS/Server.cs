@@ -50,55 +50,15 @@ namespace EEBUS
 			//var md         = new MeasurementDataTask();
 			//using var mdSend   = new System.Threading.Timer( md.SendData, this, 3000, 3000 );
 
-			// Reuse a single receive buffer for all messages
-			byte[] receiveBuffer = new byte[10240];
-
+		 
 			try
 			{
 				while (this.ws.State == WebSocketState.Open)
 				{
-					int totalCount = 0;
-					WebSocketReceiveResult result;
-
-					// If you want a timeout, plug SHIPMessageTimeout.CMI_TIMEOUT back in
+					 
 					using CancellationTokenSource cts = new CancellationTokenSource();
 					CancellationToken token = cts.Token;
-
-					// Accumulate frames until EndOfMessage
-					do
-					{
-						if (totalCount >= receiveBuffer.Length)
-							throw new Exception("EEBUS payload too large for receive buffer.");
-
-						var segment = new ArraySegment<byte>(
-							receiveBuffer,
-							totalCount,
-							receiveBuffer.Length - totalCount);
-
-						result = await this.ws.ReceiveAsync(segment, token).ConfigureAwait(false);
-
-						if (result.CloseStatus.HasValue || result.MessageType == WebSocketMessageType.Close)
-						{
-							this.state = EState.Stopped;
-							break;
-						}
-
-						totalCount += result.Count;
-
-					} while (!result.EndOfMessage && !token.IsCancellationRequested);
-
-					if (this.state == EState.Stopped || token.IsCancellationRequested)
-						break;
-
-					if (totalCount < 2)
-						throw new Exception("Invalid EEBUS payload received, expected message size of at least 2!");
-
-					ReadOnlySpan<byte> messageSpan = receiveBuffer.AsSpan(0, totalCount);
-
-					ShipMessageBase message = ShipMessageBase.Create(messageSpan, this);
-					//Console.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " <-- " + message.ToString() + "\n");
-					if (message == null)
-						throw new Exception("Message couldn't be recognized");
+					var message = await ReceiveAsync(token);
 
 					Debug.WriteLine("<=== " + message.ToString());
 

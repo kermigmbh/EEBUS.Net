@@ -1,41 +1,68 @@
-﻿using System.Net.WebSockets;
+﻿using EEBUS.Enums;
+using EEBUS.Messages;
+using System.Net.WebSockets;
+using System.Threading;
+using static EEBUS.Connection;
 
 namespace EEBUS
 {
-	public class EEBusWebSocket
-	{
-		public EEBusWebSocket( WebSocket ws )
-		{
-			this.ws = ws;
-		}
+    public class EEBusWebSocket
+    {
+        public EEBusWebSocket(WebSocket ws)
+        {
+            this._ws = ws;
 
-		private WebSocket ws;
+        }
 
-		public async Task<byte[]> Receive( int timeout )
-		{
-			int			 chunksReceived	  = 0;
-			int			 framePayloadSize = 0;
-			Memory<byte> framePayload	  = null;
-			Memory<byte> buffer			  = new Memory<byte>( new byte[1024] );
-			
-			CancellationTokenSource     cts = new CancellationTokenSource( timeout );
-			ValueWebSocketReceiveResult result;
+        private WebSocket? _ws;
 
-			do
-			{
-				result = await this.ws.ReceiveAsync( buffer, cts.Token ).ConfigureAwait( false );
+        private byte[] _receiveBuffer = new byte[10240];
 
-				if ( chunksReceived == 0 )
-					framePayload = new Memory<byte>( new byte[result.Count] ); //initialize with proper size
+        public WebSocketState SocketState
+        {
+            get
 
-				Memory<byte> data = buffer.Slice( 0, result.Count );
-				data.CopyTo( framePayload.Slice( framePayloadSize, result.Count ) );
+            {
+                return _ws?.State ?? WebSocketState.None;
+            }
+        }
 
-				framePayloadSize += result.Count;
-				chunksReceived++;
-			} while ( ! result.EndOfMessage );
+        public async Task<ShipMessageBase?> ReceiveAsync(CancellationToken cancellationToken)
+        {
+            int totalCount = 0;
+            WebSocketReceiveResult result;
 
-			return framePayload.ToArray();
-		}
-	}
+            //using CancellationTokenSource timeoutCts = new CancellationTokenSource(SHIPMessageTimeout.CMI_TIMEOUT);
+            //using CancellationTokenSource linkedTokenSource =
+            //    CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+
+            // Accumulate frames until EndOfMessage
+            do
+            {
+                if (totalCount >= _receiveBuffer.Length)
+                    throw new Exception("EEBUS payload too large for receive buffer.");
+
+                var segment = new ArraySegment<byte>(
+                    _receiveBuffer,
+                    totalCount,
+                    _receiveBuffer.Length - totalCount);
+
+                result = await _ws.ReceiveAsync(segment, cancellationToken).ConfigureAwait(false);
+
+                if (result.CloseStatus.HasValue || result.MessageType == WebSocketMessageType.Close)
+                {
+                    //this.state = EState.Stopped;
+                    break;
+                }
+
+                totalCount += result.Count;
+
+            } while (!result.EndOfMessage && !cancellationToken.IsCancellationRequested);
+
+            ReadOnlySpan<byte> messageSpan = _receiveBuffer.AsSpan(0, totalCount);
+
+            ShipMessageBase? message = ShipMessageBase.Create(messageSpan);
+            return message;
+        }
+    }
 }

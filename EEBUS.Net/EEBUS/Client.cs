@@ -37,6 +37,7 @@ namespace EEBUS
             this.subState = ESubState.None;
 
             InitMessage initMessage = new InitMessage();
+            
             await initMessage.Send(this.ws).ConfigureAwait(false);
 
             var heart = new HeartBeatTask();
@@ -46,57 +47,18 @@ namespace EEBUS
 
             //var md = new MeasurementDataTask();
             //var mdSend = new System.Threading.Timer(md.SendData, this, 3000, 3000);
-            // Reuse a single receive buffer
-            byte[] receiveBuffer = new byte[10240];
+           
 
             try
             {
                 while (this.state != EState.Stopped && !cancellationToken.IsCancellationRequested)
                 {
-                    int totalCount = 0;
-                    WebSocketReceiveResult result;
-
+                    
                     using CancellationTokenSource timeoutCts = new CancellationTokenSource(SHIPMessageTimeout.CMI_TIMEOUT);
                     using CancellationTokenSource linkedTokenSource =
                         CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
 
-                    // Accumulate frames until EndOfMessage
-                    do
-                    {
-                        if (totalCount >= receiveBuffer.Length)
-                            throw new Exception("EEBUS payload too large for receive buffer.");
-                        
-                        var segment = new ArraySegment<byte>(
-                            receiveBuffer,
-                            totalCount,
-                            receiveBuffer.Length - totalCount);
-
-                        result = await this.ws
-                            .ReceiveAsync(segment, linkedTokenSource.Token)
-                            .ConfigureAwait(false);
-
-                        if (result.CloseStatus.HasValue || result.MessageType == WebSocketMessageType.Close)
-                        {
-                            this.state = EState.Stopped;
-                            break;
-                        }
-
-                        totalCount += result.Count;
-
-                    } while (!result.EndOfMessage && !linkedTokenSource.IsCancellationRequested);
-
-                    if (this.state == EState.Stopped || linkedTokenSource.IsCancellationRequested)
-                        break;
-
-                    if (totalCount < 2)
-                        throw new Exception("Invalid EEBUS payload received, expected message size of at least 2!");
-
-                    // Use only the filled part of the buffer
-                    ReadOnlySpan<byte> messageSpan = receiveBuffer.AsSpan(0, totalCount);
-
-                    ShipMessageBase? message = ShipMessageBase.Create(messageSpan, this);
-                    if (message == null)
-                        throw new Exception("Message couldn't be recognized");
+                    var message = await ReceiveAsync(linkedTokenSource.Token);
 
                     (this.state, this.subState, string error) = message.ClientTest(this.state);
 

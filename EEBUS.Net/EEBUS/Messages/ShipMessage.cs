@@ -45,12 +45,12 @@ namespace EEBUS.Messages
 			return Encoding.UTF8.GetBytes(json);
 		}
 
-		public override T FromJsonVirtual(ReadOnlySpan<byte> data, Connection connection )
+		public override T FromJsonVirtual(ReadOnlySpan<byte> data/*, Connection connection*/ )
 		{
-			return FromJson( data, connection );
+			return FromJson( data/*, connection*/ );
 		}
 
-		static public T? FromJson(ReadOnlySpan<byte> data, Connection connection )
+		static public T? FromJson(ReadOnlySpan<byte> data/*, Connection connection*/ )
 		{
 			if ( data == null || data.Length < 2 )
 				return null;
@@ -63,7 +63,7 @@ namespace EEBUS.Messages
 				PropertyNameCaseInsensitive = true
 			};
 			T obj = JsonSerializer.Deserialize<T>( dataStr, options );
-			obj.connection = connection;
+			//obj.connection = connection;
 
 			return obj;
 		}
@@ -97,7 +97,7 @@ namespace EEBUS.Messages
 			if ( (result.Count < 2) || (msg[0] != template.GetDataType()) )
 				throw new Exception( $"Expected message of type {template.GetDataType()}!" );
 
-			return template.FromJsonVirtual( msg, null );
+			return template.FromJsonVirtual( msg/*, null*/ );
 		}
 	}
 }

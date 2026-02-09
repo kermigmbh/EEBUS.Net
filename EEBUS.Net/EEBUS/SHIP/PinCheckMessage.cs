@@ -22,9 +22,9 @@ namespace EEBUS.SHIP.Messages
 
 		public new class Class : ShipControlMessage<PinCheckMessage>.Class
 		{
-			public override PinCheckMessage Create(ReadOnlySpan<byte> data, Connection connection )
+			public override PinCheckMessage Create(ReadOnlySpan<byte> data/*, Connection connection*/ )
 			{
-				return template.FromJsonVirtual( data, connection );
+				return template.FromJsonVirtual( data/*, connection */);
 			}
 		}
 

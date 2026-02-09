@@ -53,13 +53,21 @@ namespace EEBUS.SPINE.Commands
 				DeviceDiagnosisHeartbeatData? payload = datagram.payload == null
 					? null
 					: System.Text.Json.JsonSerializer.Deserialize<DeviceDiagnosisHeartbeatData>(datagram.payload);
-				string timeout = payload.cmd[0].deviceDiagnosisHeartbeatData.heartbeatTimeout;
-				
-				List<LPCorLPPEvents> lpcOrLppEvents = connection.Local.GetUseCaseEvents<LPCorLPPEvents>();
-				foreach (var lpcOrLpp in lpcOrLppEvents)
+				string? timeout = payload?.cmd[0].deviceDiagnosisHeartbeatData.heartbeatTimeout;
+
+
+				var remote = connection.Remote;
+                if (!string.IsNullOrEmpty(timeout) && remote != null)
 				{
-					lpcOrLpp.DataUpdateHeartbeat(0, connection.Remote, (uint)XmlConvert.ToTimeSpan(timeout).TotalSeconds);
-				}
+					var timespan = XmlConvert.ToTimeSpan(timeout);
+                    remote.HeartbeatValidUntil = DateTime.UtcNow.Add(XmlConvert.ToTimeSpan(timeout));
+                    List<LPCorLPPEvents> lpcOrLppEvents = connection.Local.GetUseCaseEvents<LPCorLPPEvents>();
+                    foreach (var lpcOrLpp in lpcOrLppEvents)
+                    {
+                        lpcOrLpp.DataUpdateHeartbeat(0, remote, (uint)XmlConvert.ToTimeSpan(timeout).TotalSeconds);
+                    }
+                }
+				
 			}
 		}
 	}
