@@ -67,7 +67,7 @@ namespace EEBUS
 					if ( message == null )
 						throw new Exception( "Message couldn't be recognized" );
 
-					Debug.WriteLine( "===> " + message.ToString() );
+					Debug.WriteLine( "<=== " + message.ToString() );
 
 					(this.state, this.subState, string error) = message.ServerTest( this.state );
 
