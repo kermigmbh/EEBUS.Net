@@ -61,7 +61,7 @@ namespace EEBUS.KeyValues
 			this.Value = value.scaledNumber?.number ?? this.Value;
 		}
 
-		public override void SendEvent( Connection connection )
+		public override async Task SendEventAsync( Connection connection )
 		{
 		}
 	}

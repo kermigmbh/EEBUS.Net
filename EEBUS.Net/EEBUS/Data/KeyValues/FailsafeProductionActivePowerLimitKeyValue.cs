@@ -61,12 +61,12 @@ namespace EEBUS.KeyValues
 			this.Value = value.scaledNumber?.number ?? this.Value;
 		}
 
-		public override void SendEvent( Connection connection )
+		public override async Task SendEventAsync( Connection connection )
 		{
 			List<LPPEvents> lppEvents = connection.Local.GetUseCaseEvents<LPPEvents>();
 			foreach (var lpp in lppEvents)
 			{
-				lpp.DataUpdateFailsafeProductionActivePowerLimit(0, this.Value);
+				await lpp.DataUpdateFailsafeProductionActivePowerLimitAsync(0, this.Value);
 			}
 		}
 	}

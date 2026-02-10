@@ -64,7 +64,7 @@ namespace EEBUS.SPINE.Commands
                     List<LPCorLPPEvents> lpcOrLppEvents = connection.Local.GetUseCaseEvents<LPCorLPPEvents>();
                     foreach (var lpcOrLpp in lpcOrLppEvents)
                     {
-                        lpcOrLpp.DataUpdateHeartbeat(0, remote, (uint)XmlConvert.ToTimeSpan(timeout).TotalSeconds);
+                        await lpcOrLpp.DataUpdateHeartbeatAsync(0, remote, (uint)XmlConvert.ToTimeSpan(timeout).TotalSeconds);
                     }
                 }
 				

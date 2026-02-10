@@ -74,7 +74,7 @@ namespace EEBUS.SPINE.Commands
                 data.Number = received.value.number ?? data.Number;
                 data.EndTime = received.timePeriod.endTime;
 
-                data.SendEvent(connection);
+                await data.SendEventAsync(connection);
 
                 SendNotify(connection, datagram);
             }

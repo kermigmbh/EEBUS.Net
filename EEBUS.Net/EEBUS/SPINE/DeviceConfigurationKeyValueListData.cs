@@ -55,7 +55,7 @@ namespace EEBUS.SPINE.Commands
 				if (null != keyValue)
 				{
 					keyValue.SetValue(value);
-					keyValue.SendEvent(connection);
+					await keyValue.SendEventAsync(connection);
 				}
 			}
 		}

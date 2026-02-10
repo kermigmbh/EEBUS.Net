@@ -10,6 +10,6 @@
 		protected string	Type { get; private set; }
 		public virtual uint Id  { get; set; }
 
-		public abstract void SendEvent( Connection connection );
+		public abstract Task SendEventAsync( Connection connection );
 	}
 }

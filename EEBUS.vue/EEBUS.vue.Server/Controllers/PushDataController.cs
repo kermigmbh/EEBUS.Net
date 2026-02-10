@@ -48,12 +48,12 @@ namespace EEBUS.Controllers
 
 		private class LPCEventHandler : LPCEvents
 		{
-			public void DataUpdateLimit( int counter, bool active, long limit, TimeSpan duration )
+			public async Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration )
 			{
 				using var _ = Push( new LimitDataChanged( true, active, limit, duration ) );
 			}
 
-			public void DataUpdateFailsafeConsumptionActivePowerLimit( int counter, long limit )
+			public async Task DataUpdateFailsafeConsumptionActivePowerLimitAsync( int counter, long limit )
 			{
 				using var _ = Push( new FailsafeLimitDataChanged( true, limit ) );
 			}
@@ -61,12 +61,12 @@ namespace EEBUS.Controllers
 
 		private class LPPEventHandler : LPPEvents
 		{
-			public void DataUpdateLimit( int counter, bool active, long limit, TimeSpan duration )
+			public async Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration )
 			{
 				using var _ = Push( new LimitDataChanged( false, active, limit, duration ) );
 			}
 
-			public void DataUpdateFailsafeProductionActivePowerLimit( int counter, long limit  )
+			public async Task DataUpdateFailsafeProductionActivePowerLimitAsync( int counter, long limit  )
 			{
 				using var _ = Push( new FailsafeLimitDataChanged( false, limit ) );
 			}
@@ -74,12 +74,12 @@ namespace EEBUS.Controllers
 
 		private class LPCorLPPEventHandler : LPCorLPPEvents
 		{
-			public void DataUpdateFailsafeDurationMinimum( int counter, TimeSpan duration )
+			public async Task DataUpdateFailsafeDurationMinimumAsync( int counter, TimeSpan duration )
 			{
 				using var _ = Push( new FailsafeLimitDurationChanged( duration ) );
 			}
 
-			public void DataUpdateHeartbeat( int counter, RemoteDevice device, uint timeout )
+			public async Task DataUpdateHeartbeatAsync( int counter, RemoteDevice device, uint timeout )
 			{
 				using var _ = Push( new HeartbeatReceived( device, timeout ) );
 			}
