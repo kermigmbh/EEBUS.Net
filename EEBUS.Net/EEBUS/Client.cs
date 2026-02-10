@@ -26,9 +26,10 @@ namespace EEBUS
             _ = Task.Run(() => RunInternalAsync(_cts.Token));
 		}
 
-        public void Stop()
+        public  override Task CloseAsync()
         {
             _cts?.Cancel(); 
+            return Task.CompletedTask;
         }
 
 		private async Task RunInternalAsync(CancellationToken cancellationToken)

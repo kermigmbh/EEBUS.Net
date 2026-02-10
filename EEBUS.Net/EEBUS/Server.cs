@@ -102,11 +102,11 @@ namespace EEBUS
 			beat.Change(Timeout.Infinite, Timeout.Infinite);
 			//eccSend.Change( Timeout.Infinite, Timeout.Infinite );
 
-			await Close().ConfigureAwait(false);
+			await CloseAsync().ConfigureAwait(false);
 		}
 
-		public async Task Close()
-		{
+        public override async Task CloseAsync()
+        {
 			try
 			{
 				await this.ws.CloseOutputAsync( WebSocketCloseStatus.NormalClosure, "Closing!", CancellationToken.None ).ConfigureAwait( false );

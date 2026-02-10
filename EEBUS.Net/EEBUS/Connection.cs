@@ -16,12 +16,20 @@ using EEBUS.Net.EEBUS.UseCases.GridConnectionPoint;
 
 namespace EEBUS
 {
-    public class Connection
+    public abstract class Connection
     {
         protected HostString host;
         protected WebSocket ws;
         protected EState state;
         protected ESubState subState;
+
+        public HostString RemoteHost
+        {
+            get
+            {
+                return host;
+            }
+        }
 
         public enum EState
         {
@@ -211,6 +219,8 @@ namespace EEBUS
         public DataMessageQueue WaitingMessages { get; protected set; }
 
 
+        public abstract Task CloseAsync();
+        
         protected RemoteDevice? GetRemote(string id)
         {
             if (null == id)

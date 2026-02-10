@@ -1,4 +1,5 @@
 ﻿using EEBUS.Models;
+using EEBUS.Net.Events;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -20,12 +21,14 @@ namespace EEBUS
         private Devices devices;
         private CancellationTokenSource _cts = new CancellationTokenSource();
         private WebApplication? _app;
+        public event EventHandler<DeviceConnectionChangedEventArgs>? OnDeviceConnectionChanged;
+
 
         public SHIPListener(Devices devices)
         {
             this.devices = devices;
         }
-      
+
         public Task StartAsync(int port)
         {
             _cts.Cancel();
@@ -92,6 +95,7 @@ namespace EEBUS
             //app.Map("/{*path}", async httpContext =>
             app.Run(async httpContext =>
             {
+                Server? server = null;
                 try
                 {
                     if (!httpContext.WebSockets.IsWebSocketRequest)
@@ -112,11 +116,12 @@ namespace EEBUS
                         return;
                     }
 
-                    Server server = Server.Get(httpContext.Request.Host);
+                    server = Server.Get(httpContext.Request.Host);
                     if (server != null)
                     {
                         Debug.WriteLine("Middleware Weiterleitung, Server vorhanden und stoppen");
-                        await server.Close().ConfigureAwait(false);
+                        await server.CloseAsync().ConfigureAwait(false);
+                        OnDeviceConnectionChanged?.Invoke(this, new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Disconnected });
                     }
 
                     var socket = await httpContext.WebSockets.AcceptWebSocketAsync("ship").ConfigureAwait(false);
@@ -127,7 +132,9 @@ namespace EEBUS
                     }
 
                     server = new Server(httpContext.Request.Host, socket, this.devices);
+                    OnDeviceConnectionChanged?.Invoke(this, new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Connected });
                     await server.Do().ConfigureAwait(false);
+
                 }
                 catch (Exception ex)
                 {
@@ -136,13 +143,21 @@ namespace EEBUS
                     httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
                     await httpContext.Response.WriteAsync("Error while processing websocket: " + ex.Message).ConfigureAwait(false);
                 }
+                finally
+                {
+                    if (server != null)
+                    {
+                        OnDeviceConnectionChanged?.Invoke(this, new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Disconnected });
+                    }
+
+                }
             });
 
             app.Urls.Add($"https://0.0.0.0:{port}");
             //app.UseCors("AllowAll");
             await app.RunAsync(cancellationToken);
 
-           
+
 
         }
         private bool ProtocolSupported(HttpContext httpContext)

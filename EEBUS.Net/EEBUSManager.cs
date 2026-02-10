@@ -7,6 +7,7 @@ using EEBUS.UseCases.ControllableSystem;
 using Makaretu.Dns;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -29,7 +30,7 @@ namespace EEBUS.Net
     public class EEBUSManager : IDisposable
     {
 
-        private ConcurrentDictionary<HostString, Client> _clients = new();
+        private ConcurrentDictionary<HostString, Connection> _connections = new();
         private Devices _devices;
         private readonly MDNSClient _mDNSClient;
         private readonly MDNSService _mDNSService;
@@ -312,7 +313,7 @@ namespace EEBUS.Net
                 HostString hostString = new HostString(uri.Host, uri.Port);
 
                 ClientWebSocket? wsClient = null;
-                if (!_clients.TryGetValue(hostString, out Client? existingClient))
+                if (!_connections.TryGetValue(hostString, out Connection? existingClient))
                 {
                     wsClient = new ClientWebSocket();
                     wsClient.Options.AddSubProtocol("ship");
@@ -322,7 +323,7 @@ namespace EEBUS.Net
                     if (wsClient?.State == WebSocketState.Open)
                     {
                         Client client = new Client(hostString, wsClient, _devices, device);
-                        _clients[hostString] = client;
+                        _connections[hostString] = client;
                         await client.Run().ConfigureAwait(false);
                         return hostString.ToString();
                     }
@@ -354,7 +355,7 @@ namespace EEBUS.Net
 
         public async Task DisconnectAsync(HostString host)
         {
-            var wsClient = _clients.TryGetValue(host, out Client? client) ? client?.WebSocket : null;
+            var wsClient = _connections.TryGetValue(host, out Connection? client) ? client?.WebSocket : null;
             if (wsClient == null)
                 return;
 
@@ -389,8 +390,10 @@ namespace EEBUS.Net
                 //We need to dispose the websocket in any case, e.g. it can be that we send a close message, but we do not receive one from the remote partner. In this case, we must close the connection
                 wsClient.Dispose();
                 wsClient = null;
-                _clients.TryRemove(host, out Client? removedClient);
-                removedClient?.Stop();
+                if (_connections.TryRemove(host, out Connection? removedClient) && removedClient != null)
+                {
+                    await removedClient.CloseAsync();
+                }
             }
         }
 
@@ -399,7 +402,20 @@ namespace EEBUS.Net
         public void Start()
         {
             _shipListener = new SHIPListener(_devices);
+            _shipListener.OnDeviceConnectionChanged += _shipListener_OnDeviceConnectionChanged;
             _shipListener.StartAsync(_settings.Device.Port);
+        }
+
+        private void _shipListener_OnDeviceConnectionChanged(object? sender, DeviceConnectionChangedEventArgs e)
+        {
+            if (e.ChangeType == DeviceConnectionChangeType.Connected)
+            {
+                _connections[e.Connection.RemoteHost] = e.Connection;
+            }
+            else
+            {
+                _connections.TryRemove(e.Connection.RemoteHost, out Connection? removedremovedConnection);
+            }
         }
 
         public void Stop()
@@ -411,6 +427,8 @@ namespace EEBUS.Net
 
         public void Dispose()
         {
+            _shipListener?.OnDeviceConnectionChanged -= _shipListener_OnDeviceConnectionChanged;
+
             _devices.RemoteDeviceFound -= OnRemoteDeviceFound;
             _devices.ServerStateChanged -= OnServerStateChanged;
             _devices.ClientStateChanged -= OnClientStateChanged;
