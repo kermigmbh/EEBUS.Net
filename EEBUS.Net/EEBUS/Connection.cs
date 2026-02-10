@@ -151,8 +151,8 @@ namespace EEBUS
 
                 if (connection.State == Connection.EState.Connected)
                 {
-                    AddressType source = connection.Local.GetMeasurementDataAddress(true);
-                    AddressType destination = connection.Remote.GetMeasurementDataAddress(false);
+                    AddressType? source = connection.Local.GetMeasurementDataAddress(true);
+                    AddressType? destination = connection.Remote?.GetMeasurementDataAddress(false);
 
                     if (null != source && null != destination)
                     {

@@ -14,7 +14,7 @@ namespace EEBUS.SPINE.Commands
 
 		public new class Class : SpineCmdPayload<CmdNodeManagementDetailedDiscoveryDataType>.Class
 		{
-			public override async ValueTask<SpineCmdPayloadBase> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
+			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
 				NodeManagementDetailedDiscoveryData		payload = new NodeManagementDetailedDiscoveryData();
 				NodeManagementDetailedDiscoveryDataType data	= payload.cmd[0].nodeManagementDetailedDiscoveryData;

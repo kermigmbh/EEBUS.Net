@@ -16,7 +16,7 @@ namespace EEBUS.SPINE.Commands
 
 		public new class Class : SpineCmdPayload<CmdDeviceDiagnosisHeartbeatDataType>.Class
 		{
-			public override async ValueTask<SpineCmdPayloadBase> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
+			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
 				DeviceDiagnosisHeartbeatData	 payload = new DeviceDiagnosisHeartbeatData();
 				DeviceDiagnosisHeartbeatDataType data	 = payload.cmd[0].deviceDiagnosisHeartbeatData;
