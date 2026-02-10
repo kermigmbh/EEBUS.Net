@@ -79,7 +79,22 @@ namespace EEBUS.Models
 			return datas;
 		}
 
-		public T GetDataStructure<T>( uint id ) where T : DataStructure
+        public List<DataStructure> GetDataStructures(string type)
+        {
+            List<DataStructure> datas = new();
+
+            foreach (var data in this.DataStructures)
+			{
+				if (data.GetType().Name == type)
+				{
+					datas.Add(data);
+				}
+			}
+
+            return datas;
+        }
+
+        public T GetDataStructure<T>( uint id ) where T : DataStructure
 		{
 			foreach ( var data in this.DataStructures )
 				if ( data is T && data.Id == id )
