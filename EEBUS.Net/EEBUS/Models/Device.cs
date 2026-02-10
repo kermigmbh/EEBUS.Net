@@ -53,11 +53,11 @@ namespace EEBUS.Models
 			return this.KeyValues.IndexOf( keyValue );
 		}
 
-		public T GetKeyValue<T>() where T : KeyValue
+		public T? GetKeyValue<T>() where T : KeyValue
 		{
 			foreach ( KeyValue kv in this.KeyValues )
-				if ( kv.GetType() == typeof( T ) )
-					return kv as T;
+				if ( kv is T myValue )
+					return myValue;
 
 			return null;
 		}
@@ -73,8 +73,8 @@ namespace EEBUS.Models
 			List<T> datas = new();
 
 			foreach ( var data in this.DataStructures )
-				if ( data is T )
-					datas.Add( data as T );
+				if ( data is T mydata )
+					datas.Add(mydata);
 
 			return datas;
 		}
@@ -94,7 +94,7 @@ namespace EEBUS.Models
             return datas;
         }
 
-        public T GetDataStructure<T>( uint id ) where T : DataStructure
+        public T? GetDataStructure<T>( uint id ) where T : DataStructure
 		{
 			foreach ( var data in this.DataStructures )
 				if ( data is T && data.Id == id )
