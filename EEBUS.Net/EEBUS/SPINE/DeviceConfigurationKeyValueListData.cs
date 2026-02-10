@@ -1,7 +1,7 @@
-﻿using System.Text.Json.Serialization;
-
-using EEBUS.Messages;
+﻿using EEBUS.Messages;
 using EEBUS.Models;
+using EEBUS.SHIP.Messages;
+using System.Text.Json.Serialization;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -56,9 +56,37 @@ namespace EEBUS.SPINE.Commands
 				{
 					keyValue.SetValue(value);
 					await keyValue.SendEventAsync(connection);
+					SendNotify(connection, datagram);
 				}
 			}
-		}
+
+            private void SendNotify(Connection connection, DatagramType datagram)
+            {
+                SpineDatagramPayload notify = new SpineDatagramPayload();
+                notify.datagram.header.addressSource = datagram.header.addressDestination;
+                notify.datagram.header.addressDestination = datagram.header.addressSource;
+                notify.datagram.header.msgCounter = DataMessage.NextCount;
+                notify.datagram.header.cmdClassifier = "notify";
+
+                DeviceConfigurationKeyValueListData payload = new DeviceConfigurationKeyValueListData();
+                DeviceConfigurationKeyValueListDataType data = payload.cmd[0].deviceConfigurationKeyValueListData;
+
+                List<DeviceConfigurationKeyValueDataType> datas = new();
+                foreach (var keyValue in connection.Local.KeyValues)
+                    datas.Add(keyValue.Data);
+
+                data.deviceConfigurationKeyValueData = datas.ToArray();
+
+
+                 
+                notify.datagram.payload = payload.ToJsonNode();
+
+                DataMessage limitMessage = new DataMessage();
+                limitMessage.SetPayload(System.Text.Json.JsonSerializer.SerializeToNode(notify));
+
+                connection.PushDataMessage(limitMessage);
+            }
+        }
 	}
 
 	[System.SerializableAttribute()]

@@ -169,7 +169,7 @@ namespace EEBUS.Net
             }
         }
 
-        public JsonObject? GetLocal()
+        public JsonObject GetLocal()
         {
             LocalDevice? local = _devices?.Local;
 
@@ -251,7 +251,7 @@ namespace EEBUS.Net
             };
 
             // -> JSON string
-            var json = JsonSerializer.SerializeToNode(payload, options)?.AsObject();
+            JsonObject json = JsonSerializer.SerializeToNode(payload, options)?.AsObject() ?? throw new Exception("Failed to serialize local device data");
             return json;
 
         }
