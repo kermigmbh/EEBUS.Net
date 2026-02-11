@@ -10,9 +10,9 @@ namespace EEBUS.UseCases.ControllableSystem
 		WriteApprovalResult ApproveFailsafeLimitWrite( FailsafeLimitWriteRequest request );
 
 		// Data update events (called AFTER approved write is applied)
-		void DataUpdateLimit( int counter, bool active, long limit, TimeSpan duration );
+		Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration );
 
-        Task DataUpdateFailsafeConsumptionActivePowerLimitAsync( int counter, long limit );
+		Task DataUpdateFailsafeConsumptionActivePowerLimitAsync( int counter, long limit );
 	}
 
 	public interface LPPEvents : UseCaseEvents

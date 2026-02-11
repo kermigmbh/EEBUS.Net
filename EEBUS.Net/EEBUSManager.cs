@@ -6,7 +6,6 @@ using EEBUS.SHIP.Messages;
 using EEBUS.UseCases.ControllableSystem;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -100,20 +99,6 @@ namespace EEBUS.Net
             return assembly.GetTypes()
                             .Where(t => String.Equals(t.Namespace, nameSpace, StringComparison.Ordinal))
                             .ToArray();
-        }
-
-        public void Dispose()
-        {
-            _devices.RemoteDeviceFound -= OnRemoteDeviceFound;
-            _devices.ServerStateChanged -= OnServerStateChanged;
-            _devices.ClientStateChanged -= OnClientStateChanged;
-
-            _devices.Local.RemoveUseCaseEvents(this.lpcEventHandler);
-            _devices.Local.RemoveUseCaseEvents(this.lppEventHandler);
-            _devices.Local.RemoveUseCaseEvents(this.lpcOrLppEventHandler);
-
-            _cts.Cancel();
-            _clientCts.Cancel();
         }
 
         private void OnRemoteDeviceFound(RemoteDevice device)

@@ -1,5 +1,4 @@
-
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 using EEBUS.Messages;
 using EEBUS.UseCases;
@@ -17,7 +16,7 @@ namespace EEBUS.SPINE.Commands
 		{
 		}
 
-		public ResultData( int errorNumber, string description = null )
+		public ResultData( int errorNumber, string? description = null )
 		{
 			this.cmd[0].resultData.errorNumber  = errorNumber;
 			this.cmd[0].resultData.description  = description;
@@ -48,7 +47,7 @@ namespace EEBUS.SPINE.Commands
 	{
 		public int errorNumber { get; set; } = 0;
 
-		[JsonProperty( NullValueHandling = NullValueHandling.Ignore )]
-		public string description { get; set; }
+		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+		public string? description { get; set; }
 	}
 }

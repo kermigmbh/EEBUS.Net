@@ -104,8 +104,8 @@ namespace EEBUS.Controllers
 				Console.WriteLine( $"Failsafe Duration Write Request: Duration={request.Duration}" );
 				return WriteApprovalResult.Accept();
 			}
-			
-			public async Task DataUpdateFailsafeDurationMinimum( int counter, TimeSpan duration )
+
+			public async Task DataUpdateFailsafeDurationMinimumAsync(int counter, TimeSpan duration)
 			{
 				using var _ = Push( new FailsafeLimitDurationChanged( duration ) );
 			}
