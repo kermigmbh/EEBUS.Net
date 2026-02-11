@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+﻿using System.Text.Json.Serialization;
 
 using EEBUS.DataStructures;
 using EEBUS.Messages;
@@ -14,7 +14,7 @@ namespace EEBUS.SPINE.Commands
 
 		public new class Class : SpineCmdPayload<CmdLoadControlLimitDescriptionListDataType>.Class
 		{
-			public override SpineCmdPayloadBase CreateAnswer( DatagramType datagram, HeaderType header, Connection connection )
+			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
 				LoadControlLimitDescriptionListData	    payload = new LoadControlLimitDescriptionListData();
 				LoadControlLimitDescriptionListDataType data	= payload.cmd[0].loadControlLimitDescriptionListData;
@@ -57,10 +57,8 @@ namespace EEBUS.SPINE.Commands
 		
 		public string unit			 { get; set; }
 		
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)] 
-		public string scopeType		 { get; set; }
+		public string? scopeType		 { get; set; }
 		
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)] 
-		public string label			 { get; set; }
+		public string? label			 { get; set; }
 	}
 }

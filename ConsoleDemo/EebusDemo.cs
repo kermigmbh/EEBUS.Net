@@ -15,7 +15,7 @@ namespace ConsoleDemo
         {
             _manager = new EEBUSManager(settings);
 
-            _manager.OnLimitDataChanged += (sender, args) =>
+            _manager.OnLimitDataChanged = async (args) =>
             {
                 Console.WriteLine($"Limit data changed: {args}");
             };

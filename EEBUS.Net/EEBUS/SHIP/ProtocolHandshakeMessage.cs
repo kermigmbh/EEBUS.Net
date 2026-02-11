@@ -1,7 +1,5 @@
 ﻿using System.Text.Json.Serialization;
 
-using Newtonsoft.Json.Converters;
-
 using EEBUS.Enums;
 using EEBUS.Messages;
 
@@ -26,9 +24,9 @@ namespace EEBUS.SHIP.Messages
 
 		public new class Class : ShipControlMessage<ProtocolHandshakeMessage>.Class
 		{
-			public override ProtocolHandshakeMessage Create( byte[] data, Connection connection )
+			public override ProtocolHandshakeMessage Create(ReadOnlySpan<byte> data/*, Connection connection*/ )
 			{
-				return template.FromJsonVirtual( data, connection );
+				return template.FromJsonVirtual( data/*, connection*/ );
 			}
 		}
 
@@ -191,9 +189,8 @@ namespace EEBUS.SHIP.Messages
 		}
 	}
 
-	[System.SerializableAttribute()]
-	[JsonConverter(typeof(StringEnumConverter))]
-	public enum ProtocolHandshakeTypeType
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public enum ProtocolHandshakeTypeType
 	{
 		announceMax,
 		select,

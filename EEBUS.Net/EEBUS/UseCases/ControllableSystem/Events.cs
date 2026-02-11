@@ -12,7 +12,7 @@ namespace EEBUS.UseCases.ControllableSystem
 		// Data update events (called AFTER approved write is applied)
 		void DataUpdateLimit( int counter, bool active, long limit, TimeSpan duration );
 
-		void DataUpdateFailsafeConsumptionActivePowerLimit( int counter, long limit );
+        Task DataUpdateFailsafeConsumptionActivePowerLimitAsync( int counter, long limit );
 	}
 
 	public interface LPPEvents : UseCaseEvents
@@ -23,9 +23,9 @@ namespace EEBUS.UseCases.ControllableSystem
 		WriteApprovalResult ApproveFailsafeLimitWrite( FailsafeLimitWriteRequest request );
 
 		// Data update events
-		void DataUpdateLimit( int counter, bool active, long limit, TimeSpan duration );
+        Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration );
 
-		void DataUpdateFailsafeProductionActivePowerLimit( int counter, long limit );
+        Task DataUpdateFailsafeProductionActivePowerLimitAsync( int counter, long limit );
 	}
 
 	public interface LPCorLPPEvents : UseCaseEvents
@@ -34,8 +34,8 @@ namespace EEBUS.UseCases.ControllableSystem
 		WriteApprovalResult ApproveFailsafeDurationWrite( FailsafeDurationWriteRequest request );
 
 		// Data update events
-		void DataUpdateFailsafeDurationMinimum( int counter, TimeSpan duration );
+        Task DataUpdateFailsafeDurationMinimumAsync( int counter, TimeSpan duration );
 
-		void DataUpdateHeartbeat( int counter, RemoteDevice device, uint timeout );
+        Task DataUpdateHeartbeatAsync( int counter, RemoteDevice device, uint timeout );
 	}
 }

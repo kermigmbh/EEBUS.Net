@@ -15,9 +15,9 @@ namespace EEBUS.SHIP.Messages
 
 		public new class Class : ShipControlMessage<AccessMethodsRequestMessage>.Class
 		{
-			public override AccessMethodsRequestMessage Create( byte[] data, Connection connection )
+			public override AccessMethodsRequestMessage Create(ReadOnlySpan<byte> data/*, Connection connection*/ )
 			{
-				return template.FromJsonVirtual( data, connection );
+				return template.FromJsonVirtual( data/*, connection*/ );
 			}
 		}
 

@@ -41,43 +41,36 @@ namespace EEBUS
 
 		public async Task Do()
 		{
-			var heart	= new HeartBeatTask();
-			using var beat	= new System.Threading.Timer( heart.Beat, this, 4000, 4000 );
+			var heart = new HeartBeatTask();
+			using var beat = new System.Threading.Timer(heart.Beat, this, 4000, 4000);
 
-			//var ecc		= new ElectricalConnectionCharacteristicTask();
-   //         using var eccSend	= new System.Threading.Timer( ecc.SendData, this, 2000, Timeout.Infinite );
+			//var ecc        = new ElectricalConnectionCharacteristicTask();
+			//using var eccSend   = new System.Threading.Timer( ecc.SendData, this, 2000, Timeout.Infinite );
 
-			//var md		= new MeasurementDataTask();
-   //         using var mdSend	= new System.Threading.Timer( md.SendData, this, 3000, 3000 );
+			//var md         = new MeasurementDataTask();
+			//using var mdSend   = new System.Threading.Timer( md.SendData, this, 3000, 3000 );
 
+		 
 			try
 			{
-				while ( this.ws.State == WebSocketState.Open )
+				while (this.ws.State == WebSocketState.Open)
 				{
-					byte[] receiveBuffer = new byte[10240];
-					WebSocketReceiveResult result = await this.ws.ReceiveAsync( receiveBuffer, new CancellationTokenSource( /*SHIPMessageTimeout.CMI_TIMEOUT*/ ).Token ).ConfigureAwait( false );
+					 
+					using CancellationTokenSource cts = new CancellationTokenSource();
+					CancellationToken token = cts.Token;
+					var message = await ReceiveAsync(token);
 
-					if ( result.CloseStatus.HasValue )
-						break; // close received
-					else if ( result.Count < 2 )
-						throw new Exception( "Invalid EEBUS payload received, expected message size of at least 2!" );
+					Debug.WriteLine("<=== " + message.ToString());
 
-					ShipMessageBase message = ShipMessageBase.Create( receiveBuffer, this );
-					//Console.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " <-- " + message.ToString() + "\n");
-					if ( message == null )
-						throw new Exception( "Message couldn't be recognized" );
+					(this.state, this.subState, string error) = message.ServerTest(this.state);
 
-					Debug.WriteLine( "===> " + message.ToString() );
-
-					(this.state, this.subState, string error) = message.ServerTest( this.state );
-
-					if ( this.state == EState.Stopped && error != null )
-						throw new Exception( error );
-					if ( error != null )
-						Console.WriteLine( error );
+					if (this.state == EState.Stopped && error != null)
+						throw new Exception(error);
+					if (error != null)
+						Console.WriteLine(error);
 
 					EState oldState = this.state;
-					(this.state, this.subState) = await message.NextServerState( this ).ConfigureAwait( false );
+					(this.state, this.subState) = await message.NextServerState(this).ConfigureAwait(false);
 
 					if (null == this.Remote)
 					{
@@ -88,32 +81,32 @@ namespace EEBUS
 						}
 					}
 
-					if ( null != this.Remote )
-						this.Remote.SetServerState( this.state );
+					if (null != this.Remote)
+						this.Remote.SetServerState(this.state);
 
-					if ( this.state == EState.Connected && this.state != oldState )
+					if (this.state == EState.Connected && this.state != oldState)
 						RequestRemoteDeviceConfiguration();
 
-					if ( this.state == EState.Stopped )
-						throw new Exception( "Communication stopped!" );
+					if (this.state == EState.Stopped)
+						throw new Exception("Communication stopped!");
 				}
 			}
-			catch ( Exception ex )
+			catch (Exception ex)
 			{
-				if ( null != this.Remote )
-					this.Remote.SetServerState( EState.Stopped );
+				if (null != this.Remote)
+					this.Remote.SetServerState(EState.Stopped);
 
-				Debug.WriteLine( "Exception: " + ex.Message );
+				Debug.WriteLine("Exception: " + ex.Message);
 			}
 
-			beat.Change( Timeout.Infinite, Timeout.Infinite );
+			beat.Change(Timeout.Infinite, Timeout.Infinite);
 			//eccSend.Change( Timeout.Infinite, Timeout.Infinite );
 
-			await Close().ConfigureAwait( false );
+			await CloseAsync().ConfigureAwait(false);
 		}
 
-		public async Task Close()
-		{
+        public override async Task CloseAsync()
+        {
 			try
 			{
 				await this.ws.CloseOutputAsync( WebSocketCloseStatus.NormalClosure, "Closing!", CancellationToken.None ).ConfigureAwait( false );

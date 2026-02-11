@@ -1,5 +1,5 @@
 ﻿using EEBUS.Messages;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -14,7 +14,7 @@ namespace EEBUS.SPINE.Commands
 
 		public new class Class : SpineCmdPayload<CmdMeasurementListDataType>.Class
 		{
-			public override SpineCmdPayloadBase CreateAnswer( DatagramType datagram, HeaderType header, Connection connection )
+			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
 				if ( datagram.header.cmdClassifier == "read" )
 				{
@@ -110,13 +110,13 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class CmdMeasurementListDataType : CmdType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+		[JsonPropertyName("function")]
 		public string				   function			   { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+		[JsonPropertyName("filter")]
 		public FilterType[]			   filter			   { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+		[JsonPropertyName("measurementListData")]
 		public MeasurementListDataType measurementListData { get; set; }
 	}
 
@@ -133,14 +133,14 @@ namespace EEBUS.SPINE.Commands
 
 		public string			valueType		 { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public string			timestamp		 { get; set; }
+		[JsonPropertyName("timestamp")]
+		public string?			timestamp		 { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public ScaledNumberType	value			 { get; set; }
+		[JsonPropertyName("value")]
+		public ScaledNumberType? value			 { get; set; }
 
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public TimePeriodType	evaluationPeriod { get; set; }
+		[JsonPropertyName("evaluationPeriod")]
+		public TimePeriodType? evaluationPeriod { get; set; }
 
 		public string			valueSource		 { get; set; }
 	}

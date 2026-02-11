@@ -7,12 +7,14 @@ using System.Diagnostics;
 
 namespace EEBUS
 {
-	public class MDNSClient
+	public class MDNSClient( ServiceDiscovery sd)
 	{
 		private Devices devices;
 		private CancellationTokenSource? _cts;
 
-		public void Run( Devices devices)
+        
+
+        public void Run( Devices devices)
 		{
 			_cts?.Cancel();
 			_cts = new CancellationTokenSource();
@@ -25,19 +27,20 @@ namespace EEBUS
 		{
             Thread.CurrentThread.IsBackground = true;
 
-            MulticastService mdns = new MulticastService();
-            ServiceDiscovery sd = new ServiceDiscovery(mdns);
+            //MulticastService mdns = new MulticastService();
+            //ServiceDiscovery sd = new ServiceDiscovery();
 
-            sd.ServiceDiscovered += (s, serviceName) => { mdns.SendQuery(serviceName); };
+            sd.ServiceDiscovered += Sd_ServiceDiscovered;
             sd.ServiceInstanceDiscovered += Sd_ServiceInstanceDiscovered;
 
             try
             {
-                mdns.Start();
+                //mdns.Start();
 
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    sd.QueryAllServices();
+					sd.QueryAllServices();
+                    //sd.QueryServiceInstances("_ship._tcp");
                     devices.GarbageCollect();
 
                     await Task.Delay(5000, cancellationToken).ConfigureAwait(false);
@@ -49,12 +52,22 @@ namespace EEBUS
             }
             finally
             {
-                sd.Dispose();
-                mdns.Stop();
+                sd.ServiceDiscovered -= Sd_ServiceDiscovered;
+                sd.ServiceInstanceDiscovered -= Sd_ServiceInstanceDiscovered;
+                //sd.Dispose();
+                //mdns.Stop();
             }
         }
+        private void Sd_ServiceDiscovered(object? sender, DomainName e)
+        {
 
-		public void Stop()
+			if (e?.ToString().StartsWith("_ship") == true)
+			{
+				sd.Mdns.SendQuery(e);
+			}
+        }	
+            
+        public void Stop()
 		{
 			_cts?.Cancel(); 
 		}

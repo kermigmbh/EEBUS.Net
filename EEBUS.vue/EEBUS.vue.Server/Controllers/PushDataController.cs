@@ -4,10 +4,9 @@ using System.Text;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 
-using Newtonsoft.Json.Linq;
-
 using EEBUS.Models;
 using EEBUS.UseCases.ControllableSystem;
+using System.Text.Json.Nodes;
 using System.Collections.Generic;
 using EEBUS.UseCases;
 
@@ -62,12 +61,12 @@ namespace EEBUS.Controllers
 				return WriteApprovalResult.Deny();
 			}
 			
-			public void DataUpdateLimit( int counter, bool active, long limit, TimeSpan duration )
+			public async Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration )
 			{
 				using var _ = Push( new LimitDataChanged( true, active, limit, duration ) );
 			}
 
-			public void DataUpdateFailsafeConsumptionActivePowerLimit( int counter, long limit )
+			public async Task DataUpdateFailsafeConsumptionActivePowerLimitAsync( int counter, long limit )
 			{
 				using var _ = Push( new FailsafeLimitDataChanged( true, limit ) );
 			}
@@ -87,12 +86,12 @@ namespace EEBUS.Controllers
 				return WriteApprovalResult.Accept();
 			}
 			
-			public void DataUpdateLimit( int counter, bool active, long limit, TimeSpan duration )
+			public async Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration )
 			{
 				using var _ = Push( new LimitDataChanged( false, active, limit, duration ) );
 			}
 
-			public void DataUpdateFailsafeProductionActivePowerLimit( int counter, long limit  )
+			public async Task DataUpdateFailsafeProductionActivePowerLimitAsync( int counter, long limit  )
 			{
 				using var _ = Push( new FailsafeLimitDataChanged( false, limit ) );
 			}
@@ -106,12 +105,12 @@ namespace EEBUS.Controllers
 				return WriteApprovalResult.Accept();
 			}
 			
-			public void DataUpdateFailsafeDurationMinimum( int counter, TimeSpan duration )
+			public async Task DataUpdateFailsafeDurationMinimum( int counter, TimeSpan duration )
 			{
 				using var _ = Push( new FailsafeLimitDurationChanged( duration ) );
 			}
 
-			public void DataUpdateHeartbeat( int counter, RemoteDevice device, uint timeout )
+			public async Task DataUpdateHeartbeatAsync( int counter, RemoteDevice device, uint timeout )
 			{
 				using var _ = Push( new HeartbeatReceived( device, timeout ) );
 			}
@@ -195,12 +194,12 @@ namespace EEBUS.Controllers
 			Console.WriteLine( "Listener ausgetragen" );
 		}
 
-		static public async Task Push( JToken data )
+		static public async Task Push( PushData data )
 		{
 			if ( 0 == webSockets.Count )
 				return;
 
-			string json   = data.ToString();
+			string json   = data.Payload.ToJsonString();
 			byte[] buffer = Encoding.UTF8.GetBytes( json );
 			int	   count  = buffer.Length;
 

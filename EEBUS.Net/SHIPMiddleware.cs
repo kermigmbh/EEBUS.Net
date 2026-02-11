@@ -41,7 +41,7 @@ namespace EEBUS
 				if (server != null)
 				{
 					Debug.WriteLine("Middleware Weiterleitung, Server vorhanden und stoppen");
-					await server.Close().ConfigureAwait(false);
+					await server.CloseAsync().ConfigureAwait(false);
 				}
 
 				var socket = await httpContext.WebSockets.AcceptWebSocketAsync( "ship" ).ConfigureAwait( false );

@@ -26,9 +26,10 @@ namespace EEBUS
             _ = Task.Run(() => RunInternalAsync(_cts.Token));
 		}
 
-        public void Stop()
+        public  override Task CloseAsync()
         {
             _cts?.Cancel(); 
+            return Task.CompletedTask;
         }
 
 		private async Task RunInternalAsync(CancellationToken cancellationToken)
@@ -37,35 +38,29 @@ namespace EEBUS
             this.subState = ESubState.None;
 
             InitMessage initMessage = new InitMessage();
+            
             await initMessage.Send(this.ws).ConfigureAwait(false);
 
             var heart = new HeartBeatTask();
             var beat = new System.Threading.Timer(heart.Beat, this, 4000, 4000);
-
             //var ecc = new ElectricalConnectionCharacteristicTask();
             //var eccSend = new System.Threading.Timer(ecc.SendData, this, 2000, Timeout.Infinite);
 
             //var md = new MeasurementDataTask();
             //var mdSend = new System.Threading.Timer(md.SendData, this, 3000, 3000);
+           
 
             try
             {
                 while (this.state != EState.Stopped && !cancellationToken.IsCancellationRequested)
                 {
-                    byte[] receiveBuffer = new byte[10240];
-                    CancellationToken timeoutToken = new CancellationTokenSource(SHIPMessageTimeout.CMI_TIMEOUT).Token;
-                    CancellationTokenSource linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource([timeoutToken, cancellationToken]);
-                    WebSocketReceiveResult result = await this.ws.ReceiveAsync(receiveBuffer, linkedTokenSource.Token).ConfigureAwait(false);
+                    
+                    using CancellationTokenSource timeoutCts = new CancellationTokenSource(SHIPMessageTimeout.CMI_TIMEOUT);
+                    using CancellationTokenSource linkedTokenSource =
+                        CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
 
-                    if (result.CloseStatus.HasValue)
-                        break; // close received
-                    else if (result.Count < 2)
-                        throw new Exception("Invalid EEBUS payload received, expected message size of at least 2!");
+                    var message = await ReceiveAsync(linkedTokenSource.Token);
 
-                    ShipMessageBase message = ShipMessageBase.Create(receiveBuffer, this);
-                    //Console.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " <-- " + message.ToString() + "\n");
-                    if (message == null)
-                        throw new Exception("Message couldn't be recognized");
                     (this.state, this.subState, string error) = message.ClientTest(this.state);
 
                     if (this.state == EState.Stopped && error != null)
@@ -85,12 +80,11 @@ namespace EEBUS
             }
             catch (Exception ex)
             {
-
+                // consider logging ex
             }
             finally
             {
                 beat.Change(Timeout.Infinite, Timeout.Infinite);
-                //eccSend.Change(Timeout.Infinite, Timeout.Infinite);
 
                 if (null != this.Remote)
                     this.Remote.SetClientState(EState.Stopped);

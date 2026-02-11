@@ -4,13 +4,26 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+
+	  
+	  <PackageId>EEBUS.Net</PackageId>
+	  <Version>1.0.3</Version>
+	  <Authors>Alexander Kerschl</Authors>
+	  <Company>Kermi GmbH</Company>
+	  <Description>C# EEBUS .NET library</Description>
+	  <PackageTags>EEBUS</PackageTags>
+
+	  <!-- Optional but recommended -->
+	  <RepositoryUrl>https://github.com/kermigmbh/EEBUS.Net</RepositoryUrl>
+	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+	  
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Makaretu.Dns.Multicast.New" Version="0.38.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Certificate" Version="8.0.15" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Newtonsoft.Json.Schema" Version="4.0.1" />
   </ItemGroup>
 
 </Project>

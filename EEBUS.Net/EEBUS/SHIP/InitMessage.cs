@@ -16,9 +16,9 @@ namespace EEBUS.SHIP.Messages
 
 		public new class Class : ShipInitMessage<InitMessage>.Class
 		{
-			public override InitMessage Create( byte[] data, Connection connection )
+			public override InitMessage Create(ReadOnlySpan<byte> data/*, Connection connection*/ )
 			{
-				return template.FromJsonVirtual( data, connection );
+				return template.FromJsonVirtual( data/*, connection */);
 			}
 		}
 

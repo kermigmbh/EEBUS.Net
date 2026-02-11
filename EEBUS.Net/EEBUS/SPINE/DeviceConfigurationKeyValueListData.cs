@@ -1,10 +1,7 @@
-using System.Xml;
-
-using Newtonsoft.Json;
-
-using EEBUS.KeyValues;
 using EEBUS.Messages;
 using EEBUS.Models;
+using System.Xml;
+using EEBUS.SHIP.Messages;
 using EEBUS.UseCases;
 using EEBUS.UseCases.ControllableSystem;
 
@@ -19,7 +16,7 @@ namespace EEBUS.SPINE.Commands
 
 			public new class Class : SpineCmdPayload<CmdDeviceConfigurationKeyValueListDataType>.Class
 		{
-			public override SpineCmdPayloadBase CreateAnswer( DatagramType datagram, HeaderType header, Connection connection )
+			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
 				if ( datagram.header.cmdClassifier == "read" )
 				{
@@ -46,7 +43,7 @@ namespace EEBUS.SPINE.Commands
 				}
 			}
 
-			private WriteApprovalResult GetApprovalForKeyValue( Connection connection, KeyValue keyValue, ValueType value )
+						private WriteApprovalResult GetApprovalForKeyValue( Connection connection, KeyValue keyValue, ValueType value )
 			{
 				string remoteDeviceId = connection.Remote?.DeviceId;
 
@@ -126,13 +123,15 @@ namespace EEBUS.SPINE.Commands
 						return WriteApprovalResult.Accept( "Unknown key - auto-approved" );
 				}
 			}
-
-			public override void Evaluate( Connection connection, DatagramType datagram )
+			
+			public override async ValueTask EvaluateAsync( Connection connection, DatagramType datagram )
 			{
 				if ( datagram.header.cmdClassifier != "write" )
 					return;
 
-				DeviceConfigurationKeyValueListData payload = datagram.payload.ToObject<DeviceConfigurationKeyValueListData>();
+				DeviceConfigurationKeyValueListData? payload = datagram.payload == null
+					? null
+					: System.Text.Json.JsonSerializer.Deserialize<DeviceConfigurationKeyValueListData>(datagram.payload);
 
 				int       keyId = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].keyId;
 				ValueType value = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].value;
@@ -150,11 +149,41 @@ namespace EEBUS.SPINE.Commands
 				if ( approvalResult.Approved )
 				{
 					keyValue.SetValue( value );
-					keyValue.SendEvent( connection );
+					await keyValue.SendEventAsync( connection );
+					SendNotify(connection, datagram);
 				}
+			}
+			
+			private void SendNotify(Connection connection, DatagramType datagram)
+			{
+				SpineDatagramPayload notify = new SpineDatagramPayload();
+				notify.datagram.header.addressSource = datagram.header.addressDestination;
+				notify.datagram.header.addressDestination = datagram.header.addressSource;
+				notify.datagram.header.msgCounter = DataMessage.NextCount;
+				notify.datagram.header.cmdClassifier = "notify";
+
+				DeviceConfigurationKeyValueListData payload = new DeviceConfigurationKeyValueListData();
+				DeviceConfigurationKeyValueListDataType data = payload.cmd[0].deviceConfigurationKeyValueListData;
+
+				List<DeviceConfigurationKeyValueDataType> datas = new();
+				foreach (var keyValue in connection.Local.KeyValues)
+					datas.Add(keyValue.Data);
+
+				data.deviceConfigurationKeyValueData = datas.ToArray();
+
+
+                 
+				notify.datagram.payload = payload.ToJsonNode();
+
+				DataMessage limitMessage = new DataMessage();
+				limitMessage.SetPayload(System.Text.Json.JsonSerializer.SerializeToNode(notify));
+
+				connection.PushDataMessage(limitMessage);
 			}
 		}
 	}
+	
+	
 
 	[System.SerializableAttribute()]
 	public class CmdDeviceConfigurationKeyValueListDataType : CmdType
@@ -181,20 +210,16 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class ValueType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public ScaledNumberType	scaledNumber { get; set; }
-
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public string			duration	 { get; set; }
+		public ScaledNumberType?	scaledNumber { get; set; }
+		
+		public string?			duration	 { get; set; }
 	}
 
 	[System.SerializableAttribute()]
 	public class ScaledNumberType
 	{
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public long  number	{ get; set; }
-
-		[JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-		public short scale	{ get; set; }
+		public long?  number	{ get; set; }
+		
+		public short? scale	{ get; set; }
 	}
 }

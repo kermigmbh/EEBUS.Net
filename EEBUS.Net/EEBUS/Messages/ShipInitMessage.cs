@@ -20,12 +20,12 @@ namespace EEBUS.Messages
 			return new byte[] { SHIPMessageValue.CMI_HEAD };
 		}
 
-		public override T FromJsonVirtual( byte[] data, Connection connection )
+		public override T FromJsonVirtual(ReadOnlySpan<byte> data/*, Connection connection*/ )
 		{
-			return FromJson( data, connection );
+			return FromJson( data/*, connection*/ );
 		}
 
-		static new public T FromJson( byte[] data, Connection connection )
+		static new public T FromJson(ReadOnlySpan<byte> data/*, Connection connection*/ )
 		{
 			T init = new T();
 

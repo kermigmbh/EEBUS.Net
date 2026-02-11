@@ -19,7 +19,7 @@ namespace EEBUS.Models
 
 		public abstract DeviceConfigurationKeyValueDataType			   Data			   { get; }
 
-		public abstract void SendEvent( Connection connection );
+		public abstract Task SendEventAsync( Connection connection );
 
 		public abstract void SetValue( ValueType value );
 	}

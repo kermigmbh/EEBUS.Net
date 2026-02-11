@@ -32,7 +32,9 @@ namespace EEBUS.Models
 		public List<KeyValue>	   KeyValues	  = new();
 		public List<UseCaseEvents> UseCaseEvents  = new();
 
-		public override bool Equals( object obj )
+		public DateTimeOffset HeartbeatValidUntil { get; set; } = DateTimeOffset.MaxValue;
+
+        public override bool Equals( object obj )
 		{
 			if ( (obj == null) || ! GetType().Equals( obj.GetType() ) )
 				return false;
@@ -51,11 +53,11 @@ namespace EEBUS.Models
 			return this.KeyValues.IndexOf( keyValue );
 		}
 
-		public T GetKeyValue<T>() where T : KeyValue
+		public T? GetKeyValue<T>() where T : KeyValue
 		{
 			foreach ( KeyValue kv in this.KeyValues )
-				if ( kv.GetType() == typeof( T ) )
-					return kv as T;
+				if ( kv is T myValue )
+					return myValue;
 
 			return null;
 		}
@@ -71,13 +73,28 @@ namespace EEBUS.Models
 			List<T> datas = new();
 
 			foreach ( var data in this.DataStructures )
-				if ( data is T )
-					datas.Add( data as T );
+				if ( data is T mydata )
+					datas.Add(mydata);
 
 			return datas;
 		}
 
-		public T GetDataStructure<T>( uint id ) where T : DataStructure
+        public List<DataStructure> GetDataStructures(string type)
+        {
+            List<DataStructure> datas = new();
+
+            foreach (var data in this.DataStructures)
+			{
+				if (data.GetType().Name == type)
+				{
+					datas.Add(data);
+				}
+			}
+
+            return datas;
+        }
+
+        public T? GetDataStructure<T>( uint id ) where T : DataStructure
 		{
 			foreach ( var data in this.DataStructures )
 				if ( data is T && data.Id == id )

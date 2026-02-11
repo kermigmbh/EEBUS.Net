@@ -53,12 +53,12 @@ namespace EEBUS.KeyValues
 			this.Duration = value.duration;
 		}
 
-		public override void SendEvent( Connection connection )
+		public override async Task SendEventAsync( Connection connection )
 		{
 			List<LPCorLPPEvents> lpcOrLppEvents = connection.Local.GetUseCaseEvents<LPCorLPPEvents>();
 			foreach (var lpcOrLpp in lpcOrLppEvents)
 			{
-				lpcOrLpp.DataUpdateFailsafeDurationMinimum(0, XmlConvert.ToTimeSpan(this.Duration));
+				await lpcOrLpp.DataUpdateFailsafeDurationMinimumAsync(0, XmlConvert.ToTimeSpan(this.Duration));
 			}
 		}
 	}

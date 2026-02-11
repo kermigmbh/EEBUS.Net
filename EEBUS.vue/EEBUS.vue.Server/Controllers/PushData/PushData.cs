@@ -1,17 +1,21 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using System.Text.Json.Nodes;
 
 namespace EEBUS.Controllers
 {
-	public class PushData : JObject
+	public class PushData
 	{
+		public JsonObject Payload { get; } = new JsonObject();
+
 		public PushData( string cmd )
 		{
-			Add( "cmd", cmd );
+			Payload["cmd"] = cmd;
 		}
 
 		protected void AddData( object data )
 		{
-			Add( "data", JObject.FromObject( data ) );
+			// serialize arbitrary data object into a JsonNode for transport
+			var node = System.Text.Json.JsonSerializer.SerializeToNode( data );
+			Payload["data"] = node;
 		}
 	}
 }

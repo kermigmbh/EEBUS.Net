@@ -1,7 +1,5 @@
 ﻿using System.Text.Json.Serialization;
 
-using Newtonsoft.Json.Converters;
-
 using EEBUS.Messages;
 
 namespace EEBUS.SHIP.Messages
@@ -30,9 +28,9 @@ namespace EEBUS.SHIP.Messages
 
 		public new class Class : ShipControlMessage<ConnectionHelloMessage>.Class
 		{
-			public override ConnectionHelloMessage Create( byte[] data, Connection connection )
+			public override ConnectionHelloMessage Create(ReadOnlySpan<byte> data/*, Connection connection*/ )
 			{
-				return template.FromJsonVirtual( data, connection );
+				return template.FromJsonVirtual( data/*, connection*/ );
 			}
 		}
 
@@ -113,9 +111,8 @@ namespace EEBUS.SHIP.Messages
 		public bool						prolongationRequest	{ get; set; }
 	}
 
-	[System.SerializableAttribute()]
-	[JsonConverter(typeof(StringEnumConverter))]
-	public enum ConnectionHelloPhaseType
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public enum ConnectionHelloPhaseType
 	{
 		pending,
 		ready,

@@ -43,9 +43,13 @@ namespace EEBUS.vue.Server
                            .AllowAnyMethod()
                            .AllowAnyHeader());
             });
-            services.Configure<Settings>(settings);
+			services.Configure<Settings>(settings);
 
-            services.AddControllers().AddNewtonsoftJson();
+			services.AddControllers().AddJsonOptions(options =>
+			{
+				options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+				options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never;
+			});
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();

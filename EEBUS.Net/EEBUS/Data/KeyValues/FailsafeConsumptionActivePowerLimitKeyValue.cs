@@ -58,14 +58,16 @@ namespace EEBUS.KeyValues
 
 		public override void SetValue( ValueType value )
 		{
-			this.Value = value.scaledNumber.number;
-		}
+            // value.scaledNumber.number is nullable, fall back to existing Value if null
+            //this.Value = value.scaledNumber.number.GetValueOrDefault( this.Value );
+            this.Value = value.scaledNumber?.number ?? this.Value;
+        }
 
-		public override void SendEvent( Connection connection )
+		public override async Task SendEventAsync( Connection connection )
 		{
 			List<LPCEvents> lpcEvents = connection.Local.GetUseCaseEvents<LPCEvents>();
 			foreach(var lpc in lpcEvents) {
-				lpc.DataUpdateFailsafeConsumptionActivePowerLimit(0, this.Value); 
+				await lpc.DataUpdateFailsafeConsumptionActivePowerLimitAsync(0, this.Value); 
 			}
 		}
 	}

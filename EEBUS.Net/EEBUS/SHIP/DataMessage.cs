@@ -1,5 +1,6 @@
-﻿using Newtonsoft.Json.Linq;
-using Newtonsoft.Json;
+﻿using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 using EEBUS.Messages;
 
@@ -16,12 +17,12 @@ namespace EEBUS.SHIP.Messages
 		{
 		}
 
-		public DataMessage( JObject payload )
+		public DataMessage( JsonNode payload )
 		{
 			this.data.payload = payload;
 		}
 
-		public DataMessage( string protocolId, JObject payload )
+		public DataMessage( string protocolId, JsonNode payload )
 		{
 			this.data.header.protocolId = protocolId;
 			this.data.payload			= payload;
@@ -29,14 +30,14 @@ namespace EEBUS.SHIP.Messages
 
 		public DataMessage( SpineDatagramPayload datagram )
 		{
-			this.data.payload = JObject.FromObject( datagram );
+			this.data.payload = JsonSerializer.SerializeToNode( datagram );
 		}
 
 		public new class Class : ShipDataMessage<DataMessage>.Class
 		{
-			public override DataMessage Create( byte[] data, Connection connection )
+			public override DataMessage Create(ReadOnlySpan<byte> data/*, Connection connection */)
 			{
-				DataMessage dm = template.FromJsonVirtual( data, connection );
+				DataMessage dm = template.FromJsonVirtual( data/*, connection*/ );
 				return dm;
 			}
 		}
@@ -57,7 +58,7 @@ namespace EEBUS.SHIP.Messages
 			}
 		}
 
-		public void SetPayload( JObject payload )
+		public void SetPayload( JsonNode payload )
 		{
 			this.data.payload = payload;
 		}
@@ -66,19 +67,19 @@ namespace EEBUS.SHIP.Messages
 		{
 			if ( connection.State == Connection.EState.Connected )
 			{
-				if ( this.data.payload.ContainsKey( "datagram" ) )
+				if ( this.data.payload is JsonObject payloadObj && payloadObj.ContainsKey( "datagram" ) )
 				{
-					SpineDatagramPayload payload	   = this.data.payload.ToObject<SpineDatagramPayload>();
-					string				 cmdClassifier = payload.datagram.header.cmdClassifier;
+					SpineDatagramPayload? payload	   = this.data.payload.Deserialize<SpineDatagramPayload>();
+					string?				 cmdClassifier = payload?.datagram?.header?.cmdClassifier;
 
-					payload.Evaluate( connection );
+					await payload.EvaluateAsync( connection );
 
 					if ( cmdClassifier == "reply" || cmdClassifier == "notify" )
 					{
 						return (connection.State, connection.SubState);
 					}
 					
-					SpineDatagramPayload answer = payload.CreateAnswer( NextCount, connection );
+					SpineDatagramPayload? answer = await payload.CreateAnswerAsync( NextCount,  connection );
 
 					if ( null != answer )
 					{
@@ -109,10 +110,10 @@ namespace EEBUS.SHIP.Messages
 	{
 		public ShipHeaderType header	{ get; set; } = new();
 
-		public JObject		  payload	{ get; set; }
+		public JsonNode?	  payload	{ get; set; }
 
-		[JsonProperty( NullValueHandling = NullValueHandling.Ignore )]
-		public ExtensionType  extension	{ get; set; }
+		[JsonPropertyName("extension")]
+		public ExtensionType?  extension	{ get; set; }
 	}
 
 	/// <remarks/>

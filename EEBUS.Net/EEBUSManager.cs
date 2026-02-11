@@ -3,7 +3,6 @@ using EEBUS.KeyValues;
 using EEBUS.Models;
 using EEBUS.Net.Events;
 using EEBUS.SHIP.Messages;
-using EEBUS.UseCases;
 using EEBUS.UseCases.ControllableSystem;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -24,21 +23,26 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Xml;
+using EEBUS.UseCases;
+using Makaretu.Dns;
 
 namespace EEBUS.Net
 {
     public class EEBUSManager : IDisposable
     {
 
-        private ConcurrentDictionary<HostString, Client> _clients = new();
+        private ConcurrentDictionary<HostString, Connection> _connections = new();
         private Devices _devices;
         private readonly MDNSClient _mDNSClient;
         private readonly MDNSService _mDNSService;
         SHIPListener? _shipListener;
         private readonly Settings _settings;
+        private readonly ServiceDiscovery? _serviceDiscovery;
+        private bool _serviceDiscoveryNeedsDispose = false;
 
         public event EventHandler<RemoteDevice>? OnDeviceFound;
-        public event EventHandler<LimitDataChangedEventArgs>? OnLimitDataChanged;
+        //public event EventHandler<LimitDataChangedEventArgs>? OnLimitDataChanged;
+        public Func<LimitDataChangedEventArgs,Task>? OnLimitDataChanged;
 
         private CancellationTokenSource _cts = new();
         private CancellationTokenSource _clientCts = new();
@@ -46,8 +50,14 @@ namespace EEBUS.Net
 
         public Devices Devices => _devices;
 
-        public EEBUSManager(Settings settings)
+        public EEBUSManager(Settings settings, ServiceDiscovery? serviceDiscovery = null)
         {
+
+            if (serviceDiscovery == null)
+            {
+                _serviceDiscoveryNeedsDispose = true;
+                serviceDiscovery = new ServiceDiscovery();
+            }   
 
             foreach (string ns in new string[] {"EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands", "EEBUS.Entities",
                                                  "EEBUS.UseCases.ControllableSystem", "EEBUS.UseCases.GridConnectionPoint",
@@ -59,13 +69,14 @@ namespace EEBUS.Net
 
 
             _devices = new Devices();
-            _mDNSClient = new MDNSClient();
+            _mDNSClient = new MDNSClient(serviceDiscovery);
 
             _cert = CertificateGenerator.GenerateCert(settings.Certificate);
 
             byte[] hash = SHA1.Create().ComputeHash(_cert.GetPublicKey());
 
-            this._mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port);
+            this._mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port, serviceDiscovery);
+           
             LocalDevice localDevice = _devices.GetOrCreateLocal(hash, settings.Device);
 
             _mDNSService.Run(localDevice, _cts.Token);
@@ -81,6 +92,7 @@ namespace EEBUS.Net
             _devices.Local.AddUseCaseEvents(this.lppEventHandler);
             _devices.Local.AddUseCaseEvents(this.lpcOrLppEventHandler);
             _settings = settings;
+            this._serviceDiscovery = serviceDiscovery;
         }
 
         private static Type[] GetTypesInNamespace(Assembly assembly, string nameSpace)
@@ -138,16 +150,21 @@ namespace EEBUS.Net
                 return WriteApprovalResult.Accept();
             }
 
-            public void DataUpdateLimit(int counter, bool active, long limit, TimeSpan duration)
+            public async Task DataUpdateLimitAsync(int counter, bool active, long limit, TimeSpan duration)
             {
                 //using var _ = Push(new LimitDataChanged(true, active, limit, duration));
                 Console.WriteLine("UpdateLimit");
-                EEBusManager.OnLimitDataChanged?.Invoke(EEBusManager, new LimitDataChangedEventArgs() { IsLPC = true, IsActive = active, Limit = limit, Duration = duration });
+                var changedCallback = EEBusManager.OnLimitDataChanged;
+                if (changedCallback is not null)
+                {
+                    await changedCallback(new LimitDataChangedEventArgs() { IsLPC = true, IsActive = active, Limit = limit, Duration = duration });
+                }
             }
 
-            public void DataUpdateFailsafeConsumptionActivePowerLimit(int counter, long limit)
+            public async Task DataUpdateFailsafeConsumptionActivePowerLimitAsync(int counter, long limit)
             {
                 //using var _ = Push(new FailsafeLimitDataChanged(true, limit));
+
             }
         }
 
@@ -165,12 +182,12 @@ namespace EEBUS.Net
                 return WriteApprovalResult.Accept();
             }
 
-            public void DataUpdateLimit(int counter, bool active, long limit, TimeSpan duration)
+            public async Task DataUpdateLimitAsync(int counter, bool active, long limit, TimeSpan duration)
             {
                 //using var _ = Push(new LimitDataChanged(false, active, limit, duration));
             }
 
-            public void DataUpdateFailsafeProductionActivePowerLimit(int counter, long limit)
+            public async Task DataUpdateFailsafeProductionActivePowerLimitAsync(int counter, long limit)
             {
                 //using var _ = Push(new FailsafeLimitDataChanged(false, limit));
             }
@@ -184,12 +201,12 @@ namespace EEBUS.Net
                 return WriteApprovalResult.Accept();
             }
 
-            public void DataUpdateFailsafeDurationMinimum(int counter, TimeSpan duration)
+            public async Task DataUpdateFailsafeDurationMinimumAsync(int counter, TimeSpan duration)
             {
                 //using var _ = Push(new FailsafeLimitDurationChanged(duration));
             }
 
-            public void DataUpdateHeartbeat(int counter, RemoteDevice device, uint timeout)
+            public async Task DataUpdateHeartbeatAsync(int counter, RemoteDevice device, uint timeout)
             {
                 //using var _ = Push(new HeartbeatReceived(device, timeout));
             }
@@ -253,12 +270,17 @@ namespace EEBUS.Net
                 lpcDuration = lpcDuration,
                 lpcFailsafeLimit = lpcFailsafeLimit,
 
+                //heartbeatTimeout = 
+
+
                 lppActive = lppActive,
                 lppLimit = lppLimit,
                 lppDuration = lppDuration,
                 lppFailsafeLimit = lppFailsafeLimit,
 
                 failsafeDuration = failsafeDuration
+
+
             };
 
 
@@ -272,7 +294,7 @@ namespace EEBUS.Net
             };
 
             // -> JSON string
-            var json = JsonSerializer.SerializeToNode(payload, options)?.AsObject();
+            JsonObject json = JsonSerializer.SerializeToNode(payload, options)?.AsObject() ?? throw new Exception("Failed to serialize local device data");
             return json;
 
         }
@@ -292,12 +314,58 @@ namespace EEBUS.Net
                 ski = rd.SKI.ToReadable(),
                 url = rd.Url,
                 serverState = rd.serverState,
-                clientState = rd.clientState
+                clientState = rd.clientState,
+
             });
 
             // Root will be a JsonArray because projection is an IEnumerable<anonymous>
             return JsonSerializer.SerializeToNode(projection, options)!.AsArray();
         }
+
+        public DataStructure? GetLocalData(string type)
+        {
+            LocalDevice? local = _devices?.Local;
+            if (local == null) return null;
+
+            DataStructure? structure = local.GetDataStructures(type).FirstOrDefault();
+            return structure;
+        }
+
+        //public void SendReadMessage(string host, int port, int[] sourceEntityAddress, int sourceFeatureIndex, SKI targetSki, int[] destinationEntityAddress, int destinationFeatureIndex, string payloadType)
+        //{
+        //    RemoteDevice? remote = _devices.Remote.FirstOrDefault(r => r.SKI == targetSki);
+        //    if (remote == null) return;
+
+        //    AddressType source = new AddressType { device = _devices.Local.DeviceId, entity = sourceEntityAddress, feature = sourceFeatureIndex };
+        //    AddressType destination = new AddressType { device = remote.DeviceId, entity = destinationEntityAddress, feature = destinationFeatureIndex };
+        //    HostString hs = new HostString(host, port);
+
+        //    Connection? activeConnection = null;
+
+        //    activeConnection = Server.Get(hs);  //Try to either get the server...
+        //    if (activeConnection == null)
+        //    {
+        //        activeConnection = _clients.GetValueOrDefault(hs);  //...or the client connection
+        //    }
+
+        //    if (activeConnection == null) return;
+
+        //    SpineDatagramPayload read = new SpineDatagramPayload();
+        //    read.datagram.header.addressSource = source;
+        //    read.datagram.header.addressDestination = destination;
+        //    read.datagram.header.msgCounter = DataMessage.NextCount;
+        //    read.datagram.header.cmdClassifier = "read";
+
+        //   // var payload = new DeviceDiagnosisHeartbeatData.Class().CreateRead(activeConnection);
+        //    var cmdClass = SpineCmdPayloadBase.GetClass(payloadType);
+
+        //    read.datagram.payload = payload.ToJsonNode();// JsonSerializer.SerializeToNode(heartbeatReadPayload);
+
+        //    DataMessage message = new DataMessage();
+        //    message.SetPayload(JsonSerializer.SerializeToNode(read) ?? throw new Exception("Failed to serialize read message"));
+
+        //    activeConnection.PushDataMessage(message);
+        //}
 
         //public JsonArray GetRemotes()
         //{
@@ -341,7 +409,7 @@ namespace EEBUS.Net
                 HostString hostString = new HostString(uri.Host, uri.Port);
 
                 ClientWebSocket? wsClient = null;
-                if (!_clients.TryGetValue(hostString, out Client? existingClient))
+                if (!_connections.TryGetValue(hostString, out Connection? existingClient))
                 {
                     wsClient = new ClientWebSocket();
                     wsClient.Options.AddSubProtocol("ship");
@@ -351,7 +419,7 @@ namespace EEBUS.Net
                     if (wsClient?.State == WebSocketState.Open)
                     {
                         Client client = new Client(hostString, wsClient, _devices, device);
-                        _clients[hostString] = client;
+                        _connections[hostString] = client;
                         await client.Run().ConfigureAwait(false);
                         return hostString.ToString();
                     }
@@ -383,7 +451,7 @@ namespace EEBUS.Net
 
         public async Task DisconnectAsync(HostString host)
         {
-            var wsClient = _clients.TryGetValue(host, out Client? client) ? client?.WebSocket : null;
+            var wsClient = _connections.TryGetValue(host, out Connection? client) ? client?.WebSocket : null;
             if (wsClient == null)
                 return;
 
@@ -418,8 +486,10 @@ namespace EEBUS.Net
                 //We need to dispose the websocket in any case, e.g. it can be that we send a close message, but we do not receive one from the remote partner. In this case, we must close the connection
                 wsClient.Dispose();
                 wsClient = null;
-                _clients.TryRemove(host, out Client? removedClient);
-                removedClient?.Stop();
+                if (_connections.TryRemove(host, out Connection? removedClient) && removedClient != null)
+                {
+                    await removedClient.CloseAsync();
+                }
             }
         }
 
@@ -428,7 +498,20 @@ namespace EEBUS.Net
         public void Start()
         {
             _shipListener = new SHIPListener(_devices);
+            _shipListener.OnDeviceConnectionChanged += _shipListener_OnDeviceConnectionChanged;
             _shipListener.StartAsync(_settings.Device.Port);
+        }
+
+        private void _shipListener_OnDeviceConnectionChanged(object? sender, DeviceConnectionChangedEventArgs e)
+        {
+            if (e.ChangeType == DeviceConnectionChangeType.Connected)
+            {
+                _connections[e.Connection.RemoteHost] = e.Connection;
+            }
+            else
+            {
+                _connections.TryRemove(e.Connection.RemoteHost, out Connection? removedremovedConnection);
+            }
         }
 
         public void Stop()
@@ -436,6 +519,27 @@ namespace EEBUS.Net
 
             _shipListener?.StopAsync();
             _mDNSClient.Stop();
+        }
+
+        public void Dispose()
+        {
+            _shipListener?.OnDeviceConnectionChanged -= _shipListener_OnDeviceConnectionChanged;
+
+            _devices.RemoteDeviceFound -= OnRemoteDeviceFound;
+            _devices.ServerStateChanged -= OnServerStateChanged;
+            _devices.ClientStateChanged -= OnClientStateChanged;
+
+            _devices.Local.RemoveUseCaseEvents(this.lpcEventHandler);
+            _devices.Local.RemoveUseCaseEvents(this.lppEventHandler);
+            _devices.Local.RemoveUseCaseEvents(this.lpcOrLppEventHandler);
+
+            _cts.Cancel();
+            _clientCts.Cancel();
+
+            if (_serviceDiscoveryNeedsDispose)
+            {
+                _serviceDiscovery?.Dispose();
+            }
         }
     }
 }

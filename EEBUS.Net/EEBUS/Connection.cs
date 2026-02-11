@@ -1,9 +1,11 @@
 ﻿using System.Diagnostics;
 using System.Net.WebSockets;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using Microsoft.AspNetCore.Http;
 
-using Newtonsoft.Json.Linq;
+
 
 using EEBUS.Messages;
 using EEBUS.Models;
@@ -14,276 +16,346 @@ using EEBUS.Net.EEBUS.UseCases.GridConnectionPoint;
 
 namespace EEBUS
 {
-	public class Connection
-	{
-		protected HostString host;
-		protected WebSocket	 ws;
-		protected EState	 state;
-		protected ESubState	 subState;
+    public abstract class Connection
+    {
+        protected HostString host;
+        protected WebSocket ws;
+        protected EState state;
+        protected ESubState subState;
 
-		public enum EState
-		{
-			Disconnected,
-			WaitingForConnectionHello,
-			WaitingForProtocolHandshake,
-			SendProtocolHandshakeError,
-			SendProtocolHandshakeConfirm,
-			WaitingForProtocolHandshakeConfirm,
-			WaitingForPinCheck,
-			WaitingForAccessMethodsRequest,
-			WaitingForAccessMethods,
-			Connected,
-			Stopped,
-			ErrorOrTimeout
-		}
+        public HostString RemoteHost
+        {
+            get
+            {
+                return host;
+            }
+        }
 
-		public enum ESubState
-		{
-			None,
-			FirstPending,
-			SecondPending,
-			UnexpectedMessage,
-			FormatMismatch
-		}
+        public enum EState
+        {
+            Disconnected,
+            WaitingForConnectionHello,
+            WaitingForProtocolHandshake,
+            SendProtocolHandshakeError,
+            SendProtocolHandshakeConfirm,
+            WaitingForProtocolHandshakeConfirm,
+            WaitingForPinCheck,
+            WaitingForAccessMethodsRequest,
+            WaitingForAccessMethods,
+            Connected,
+            Stopped,
+            ErrorOrTimeout
+        }
 
-		protected class HeartBeatTask
-		{
-			private bool heartbeatSubscribed = false;
+        public enum ESubState
+        {
+            None,
+            FirstPending,
+            SecondPending,
+            UnexpectedMessage,
+            FormatMismatch
+        }
 
-			// This method is called by the timer delegate.
-			public void Beat( object connectionObj )
-			{
-				Connection connection = (Connection) connectionObj;
-				
-				if ( connection.State == Connection.EState.Connected )
-				{
-					AddressType? source		= connection.Local?.GetHeartbeatAddress( true );
-					AddressType? destination	= connection.Remote?.GetHeartbeatAddress( false );
+        protected class HeartBeatTask
+        {
+            private bool heartbeatSubscribed = false;
 
-					if ( null != source && null != destination )
-					{
-						if ( ! this.heartbeatSubscribed )
-						{
-							this.heartbeatSubscribed = true;
+            // This method is called by the timer delegate.
+            public void Beat(object connectionObj)
+            {
+                Connection connection = (Connection)connectionObj;
 
-							if ( connection is Server )
-								Debug.WriteLine( "--- Request heartbeat via server ---" );
-							else
-								Debug.WriteLine( "--- Request heartbeat via client ---" );
+                if (connection.State == Connection.EState.Connected)
+                {
+                    AddressType? source = connection.Local?.GetHeartbeatAddress(true);
+                    AddressType? destination = connection.Remote?.GetHeartbeatAddress(false);
 
-							connection.HeartbeatSubscription();
-							connection.HeartbeatRead();
-						}
+                    if (null != source && null != destination)
+                    {
+                        if (!this.heartbeatSubscribed)
+                        {
+                            this.heartbeatSubscribed = true;
 
-						if ( connection is Server )
-							Debug.WriteLine( "--- Send heartbeat via server ---" );
-						else
-							Debug.WriteLine( "--- Send heartbeat via client ---" );
+                            if (connection is Server)
+                                Debug.WriteLine("--- Request heartbeat via server ---");
+                            else
+                                Debug.WriteLine("--- Request heartbeat via client ---");
 
-						SpineDatagramPayload reply = new SpineDatagramPayload();
-						reply.datagram.header.addressSource		 = source;
-						reply.datagram.header.addressDestination = destination;
-						reply.datagram.header.msgCounter		 = DataMessage.NextCount;
-						reply.datagram.header.cmdClassifier		 = "notify";
+                            connection.HeartbeatSubscription();
+                            connection.HeartbeatRead();
+                        }
 
-						SpineCmdPayloadBase heartbeat = new DeviceDiagnosisHeartbeatData.Class().CreateNotify( connection );
-						reply.datagram.payload = JObject.FromObject( heartbeat );
-					
-						DataMessage heartbeatMessage = new DataMessage();
-						heartbeatMessage.SetPayload( JObject.FromObject( reply ) );
+                        if (connection is Server)
+                            Debug.WriteLine("--- Send heartbeat via server ---");
+                        else
+                            Debug.WriteLine("--- Send heartbeat via client ---");
 
-						connection.PushDataMessage( heartbeatMessage );
-					}
-				}
-			}
-		}
+                        SpineDatagramPayload reply = new SpineDatagramPayload();
+                        reply.datagram.header.addressSource = source;
+                        reply.datagram.header.addressDestination = destination;
+                        reply.datagram.header.msgCounter = DataMessage.NextCount;
+                        reply.datagram.header.cmdClassifier = "notify";
 
-		protected class ElectricalConnectionCharacteristicTask
-		{
-			// This method is called by the timer delegate.
-			public void SendData( object connectionObj )
-			{
-				Connection connection = (Connection) connectionObj;
-				
-				if ( connection.State == Connection.EState.Connected )
-				{
-					AddressType source		= connection.Local.GetElectricalConnectionAddress( true );
-					AddressType destination	= connection.Remote.GetElectricalConnectionAddress( false );
+                        SpineCmdPayloadBase heartbeat = new DeviceDiagnosisHeartbeatData.Class().CreateNotify(connection);
+                        // serialize heartbeat into a JsonNode payload
+                        reply.datagram.payload = heartbeat.ToJsonNode();// JsonSerializer.SerializeToNode(heartbeat);
 
-					if ( null != source && null != destination )
-					{
-						if ( connection is Server )
-							Debug.WriteLine( "--- Send electrical connection characteristics via server ---" );
-						else
-							Debug.WriteLine( "--- Send electrical connection characteristics via client ---" );
+                        DataMessage heartbeatMessage = new DataMessage();
+                        heartbeatMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize heartbeat message"));
 
-						SpineDatagramPayload reply = new SpineDatagramPayload();
-						reply.datagram.header.addressSource		 = source;
-						reply.datagram.header.addressDestination = destination;
-						reply.datagram.header.msgCounter		 = DataMessage.NextCount;
-						reply.datagram.header.cmdClassifier		 = "notify";
+                        connection.PushDataMessage(heartbeatMessage);
+                    }
+                }
+            }
+        }
 
-						reply.datagram.payload = JObject.FromObject( new ElectricalConnectionCharacteristicListData.Class().CreateNotify( connection ) );
+        protected class ElectricalConnectionCharacteristicTask
+        {
+            // This method is called by the timer delegate.
+            public void SendData(object connectionObj)
+            {
+                Connection connection = (Connection)connectionObj;
 
-						DataMessage eccMessage = new DataMessage();
-						eccMessage.SetPayload( JObject.FromObject( reply ) );
+                if (connection.State == Connection.EState.Connected)
+                {
+                    AddressType? source = connection.Local?.GetElectricalConnectionAddress(true);
+                    AddressType? destination = connection.Remote?.GetElectricalConnectionAddress(false);
 
-						connection.PushDataMessage( eccMessage );
-					}
-				}
-			}
-		}
+                    if (null != source && null != destination)
+                    {
+                        if (connection is Server)
+                            Debug.WriteLine("--- Send electrical connection characteristics via server ---");
+                        else
+                            Debug.WriteLine("--- Send electrical connection characteristics via client ---");
 
-		protected class MeasurementDataTask
-		{
-			// Dummy data for test purpose
-			MGCPOperationalData dummyData = new MGCPOperationalData();
+                        SpineDatagramPayload reply = new SpineDatagramPayload();
+                        reply.datagram.header.addressSource = source;
+                        reply.datagram.header.addressDestination = destination;
+                        reply.datagram.header.msgCounter = DataMessage.NextCount;
+                        reply.datagram.header.cmdClassifier = "notify";
 
-			// This method is called by the timer delegate.
-			public void SendData( object connectionObj )
-			{
-				Connection connection = (Connection) connectionObj;
-				
-				if ( connection.State == Connection.EState.Connected )
-				{
-					AddressType source		= connection.Local.GetMeasurementDataAddress( true );
-					AddressType destination	= connection.Remote.GetMeasurementDataAddress( false );
+                        var eccPayload = new ElectricalConnectionCharacteristicListData.Class().CreateNotify(connection);
+                        reply.datagram.payload = eccPayload.ToJsonNode();// JsonSerializer.SerializeToNode(eccPayload);
 
-					if ( null != source && null != destination )
-					{
-						// Fill dummy data with random values						
-						this.dummyData.FillRandom();
-						List<MGCPOperationalData> dummyList = new();
-						dummyList.Add( this.dummyData );
-						connection.Local.FillData<MGCPOperationalData>( dummyList, connection );
+                        DataMessage eccMessage = new DataMessage();
+                        //eccMessage.SetPayload(JsonSerializer.SerializeToNode(reply));
+                        eccMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize electrical connection characteristics message"));
 
-						if ( connection is Server )
-							Debug.WriteLine( "--- Send measurement data via server ---" );
-						else
-							Debug.WriteLine( "--- Send measurement data via client ---" );
+                        connection.PushDataMessage(eccMessage);
+                    }
+                }
+            }
+        }
 
-						SpineDatagramPayload reply = new SpineDatagramPayload();
-						reply.datagram.header.addressSource		 = source;
-						reply.datagram.header.addressDestination = destination;
-						reply.datagram.header.msgCounter		 = DataMessage.NextCount;
-						reply.datagram.header.cmdClassifier		 = "notify";
+        protected class MeasurementDataTask
+        {
+            // Dummy data for test purpose
+            MGCPOperationalData dummyData = new MGCPOperationalData();
 
-						reply.datagram.payload = JObject.FromObject( new MeasurementListData.Class().CreateNotify( connection ) );
+            // This method is called by the timer delegate.
+            public void SendData(object connectionObj)
+            {
+                Connection connection = (Connection)connectionObj;
 
-						DataMessage dataMessage = new DataMessage();
-						dataMessage.SetPayload( JObject.FromObject( reply ) );
+                if (connection.State == Connection.EState.Connected)
+                {
+                    AddressType? source = connection.Local.GetMeasurementDataAddress(true);
+                    AddressType? destination = connection.Remote?.GetMeasurementDataAddress(false);
 
-						connection.PushDataMessage( dataMessage );
-					}
-				}
-			}
-		}
+                    if (null != source && null != destination)
+                    {
+                        // Fill dummy data with random values						
+                        this.dummyData.FillRandom();
+                        List<MGCPOperationalData> dummyList = new();
+                        dummyList.Add(this.dummyData);
+                        connection.Local.FillData<MGCPOperationalData>(dummyList, connection);
 
-		public Connection( HostString host, WebSocket ws, Devices devices )
-		{
-			this.host			 = host;
-			this.ws				 = ws;
-			this.devices		 = devices;
+                        if (connection is Server)
+                            Debug.WriteLine("--- Send measurement data via server ---");
+                        else
+                            Debug.WriteLine("--- Send measurement data via client ---");
 
-			this.WaitingMessages = new( this );
-		}
+                        SpineDatagramPayload reply = new SpineDatagramPayload();
+                        reply.datagram.header.addressSource = source;
+                        reply.datagram.header.addressDestination = destination;
+                        reply.datagram.header.msgCounter = DataMessage.NextCount;
+                        reply.datagram.header.cmdClassifier = "notify";
 
-		public WebSocket    WebSocket { get { return this.ws; } }
+                        var measurementPayload = new MeasurementListData.Class().CreateNotify(connection);
+                        reply.datagram.payload = measurementPayload.ToJsonNode();//JsonSerializer.SerializeToNode(measurementPayload);
 
-		public EState	    State	  { get { return this.state; } }
+                        DataMessage dataMessage = new DataMessage();
+                        dataMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize measurement data message"));
 
-		public ESubState    SubState  { get { return this.subState; } }
+                        connection.PushDataMessage(dataMessage);
+                    }
+                }
+            }
+        }
 
+        public Connection(HostString host, WebSocket ws, Devices devices)
+        {
+            this.host = host;
+            this.ws = ws;
+            this.devices = devices;
 
-		private Devices	    devices;
+            this.WaitingMessages = new(this);
+        }
 
-		public LocalDevice  Local	  { get { return this.devices.Local; } }
+        public WebSocket WebSocket { get { return this.ws; } }
 
-		public RemoteDevice? Remote	  { get; protected set; }
+        public EState State { get { return this.state; } }
 
-
-		public DataMessageQueue WaitingMessages { get; protected set; }
+        public ESubState SubState { get { return this.subState; } }
 
 
-		protected RemoteDevice? GetRemote( string id )
-		{
-			if ( null == id )
-				return null;
+        private Devices devices;
 
-			return this.devices.GetRemote( id );
-		}
+        public LocalDevice Local { get { return this.devices.Local; } }
 
-		public void PushDataMessage( DataMessage message )
-		{
-			this.WaitingMessages.Push( message );
-		}
+        public RemoteDevice? Remote { get; protected set; }
 
-		public void RequestRemoteDeviceConfiguration()
-		{
-			SpineDatagramPayload read = new SpineDatagramPayload();
-			read.datagram.header.addressSource				= new();
-			read.datagram.header.addressSource.device		= this.Local.DeviceId;
-			read.datagram.header.addressSource.entity		= [0];
-			read.datagram.header.addressSource.feature		= 0;
-			read.datagram.header.addressDestination			= new();
-			read.datagram.header.addressDestination.entity	= [0];
-			read.datagram.header.addressDestination.feature	= 0;
-			read.datagram.header.msgCounter					= DataMessage.NextCount;
-			read.datagram.header.cmdClassifier				= "read";
 
-			read.datagram.payload = JObject.FromObject( new NodeManagementDetailedDiscoveryData.Class().CreateRead( this ) );
+        public DataMessageQueue WaitingMessages { get; protected set; }
 
-			DataMessage message = new DataMessage();
-			message.SetPayload( JObject.FromObject( read ) );
 
-			PushDataMessage( message );
-		}
+        public abstract Task CloseAsync();
+        
+        protected RemoteDevice? GetRemote(string id)
+        {
+            if (null == id)
+                return null;
 
-		public void HeartbeatSubscription()
-		{
-			SpineDatagramPayload call = new SpineDatagramPayload();
-			call.datagram.header.addressSource				= new();
-			call.datagram.header.addressSource.device		= this.Local.DeviceId;
-			call.datagram.header.addressSource.entity		= [0];
-			call.datagram.header.addressSource.feature		= 0;
-			call.datagram.header.addressDestination			= new();
-			call.datagram.header.addressDestination.device	= this.Remote.DeviceId;
-			call.datagram.header.addressDestination.entity	= [0];
-			call.datagram.header.addressDestination.feature	= 0;
-			call.datagram.header.msgCounter					= DataMessage.NextCount;
-			call.datagram.header.cmdClassifier				= "call";
+            return this.devices.GetRemote(id);
+        }
 
-			NodeManagementSubscriptionRequestCall payload = new NodeManagementSubscriptionRequestCall();
-			SubscriptionRequestType subscriptionRequest = payload.cmd[0].nodeManagementSubscriptionRequestCall.subscriptionRequest;
-			subscriptionRequest.clientAddress	  = this.Local.GetHeartbeatAddress( false );
-			subscriptionRequest.serverAddress	  = this.Remote.GetHeartbeatAddress( true );
-			subscriptionRequest.serverFeatureType = "DeviceDiagnosis";
+        public void PushDataMessage(DataMessage message)
+        {
+            this.WaitingMessages.Push(message);
+        }
 
-			call.datagram.payload = JObject.FromObject( payload );
 
-			DataMessage message = new DataMessage();
-			message.SetPayload( JObject.FromObject( call ) );
+        private byte[] _receiveBuffer = new byte[10240];
+        protected async Task<ShipMessageBase> ReceiveAsync(CancellationToken cancellationToken)
+        {
+            int totalCount = 0;
+            WebSocketReceiveResult result;
 
-			PushDataMessage( message );
-		}
+            //using CancellationTokenSource timeoutCts = new CancellationTokenSource(SHIPMessageTimeout.CMI_TIMEOUT);
+            //using CancellationTokenSource linkedTokenSource =
+            //    CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
 
-		public void HeartbeatRead()
-		{
-			AddressType source		= this.Local.GetHeartbeatAddress( false );
-			AddressType destination = this.Remote.GetHeartbeatAddress( true );
+            // Accumulate frames until EndOfMessage
+            do
+            {
+                if (totalCount >= _receiveBuffer.Length)
+                    throw new Exception("EEBUS payload too large for receive buffer.");
 
-			SpineDatagramPayload read = new SpineDatagramPayload();
-			read.datagram.header.addressSource		= source;
-			read.datagram.header.addressDestination	= destination;
-			read.datagram.header.msgCounter			= DataMessage.NextCount;
-			read.datagram.header.cmdClassifier		= "read";
+                var segment = new ArraySegment<byte>(
+                    _receiveBuffer,
+                    totalCount,
+                    _receiveBuffer.Length - totalCount);
 
-			read.datagram.payload = JObject.FromObject( new DeviceDiagnosisHeartbeatData.Class().CreateRead( this ) );
+                result = await ws.ReceiveAsync(segment, cancellationToken).ConfigureAwait(false);
 
-			DataMessage message = new DataMessage();
-			message.SetPayload( JObject.FromObject( read ) );
+                if (result.CloseStatus.HasValue || result.MessageType == WebSocketMessageType.Close)
+                {
+                    this.state = EState.Stopped;
+                    break;
+                }
 
-			PushDataMessage( message );
-		}
-	}
+                totalCount += result.Count;
+
+            } while (!result.EndOfMessage && !cancellationToken.IsCancellationRequested);
+
+            if (this.state == EState.Stopped || cancellationToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException();
+            }
+
+            ReadOnlySpan<byte> messageSpan = _receiveBuffer.AsSpan(0, totalCount);
+
+            ShipMessageBase? message = ShipMessageBase.Create(messageSpan);
+            if (message == null)
+            {
+                throw new Exception("Message couldn't be recognized");
+            }
+            return message;
+        }
+
+
+        public void RequestRemoteDeviceConfiguration()
+        {
+            SpineDatagramPayload read = new SpineDatagramPayload();
+            read.datagram.header.addressSource = new();
+            read.datagram.header.addressSource.device = this.Local.DeviceId;
+            read.datagram.header.addressSource.entity = [0];
+            read.datagram.header.addressSource.feature = 0;
+            read.datagram.header.addressDestination = new();
+            read.datagram.header.addressDestination.entity = [0];
+            read.datagram.header.addressDestination.feature = 0;
+            read.datagram.header.msgCounter = DataMessage.NextCount;
+            read.datagram.header.cmdClassifier = "read";
+
+            var discoveryPayload = new NodeManagementDetailedDiscoveryData.Class().CreateRead(this);
+            read.datagram.payload = discoveryPayload.ToJsonNode();// JsonSerializer.SerializeToNode(discoveryPayload);
+
+            DataMessage message = new DataMessage();
+            message.SetPayload(JsonSerializer.SerializeToNode(read));
+
+            PushDataMessage(message);
+        }
+
+        public void HeartbeatSubscription()
+        {
+            SpineDatagramPayload call = new SpineDatagramPayload();
+            call.datagram.header.addressSource = new();
+            call.datagram.header.addressSource.device = this.Local.DeviceId;
+            call.datagram.header.addressSource.entity = [0];
+            call.datagram.header.addressSource.feature = 0;
+            call.datagram.header.addressDestination = new();
+            call.datagram.header.addressDestination.device = this.Remote.DeviceId;
+            call.datagram.header.addressDestination.entity = [0];
+            call.datagram.header.addressDestination.feature = 0;
+            call.datagram.header.msgCounter = DataMessage.NextCount;
+            call.datagram.header.cmdClassifier = "call";
+
+            NodeManagementSubscriptionRequestCall payload = new NodeManagementSubscriptionRequestCall();
+            SubscriptionRequestType subscriptionRequest = payload.cmd[0].nodeManagementSubscriptionRequestCall.subscriptionRequest;
+            subscriptionRequest.clientAddress = this.Local.GetHeartbeatAddress(false);
+            subscriptionRequest.serverAddress = this.Remote.GetHeartbeatAddress(true);
+            subscriptionRequest.serverFeatureType = "DeviceDiagnosis";
+
+            call.datagram.payload = payload.ToJsonNode();//JsonSerializer.SerializeToNode(payload);
+
+            DataMessage message = new DataMessage();
+            message.SetPayload(JsonSerializer.SerializeToNode(call) ?? throw new Exception("Failed to serialize heartbeat subscription message"));
+
+            PushDataMessage(message);
+        }
+
+        public void HeartbeatRead()
+        {
+            AddressType source = this.Local.GetHeartbeatAddress(false);
+            AddressType destination = this.Remote.GetHeartbeatAddress(true);
+
+            SpineDatagramPayload read = new SpineDatagramPayload();
+            read.datagram.header.addressSource = source;
+            read.datagram.header.addressDestination = destination;
+            read.datagram.header.msgCounter = DataMessage.NextCount;
+            read.datagram.header.cmdClassifier = "read";
+
+            var heartbeatReadPayload = new DeviceDiagnosisHeartbeatData.Class().CreateRead(this);
+            read.datagram.payload = heartbeatReadPayload.ToJsonNode();// JsonSerializer.SerializeToNode(heartbeatReadPayload);
+
+            DataMessage message = new DataMessage();
+            message.SetPayload(JsonSerializer.SerializeToNode(read) ?? throw new Exception("Failed to serialize heartbeat read message"));
+
+            PushDataMessage(message);
+        }
+
+
+
+
+    }
 }
