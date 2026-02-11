@@ -9,6 +9,7 @@ using Newtonsoft.Json.Linq;
 using EEBUS.Models;
 using EEBUS.UseCases.ControllableSystem;
 using System.Collections.Generic;
+using EEBUS.UseCases;
 
 namespace EEBUS.Controllers
 {
@@ -49,6 +50,18 @@ namespace EEBUS.Controllers
 
 		private class LPCEventHandler : LPCEvents
 		{
+			public WriteApprovalResult ApproveActiveLimitWrite( ActiveLimitWriteRequest request )
+			{
+				Console.WriteLine( $"LPC Active Limit Write Request: Value={request.Value}, Active={request.IsLimitActive}" );
+				return WriteApprovalResult.Deny();
+			}
+
+			public WriteApprovalResult ApproveFailsafeLimitWrite( FailsafeLimitWriteRequest request )
+			{
+				Console.WriteLine( $"LPC Failsafe Limit Write Request: Value={request.Value}" );
+				return WriteApprovalResult.Deny();
+			}
+			
 			public void DataUpdateLimit( int counter, bool active, long limit, TimeSpan duration )
 			{
 				using var _ = Push( new LimitDataChanged( true, active, limit, duration ) );
@@ -62,6 +75,18 @@ namespace EEBUS.Controllers
 
 		private class LPPEventHandler : LPPEvents
 		{
+			public WriteApprovalResult ApproveActiveLimitWrite( ActiveLimitWriteRequest request )
+			{
+				Console.WriteLine( $"LPP Active Limit Write Request: Value={request.Value}, Active={request.IsLimitActive}" );
+				return WriteApprovalResult.Accept();
+			}
+
+			public WriteApprovalResult ApproveFailsafeLimitWrite( FailsafeLimitWriteRequest request )
+			{
+				Console.WriteLine( $"LPP Failsafe Limit Write Request: Value={request.Value}" );
+				return WriteApprovalResult.Accept();
+			}
+			
 			public void DataUpdateLimit( int counter, bool active, long limit, TimeSpan duration )
 			{
 				using var _ = Push( new LimitDataChanged( false, active, limit, duration ) );
@@ -75,6 +100,12 @@ namespace EEBUS.Controllers
 
 		private class LPCorLPPEventHandler : LPCorLPPEvents
 		{
+			public WriteApprovalResult ApproveFailsafeDurationWrite( FailsafeDurationWriteRequest request )
+			{
+				Console.WriteLine( $"Failsafe Duration Write Request: Duration={request.Duration}" );
+				return WriteApprovalResult.Accept();
+			}
+			
 			public void DataUpdateFailsafeDurationMinimum( int counter, TimeSpan duration )
 			{
 				using var _ = Push( new FailsafeLimitDurationChanged( duration ) );

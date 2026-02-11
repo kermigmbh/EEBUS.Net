@@ -1,5 +1,4 @@
-﻿
-using System.Diagnostics;
+
 using System.Xml;
 
 using Newtonsoft.Json;
@@ -8,6 +7,7 @@ using Newtonsoft.Json.Linq;
 using EEBUS.DataStructures;
 using EEBUS.Messages;
 using EEBUS.SHIP.Messages;
+using EEBUS.UseCases;
 using EEBUS.UseCases.ControllableSystem;
 
 namespace EEBUS.SPINE.Commands
@@ -19,7 +19,7 @@ namespace EEBUS.SPINE.Commands
 			Register( "loadControlLimitListData", new Class() );
 		}
 
-		public new class Class : SpineCmdPayload<CmdLoadControlLimitListDataType>.Class
+			public new class Class : SpineCmdPayload<CmdLoadControlLimitListDataType>.Class
 		{
 			public override SpineCmdPayloadBase CreateAnswer( DatagramType datagram, HeaderType header, Connection connection )
 			{
@@ -38,12 +38,47 @@ namespace EEBUS.SPINE.Commands
 				}
 				else if ( datagram.header.cmdClassifier == "write" )
 				{
-					return new ResultData();	// Alternative: send Error 7 and a text message
+					var approvalResult = datagram.ApprovalResult ?? WriteApprovalResult.Accept();
+					return ResultData.FromApprovalResult( approvalResult );
 				}
 				else
 				{
 					return null;
 				}
+			}
+
+			private WriteApprovalResult GetApproval( Connection connection, string limitDirection, ActiveLimitWriteRequest request )
+			{
+				if ( limitDirection == "consume" )
+				{
+					List<LPCEvents> handlers = connection.Local.GetUseCaseEvents<LPCEvents>();
+					if ( handlers.Count == 0 )
+						return WriteApprovalResult.Accept( "No handlers registered - auto-approved" );
+
+					foreach ( var handler in handlers )
+					{
+						var result = handler.ApproveActiveLimitWrite( request );
+						if ( !result.Approved )
+							return result;
+					}
+					return WriteApprovalResult.Accept();
+				}
+				else if ( limitDirection == "produce" )
+				{
+					List<LPPEvents> handlers = connection.Local.GetUseCaseEvents<LPPEvents>();
+					if ( handlers.Count == 0 )
+						return WriteApprovalResult.Accept( "No handlers registered - auto-approved" );
+
+					foreach ( var handler in handlers )
+					{
+						var result = handler.ApproveActiveLimitWrite( request );
+						if ( !result.Approved )
+							return result;
+					}
+					return WriteApprovalResult.Accept();
+				}
+
+				return WriteApprovalResult.Deny( "Unknown limit direction" );
 			}
 
 			public override void Evaluate( Connection connection, DatagramType datagram )
@@ -54,15 +89,46 @@ namespace EEBUS.SPINE.Commands
 				LoadControlLimitListData command  = datagram.payload.ToObject<LoadControlLimitListData>();
 				LoadControlLimitDataType received = command.cmd[0].loadControlLimitListData.loadControlLimitData[0];
 
-				LoadControlLimitDataStructure data = connection.Local.GetDataStructure<LoadControlLimitDataStructure>( received.limitId );
+				LoadControlLimitDataStructure structureData = connection.Local.GetDataStructure<LoadControlLimitDataStructure>( received.limitId );
+				if ( structureData == null )
+				{
+					datagram.ApprovalResult = WriteApprovalResult.Deny( "Unknown limit ID" );
+					return;
+				}
 
-				data.LimitActive = received.isLimitActive;
-				data.Number		 = received.value.number;
-				data.EndTime	 = received.timePeriod.endTime;
+				PowerDirection direction = structureData.LimitDirection == "consume"
+					? PowerDirection.Consumption
+					: PowerDirection.Production;
 
-				data.SendEvent( connection );
+				TimeSpan? duration = null;
+				if ( !string.IsNullOrEmpty( received.timePeriod?.endTime ) )
+				{
+					try { duration = XmlConvert.ToTimeSpan( received.timePeriod.endTime ); }
+					catch { /* ignore parsing errors */ }
+				}
 
-				SendNotify( connection, datagram );
+				var request = new ActiveLimitWriteRequest(
+					direction,
+					received.isLimitActive,
+					received.value.number,
+					received.value.scale,
+					duration,
+					connection.Remote?.DeviceId,
+					null
+				);
+
+				WriteApprovalResult approvalResult = GetApproval( connection, structureData.LimitDirection, request );
+				datagram.ApprovalResult = approvalResult;
+
+				if ( approvalResult.Approved )
+				{
+					structureData.LimitActive = received.isLimitActive;
+					structureData.Number      = received.value.number;
+					structureData.EndTime     = received.timePeriod.endTime;
+
+					structureData.SendEvent( connection );
+					SendNotify( connection, datagram );
+				}
 			}
 
 			private void SendNotify( Connection connection, DatagramType datagram )
@@ -77,8 +143,8 @@ namespace EEBUS.SPINE.Commands
 				LoadControlLimitListDataType data	   = limitData.cmd[0].loadControlLimitListData;
 
 				List<LoadControlLimitDataType> datas = new();
-				foreach (LoadControlLimitDataStructure structure in connection.Local.GetDataStructures<LoadControlLimitDataStructure>())
-					datas.Add(structure.Data);
+				foreach ( LoadControlLimitDataStructure structure in connection.Local.GetDataStructures<LoadControlLimitDataStructure>() )
+					datas.Add( structure.Data );
 
 				data.loadControlLimitData = datas.ToArray();
 

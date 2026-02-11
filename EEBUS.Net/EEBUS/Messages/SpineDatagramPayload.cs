@@ -1,6 +1,8 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
+using EEBUS.UseCases;
+
 namespace EEBUS.Messages
 {
 	public class SpineDatagramPayload
@@ -94,6 +96,13 @@ namespace EEBUS.Messages
 		public HeaderType header  { get; set; } = new();
 
 		public JObject	  payload { get; set; }
+
+		/// <summary>
+		/// Context for passing approval result from Evaluate to CreateAnswer.
+		/// Not serialized - internal use only.
+		/// </summary>
+		[JsonIgnore]
+		public WriteApprovalResult ApprovalResult { get; set; }
 	}
 
 	[System.SerializableAttribute()]

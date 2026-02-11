@@ -3,6 +3,7 @@ using EEBUS.KeyValues;
 using EEBUS.Models;
 using EEBUS.Net.Events;
 using EEBUS.SHIP.Messages;
+using EEBUS.UseCases;
 using EEBUS.UseCases.ControllableSystem;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -81,6 +82,7 @@ namespace EEBUS.Net
             _devices.Local.AddUseCaseEvents(this.lpcOrLppEventHandler);
             _settings = settings;
         }
+
         private static Type[] GetTypesInNamespace(Assembly assembly, string nameSpace)
         {
             return assembly.GetTypes()
@@ -101,6 +103,7 @@ namespace EEBUS.Net
             _cts.Cancel();
             _clientCts.Cancel();
         }
+
         private void OnRemoteDeviceFound(RemoteDevice device)
         {
             //using var _ = Push(new RemoteDeviceFound(device));
@@ -123,6 +126,18 @@ namespace EEBUS.Net
 
         private class LPCEventHandler(EEBUSManager EEBusManager) : LPCEvents
         {
+            public WriteApprovalResult ApproveActiveLimitWrite( ActiveLimitWriteRequest request )
+            {
+                Console.WriteLine( $"LPC Active Limit Write Request: Value={request.Value}, Active={request.IsLimitActive}" );
+                return WriteApprovalResult.Accept();
+            }
+
+            public WriteApprovalResult ApproveFailsafeLimitWrite( FailsafeLimitWriteRequest request )
+            {
+                Console.WriteLine( $"LPC Failsafe Limit Write Request: Value={request.Value}" );
+                return WriteApprovalResult.Accept();
+            }
+
             public void DataUpdateLimit(int counter, bool active, long limit, TimeSpan duration)
             {
                 //using var _ = Push(new LimitDataChanged(true, active, limit, duration));
@@ -138,6 +153,18 @@ namespace EEBUS.Net
 
         private class LPPEventHandler(EEBUSManager EEBusManager) : LPPEvents
         {
+            public WriteApprovalResult ApproveActiveLimitWrite( ActiveLimitWriteRequest request )
+            {
+                Console.WriteLine( $"LPP Active Limit Write Request: Value={request.Value}, Active={request.IsLimitActive}" );
+                return WriteApprovalResult.Accept();
+            }
+
+            public WriteApprovalResult ApproveFailsafeLimitWrite( FailsafeLimitWriteRequest request )
+            {
+                Console.WriteLine( $"LPP Failsafe Limit Write Request: Value={request.Value}" );
+                return WriteApprovalResult.Accept();
+            }
+
             public void DataUpdateLimit(int counter, bool active, long limit, TimeSpan duration)
             {
                 //using var _ = Push(new LimitDataChanged(false, active, limit, duration));
@@ -151,6 +178,12 @@ namespace EEBUS.Net
 
         private class LPCorLPPEventHandler(EEBUSManager EEBusManager) : LPCorLPPEvents
         {
+            public WriteApprovalResult ApproveFailsafeDurationWrite( FailsafeDurationWriteRequest request )
+            {
+                Console.WriteLine( $"Failsafe Duration Write Request: Duration={request.Duration}" );
+                return WriteApprovalResult.Accept();
+            }
+
             public void DataUpdateFailsafeDurationMinimum(int counter, TimeSpan duration)
             {
                 //using var _ = Push(new FailsafeLimitDurationChanged(duration));

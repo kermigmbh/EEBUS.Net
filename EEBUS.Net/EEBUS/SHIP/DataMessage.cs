@@ -78,7 +78,7 @@ namespace EEBUS.SHIP.Messages
 						return (connection.State, connection.SubState);
 					}
 					
-					SpineDatagramPayload answer = payload.CreateAnswer( NextCount, this.connection );
+					SpineDatagramPayload answer = payload.CreateAnswer( NextCount, connection );
 
 					if ( null != answer )
 					{
