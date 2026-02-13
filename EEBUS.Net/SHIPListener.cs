@@ -22,11 +22,13 @@ namespace EEBUS
         private CancellationTokenSource _cts = new CancellationTokenSource();
         private WebApplication? _app;
         public event EventHandler<DeviceConnectionChangedEventArgs>? OnDeviceConnectionChanged;
+        private Settings _settings;
 
 
-        public SHIPListener(Devices devices)
+        public SHIPListener(Devices devices, Settings settings)
         {
             this.devices = devices;
+            _settings = settings;
         }
 
         public Task StartAsync(int port)
@@ -66,7 +68,7 @@ namespace EEBUS
             {
                 options.ConfigureHttpsDefaults(httpOptions =>
                 {
-                    httpOptions.ServerCertificate = CertificateGenerator.GenerateCert("EEBUS.net");
+                    httpOptions.ServerCertificate = CertificateGenerator.GenerateCert(_settings.BasePath, _settings.Certificate);
                     httpOptions.ClientCertificateMode = ClientCertificateMode.NoCertificate;
                     httpOptions.ClientCertificateValidation = (X509Certificate2 certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors) => true;
                     httpOptions.SslProtocols = SslProtocols.Tls12;

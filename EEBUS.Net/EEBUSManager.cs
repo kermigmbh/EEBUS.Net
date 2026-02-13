@@ -2,6 +2,7 @@
 using EEBUS.KeyValues;
 using EEBUS.Messages;
 using EEBUS.Models;
+using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.Net.Events;
 using EEBUS.SHIP.Messages;
 using EEBUS.SPINE.Commands;
@@ -44,6 +45,7 @@ namespace EEBUS.Net
         public event EventHandler<RemoteDevice>? OnDeviceFound;
         //public event EventHandler<LimitDataChangedEventArgs>? OnLimitDataChanged;
         public Func<LimitDataChangedEventArgs,Task>? OnLimitDataChanged;
+        public Func<DeviceData, Task>? OnDeviceDataChanged { get; set; }
 
         private CancellationTokenSource _cts = new();
         private CancellationTokenSource _clientCts = new();
@@ -72,7 +74,7 @@ namespace EEBUS.Net
             _devices = new Devices();
             _mDNSClient = new MDNSClient(serviceDiscovery);
 
-            _cert = CertificateGenerator.GenerateCert(settings.Certificate);
+            _cert = CertificateGenerator.GenerateCert(settings.BasePath, settings.Certificate);
 
             byte[] hash = SHA1.Create().ComputeHash(_cert.GetPublicKey());
 
@@ -129,10 +131,25 @@ namespace EEBUS.Net
             {
                 //using var _ = Push(new LimitDataChanged(true, active, limit, duration));
                 Console.WriteLine("UpdateLimit");
-                var changedCallback = EEBusManager.OnLimitDataChanged;
-                if (changedCallback is not null)
+                //var changedCallback = EEBusManager.OnLimitDataChanged;
+                //if (changedCallback is not null)
+                //{
+                //    await changedCallback(new LimitDataChangedEventArgs() { IsLPC = true, IsActive = active, Limit = limit, Duration = duration });
+                //}
+
+                var changedCallback = EEBusManager.OnDeviceDataChanged;
+                if (changedCallback != null)
                 {
-                    await changedCallback(new LimitDataChangedEventArgs() { IsLPC = true, IsActive = active, Limit = limit, Duration = duration });
+                    var deviceData = new DeviceData
+                    {
+                        Lpc = new LpcLppData
+                        {
+                            LimitActive = active,
+                            Limit = limit,
+                            LimitDuration = duration
+                        }
+                    };
+                    await changedCallback(deviceData);
                 }
             }
 
@@ -254,6 +271,100 @@ namespace EEBUS.Net
             JsonObject json = JsonSerializer.SerializeToNode(payload, options)?.AsObject() ?? throw new Exception("Failed to serialize local device data");
             return json;
 
+        }
+
+        public DeviceData GetDeviceData()
+        {
+            LocalDevice? local = _devices?.Local;
+
+            if (null == local)
+                return new();
+
+            bool lpcActive = false;
+            long lpcLimit = 0;
+            TimeSpan lpcDuration = new();
+            long lpcFailsafeLimit = 0;
+
+            bool lppActive = false;
+            long lppLimit = 0;
+            TimeSpan lppDuration = new();
+            long lppFailsafeLimit = 0;
+
+            TimeSpan failsafeDuration = new();
+
+            foreach (LoadControlLimitDataStructure data in local.GetDataStructures<LoadControlLimitDataStructure>())
+            {
+                if (data.LimitDirection == "consume")
+                {
+                    lpcActive = data.LimitActive;
+                    lpcLimit = data.Number;
+                    lpcDuration = data.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(data.EndTime);
+                }
+                else if (data.LimitDirection == "produce")
+                {
+                    lppActive = data.LimitActive;
+                    lppLimit = data.Number;
+                    lppDuration = data.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(data.EndTime);
+                }
+            }
+
+            FailsafeConsumptionActivePowerLimitKeyValue lpcFailsafeLimitKeyValue = local.GetKeyValue<FailsafeConsumptionActivePowerLimitKeyValue>();
+            if (null != lpcFailsafeLimitKeyValue)
+                lpcFailsafeLimit = lpcFailsafeLimitKeyValue.Value;
+
+            FailsafeProductionActivePowerLimitKeyValue lppFailsafeLimitKeyValue = local.GetKeyValue<FailsafeProductionActivePowerLimitKeyValue>();
+            if (null != lppFailsafeLimitKeyValue)
+                lppFailsafeLimit = lppFailsafeLimitKeyValue.Value;
+
+            FailsafeDurationMinimumKeyValue failsafeDurationKeyValue = local.GetKeyValue<FailsafeDurationMinimumKeyValue>();
+            if (null != lppFailsafeLimitKeyValue)
+                failsafeDuration = XmlConvert.ToTimeSpan(failsafeDurationKeyValue.Duration);
+
+            //var payload = new
+            //{
+            //    name = local.Name,
+            //    ski = local.SKI.ToReadable(),
+            //    shipId = local.ShipID,
+
+            //    lpcActive = lpcActive,
+            //    lpcLimit = lpcLimit,
+            //    lpcDuration = lpcDuration,
+            //    lpcFailsafeLimit = lpcFailsafeLimit,
+
+            //    //heartbeatTimeout = 
+
+
+            //    lppActive = lppActive,
+            //    lppLimit = lppLimit,
+            //    lppDuration = lppDuration,
+            //    lppFailsafeLimit = lppFailsafeLimit,
+
+            //    failsafeDuration = failsafeDuration
+
+
+            //};
+
+            return new DeviceData
+            {
+                Name = local.Name,
+                SKI = local.SKI.ToReadable(),
+                ShipId = local.ShipID,
+                Lpc = new LpcLppData
+                {
+                    LimitActive = lpcActive,
+                    Limit = lpcLimit,
+                    LimitDuration = lpcDuration,
+                    FailSafeLimit = lpcFailsafeLimit
+                },
+                Lpp = new LpcLppData
+                {
+                    LimitActive = lppActive,
+                    Limit = lppLimit,
+                    LimitDuration = lppDuration,
+                    FailSafeLimit = lppFailsafeLimit
+                },
+                FailSafeLimitDuration = failsafeDuration
+            };
         }
 
         public JsonArray GetRemotes()
@@ -454,7 +565,7 @@ namespace EEBUS.Net
 
         public void Start()
         {
-            _shipListener = new SHIPListener(_devices);
+            _shipListener = new SHIPListener(_devices, _settings);
             _shipListener.OnDeviceConnectionChanged += _shipListener_OnDeviceConnectionChanged;
             _shipListener.StartAsync(_settings.Device.Port);
         }
