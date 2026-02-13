@@ -66,7 +66,7 @@ namespace EEBUS.SPINE.Commands
                     return;
 
                 LoadControlLimitDataType received = command.cmd[0].loadControlLimitListData.loadControlLimitData[0];
-
+                
                 LoadControlLimitDataStructure data = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(received.limitId);
 
                 data.LimitActive = received.isLimitActive;
