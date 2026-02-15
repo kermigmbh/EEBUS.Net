@@ -280,6 +280,9 @@ namespace EEBUS
             {
                 throw new Exception("Message couldn't be recognized");
             }
+
+            Debug.WriteLine("<=== " + message.ToString());
+
             return message;
         }
 
