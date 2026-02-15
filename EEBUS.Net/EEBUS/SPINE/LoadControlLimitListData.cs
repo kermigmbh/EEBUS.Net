@@ -58,7 +58,7 @@ namespace EEBUS.SPINE.Commands
             {
                 if (datagram.header.cmdClassifier != "write")
                     return;
-
+                
                 var command = datagram.payload == null
                     ? null
                     : System.Text.Json.JsonSerializer.Deserialize<LoadControlLimitListData>(datagram.payload);
