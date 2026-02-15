@@ -27,51 +27,17 @@ namespace TestProject1
             }
         }
 
+         
         
-
         [Fact]
         public void Test1()
         {
-            string spineMsg = """
-{
-  "header": {
-    "msgId": "4711",
-    "timestamp": "2026-02-15T14:45:00Z",
-    "source": "evse_01",
-    "destination": "energy_manager"
-  },
-  "body": {
-    "device": {
-      "features": [
-        {
-          "featureId": 3,
-          "featureType": "loadControl",
-          "functions": [
-            {
-              "function": "loadControlLimit",
-              "cmd": "write",
-              "data": [
-                {
-                  "limitId": 1,
-                  "value": 3500,
-                  "isActive": true
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  }
-}
-""";
-            DataMessage limitMessage = new DataMessage();
-            SpineDatagramPayload notify = new SpineDatagramPayload();
-            limitMessage.SetPayload(System.Text.Json.JsonSerializer.SerializeToNode(notify));
-            var m = ShipMessageBase.Create(Encoding.UTF8.GetBytes(spineMsg));
+           
             
+            var m = ShipMessageBase.Create(Encoding.UTF8.GetBytes(EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply));
 
-
+            m = ShipMessageBase.Create(Encoding.UTF8.GetBytes(EEBusMessages.MsgLoadControlLimitListDataWrite));
+            
         }
     }
 }

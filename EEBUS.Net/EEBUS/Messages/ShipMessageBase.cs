@@ -61,7 +61,7 @@ namespace EEBUS.Messages
 			int indx1 = str.IndexOf( "{" );
 			int indx2 = str.IndexOf( ":" );
 
-			return str.Substring( indx1 + 1, indx2 - indx1 ).Trim( '"' );
+			return str.Substring( indx1 + 1, indx2 - indx1 ).Trim( '"','\r', '\n', '\t', ' ');
 		}
 
 		static public Class GetClass( ReadOnlySpan<byte> bytes )
