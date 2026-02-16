@@ -8,7 +8,7 @@ namespace EEBUS.Net.EEBUS.Models.Data
     {
         public bool LimitActive { get; set; }
         public long Limit { get; set; }
-        public TimeSpan LimitDuration {  get; set; }
+        public int LimitDuration {  get; set; }
         public long FailSafeLimit { get; set; }
         
     }

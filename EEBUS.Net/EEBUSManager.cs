@@ -147,7 +147,7 @@ namespace EEBUS.Net
                         {
                             LimitActive = active,
                             Limit = limit,
-                            LimitDuration = duration
+                            LimitDuration = (int)duration.TotalSeconds
                         }
                     };
                     await changedCallback(deviceData);
@@ -354,14 +354,14 @@ namespace EEBUS.Net
                 {
                     LimitActive = lpcActive,
                     Limit = lpcLimit,
-                    LimitDuration = lpcDuration,
+                    LimitDuration = (int)lpcDuration.TotalSeconds,
                     FailSafeLimit = lpcFailsafeLimit
                 },
                 Lpp = new LpcLppData
                 {
                     LimitActive = lppActive,
                     Limit = lppLimit,
-                    LimitDuration = lppDuration,
+                    LimitDuration = (int)lppDuration.TotalSeconds,
                     FailSafeLimit = lppFailsafeLimit
                 },
                 FailSafeLimitDuration = failsafeDuration
