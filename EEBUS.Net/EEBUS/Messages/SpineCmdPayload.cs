@@ -26,7 +26,7 @@ namespace EEBUS.Messages
 
         public new class Class : SpineCmdPayloadBase.Class
         {
-            public override SpineCmdPayloadBase? FromJsonNode(JsonNode? node)
+            public override SpineCmdPayload<T>? FromJsonNode(JsonNode? node)
             {
                 if (node == null) return null;
                 return JsonSerializer.Deserialize<SpineCmdPayload<T>>(node);

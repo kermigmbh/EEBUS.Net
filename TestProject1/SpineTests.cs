@@ -52,7 +52,7 @@ namespace TestProject1
             var m = ShipMessageBase.Create(Encoding.UTF8.GetBytes(EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply));
             var cmd = GetCommand(m);
 
-            m = ShipMessageBase.Create(Encoding.UTF8.GetBytes(EEBusMessages.MsgLoadControlLimitListDataWrite));
+            m = ShipMessageBase.Create(Encoding.UTF8.GetBytes(EEBusMessages.MsgNodeManagementBindingRequestCall));
             cmd = GetCommand(m);
         }
 
