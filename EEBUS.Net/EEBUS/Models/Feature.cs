@@ -18,7 +18,7 @@ namespace EEBUS.Models
 			this.Role  = role;
 			this.owner = owner;
 
-			SupportedFunctionType[] functionInfos = featureInfo.description.supportedFunction;
+			SupportedFunctionType[]? functionInfos = featureInfo.description.supportedFunction;
 			if ( null != functionInfos )
 			{
 				foreach ( SupportedFunctionType functionInfo in functionInfos )

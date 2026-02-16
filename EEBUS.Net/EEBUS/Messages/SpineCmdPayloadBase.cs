@@ -20,17 +20,17 @@ namespace EEBUS.Messages
 				return null;
 			}
 
-			public virtual SpineCmdPayloadBase CreateNotify( Connection connection )
+			public virtual SpineCmdPayloadBase? CreateNotify( Connection connection )
 			{
 				return null;
 			}
 
-			public virtual SpineCmdPayloadBase CreateRead( Connection connection )
+			public virtual SpineCmdPayloadBase? CreateRead( Connection connection )
 			{
 				return null;
 			}
 
-			public virtual SpineCmdPayloadBase CreateCall( Connection connection )
+			public virtual SpineCmdPayloadBase? CreateCall( Connection connection )
 			{
 				return null;
 			}
@@ -52,9 +52,9 @@ namespace EEBUS.Messages
 			commands.Add( cmd, cls );
 		}
 
-		static public Class GetClass( string cmd )
+		static public Class? GetClass( string cmd )
 		{
-			if ( commands.TryGetValue( cmd, out Class cls ) )
+			if ( commands.TryGetValue( cmd, out Class? cls ) )
 				return cls;
 
 			return null;

@@ -49,7 +49,7 @@ namespace EEBUS.SPINE.Commands
 
 				if (payload != null)
 				{
-					connection.Remote.SetDiscoveryData( payload, connection );
+					connection.Remote?.SetDiscoveryData( payload, connection );
 				}
 			}
 		}

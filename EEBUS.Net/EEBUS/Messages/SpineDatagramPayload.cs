@@ -52,7 +52,7 @@ namespace EEBUS.Messages
 			if (command == "function" && prop.Value is JsonValue v && v.TryGetValue<string>(out var fn))
 				command = fn;
 
-			SpineCmdPayloadBase.Class cls = SpineCmdPayloadBase.GetClass( command );
+			SpineCmdPayloadBase.Class? cls = SpineCmdPayloadBase.GetClass( command );
 			if ( null == cls )
 				return null;
 
@@ -74,7 +74,7 @@ namespace EEBUS.Messages
 			reply.datagram.header.cmdClassifier		   = GetAnswerCmdClassifier();
 			reply.datagram.header.ackRequest		   = cls.GetAnswerAckRequest();
 
-			SpineCmdPayloadBase payload = await cls.CreateAnswerAsync( this.datagram, reply.datagram.header, connection );
+			SpineCmdPayloadBase? payload = await cls.CreateAnswerAsync( this.datagram, reply.datagram.header, connection );
 			if ( null == payload )
 				return null;
 

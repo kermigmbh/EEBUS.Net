@@ -139,10 +139,10 @@ namespace EEBUS.Net
     public class BindingSubscriptionInfo
     {
         //public BindingSubscriptionState State { get; set; }
-        public AddressType clientAddress { get; set; }
+        public required AddressType clientAddress { get; set; }
 
-        public AddressType serverAddress { get; set; }
+        public required AddressType serverAddress { get; set; }
 
-        public string serverFeatureType { get; set; }
+        public required string serverFeatureType { get; set; }
     }
 }

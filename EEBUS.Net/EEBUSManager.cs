@@ -222,16 +222,16 @@ namespace EEBUS.Net
                 }
             }
 
-            FailsafeConsumptionActivePowerLimitKeyValue lpcFailsafeLimitKeyValue = local.GetKeyValue<FailsafeConsumptionActivePowerLimitKeyValue>();
+            FailsafeConsumptionActivePowerLimitKeyValue? lpcFailsafeLimitKeyValue = local.GetKeyValue<FailsafeConsumptionActivePowerLimitKeyValue>();
             if (null != lpcFailsafeLimitKeyValue)
                 lpcFailsafeLimit = lpcFailsafeLimitKeyValue.Value;
 
-            FailsafeProductionActivePowerLimitKeyValue lppFailsafeLimitKeyValue = local.GetKeyValue<FailsafeProductionActivePowerLimitKeyValue>();
+            FailsafeProductionActivePowerLimitKeyValue? lppFailsafeLimitKeyValue = local.GetKeyValue<FailsafeProductionActivePowerLimitKeyValue>();
             if (null != lppFailsafeLimitKeyValue)
                 lppFailsafeLimit = lppFailsafeLimitKeyValue.Value;
 
-            FailsafeDurationMinimumKeyValue failsafeDurationKeyValue = local.GetKeyValue<FailsafeDurationMinimumKeyValue>();
-            if (null != lppFailsafeLimitKeyValue)
+            FailsafeDurationMinimumKeyValue? failsafeDurationKeyValue = local.GetKeyValue<FailsafeDurationMinimumKeyValue>();
+            if (null != failsafeDurationKeyValue)
                 failsafeDuration = XmlConvert.ToTimeSpan(failsafeDurationKeyValue.Duration);
 
             var payload = new
@@ -309,16 +309,16 @@ namespace EEBUS.Net
                 }
             }
 
-            FailsafeConsumptionActivePowerLimitKeyValue lpcFailsafeLimitKeyValue = local.GetKeyValue<FailsafeConsumptionActivePowerLimitKeyValue>();
+            FailsafeConsumptionActivePowerLimitKeyValue? lpcFailsafeLimitKeyValue = local.GetKeyValue<FailsafeConsumptionActivePowerLimitKeyValue>();
             if (null != lpcFailsafeLimitKeyValue)
                 lpcFailsafeLimit = lpcFailsafeLimitKeyValue.Value;
 
-            FailsafeProductionActivePowerLimitKeyValue lppFailsafeLimitKeyValue = local.GetKeyValue<FailsafeProductionActivePowerLimitKeyValue>();
+            FailsafeProductionActivePowerLimitKeyValue? lppFailsafeLimitKeyValue = local.GetKeyValue<FailsafeProductionActivePowerLimitKeyValue>();
             if (null != lppFailsafeLimitKeyValue)
                 lppFailsafeLimit = lppFailsafeLimitKeyValue.Value;
 
-            FailsafeDurationMinimumKeyValue failsafeDurationKeyValue = local.GetKeyValue<FailsafeDurationMinimumKeyValue>();
-            if (null != lppFailsafeLimitKeyValue)
+            FailsafeDurationMinimumKeyValue? failsafeDurationKeyValue = local.GetKeyValue<FailsafeDurationMinimumKeyValue>();
+            if (null != failsafeDurationKeyValue)
                 failsafeDuration = XmlConvert.ToTimeSpan(failsafeDurationKeyValue.Duration);
 
             //var payload = new
