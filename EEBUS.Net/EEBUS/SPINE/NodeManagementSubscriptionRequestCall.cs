@@ -24,15 +24,15 @@ namespace EEBUS.SPINE.Commands
                 {
                     success = connection.BindingAndSubscriptionManager.TryAddOrUpdateSubscription(req.clientAddress, req.serverAddress, req.serverFeatureType);
                 }
-
                 if (success)
                 {
-                    
+                    ResultData payload = new ResultData();
+
+                    return payload;
                 }
                 //Reject
-                ResultData payload = new ResultData();
-
-                return payload;
+                return null;
+               
             }
 
 			public override SpineCmdPayloadBase CreateCall( Connection connection )

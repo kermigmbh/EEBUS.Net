@@ -59,6 +59,13 @@ namespace EEBUS.SPINE.Commands
                 if (datagram.header.cmdClassifier != "write")
                     return;
                 
+
+                if (!connection.BindingAndSubscriptionManager.HasBinding(datagram.header.addressSource, datagram.header.addressDestination))
+                {
+                    //Reject
+                    return;
+                }
+
                 var command = datagram.payload == null
                     ? null
                     : System.Text.Json.JsonSerializer.Deserialize<LoadControlLimitListData>(datagram.payload);
@@ -67,7 +74,9 @@ namespace EEBUS.SPINE.Commands
 
                 LoadControlLimitDataType received = command.cmd[0].loadControlLimitListData.loadControlLimitData[0];
                 
-                LoadControlLimitDataStructure data = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(received.limitId);
+                LoadControlLimitDataStructure? data = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(received.limitId);
+                if (data == null)
+                    return;
 
                 data.LimitActive = received.isLimitActive;
                 // received.value.number is nullable, keep existing number if null
@@ -76,7 +85,12 @@ namespace EEBUS.SPINE.Commands
 
                 await data.SendEventAsync(connection);
 
-                SendNotify(connection, datagram);
+
+                if ( connection.BindingAndSubscriptionManager.HasSubscription(datagram.header.addressSource, datagram.header.addressDestination))
+                {
+                    SendNotify(connection, datagram);
+                }
+               
             }
 
             private void SendNotify(Connection connection, DatagramType datagram)

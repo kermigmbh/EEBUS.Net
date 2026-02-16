@@ -31,12 +31,12 @@ namespace EEBUS.SPINE.Commands
 
 				if (success)
 				{
-                   
+                    ResultData payload = new ResultData();
+
+                    return payload;
                 }
                 //Reject
-                ResultData payload = new ResultData();
-
-                return payload;
+                return null;
 
             }
 		}

@@ -9,24 +9,34 @@ namespace EEBUS.Net
     public class BindingAndSubscriptionManager(Connection _connection)
     {
         private ConcurrentBag<BindingSubscriptionInfo> _subsriptions = new ();
+        private ConcurrentBag<BindingSubscriptionInfo> _bindings = new();
 
-        
 
-        public bool TryAddOrUpdateClientBinding(AddressType clientAddress, AddressType serverAddress, string serverFeatureType)
+
+        public bool IsKnownFeature(AddressType clientAddress, AddressType serverAddress, string serverFeatureType)
         {
             var localEntity = _connection.Local.Entities.FirstOrDefault(e => e.Index.SequenceEqual(serverAddress.entity));
-            var localFeature = localEntity?.Features.FirstOrDefault(f => f.Index == serverAddress.feature && /*f.Type == serverFeatureType &&*/ f.Role == "server");
+            var localFeature = localEntity?.Features.FirstOrDefault(f => f.Index == serverAddress.feature && /*f.Type == serverFeatureType &&*/ f.Role is "server" or "special" );
 
             var remoteEntity = _connection.Remote?.Entities.FirstOrDefault(e => e.Index.SequenceEqual(clientAddress.entity));
-            var remoteFeature = remoteEntity?.Features.FirstOrDefault(f => f.Index == clientAddress.feature && /*f.Type == serverFeatureType &&*/ f.Role == "client");
+            var remoteFeature = remoteEntity?.Features.FirstOrDefault(f => f.Index == clientAddress.feature && /*f.Type == serverFeatureType &&*/ f.Role is "client" or "special");
 
             if (localFeature == null || remoteFeature == null)
             {
                 return false;
             }
+            return true;
+        }
+
+        public bool TryAddOrUpdateClientBinding(AddressType clientAddress, AddressType serverAddress, string serverFeatureType)
+        {
+            if (!IsKnownFeature(clientAddress, serverAddress, serverFeatureType))
+            {
+                return false;
+            }
 
 
-            var entry = _subsriptions.FirstOrDefault(b => 
+            var entry = _bindings.FirstOrDefault(b => 
                             b.serverFeatureType == serverFeatureType &&
                             //b.clientAddress.feature == bindingSubscription.clientAddress.feature &&
                             //b.clientAddress.entity.SequenceEqual(b.clientAddress.entity) &&
@@ -41,54 +51,75 @@ namespace EEBUS.Net
                     clientAddress = clientAddress,
                     serverAddress = serverAddress,
                     serverFeatureType = serverFeatureType,
-                    State = BindingSubscriptionState.Binding
                 };
-                entry.clientAddress = clientAddress;
-                _subsriptions.Add(entry);   
+                _bindings.Add(entry);   
             }
             else
             {
                 entry.clientAddress = clientAddress;
-                entry.State = BindingSubscriptionState.Binding;
             }
             return true;
         }
 
         public bool TryAddOrUpdateSubscription(AddressType clientAddress, AddressType serverAddress, string serverFeatureType)
         {
-            var entry = _subsriptions.FirstOrDefault(b =>
-                            //b.serverFeatureType == serverFeatureType &&
-                            b.clientAddress.feature == clientAddress.feature &&
-                            b.clientAddress.entity.SequenceEqual(clientAddress.entity) &&
-                            b.serverAddress.feature == serverAddress.feature &&
-                            b.serverAddress.entity.SequenceEqual(serverAddress.entity) && 
-                            b.State == BindingSubscriptionState.Binding
-                            );
-
-            if (entry == null)
+            if (!IsKnownFeature(clientAddress, serverAddress, serverFeatureType))
             {
                 return false;
             }
+
+            var entry = _subsriptions.FirstOrDefault(b =>
+                            //b.serverFeatureType == serverFeatureType &&
+                            //b.clientAddress.feature == clientAddress.feature &&
+                            //b.clientAddress.entity.SequenceEqual(clientAddress.entity) &&
+                            b.serverAddress.feature == serverAddress.feature &&
+                            b.serverAddress.entity.SequenceEqual(serverAddress.entity) 
+                            
+                            );
+            if (entry == null)
+            {
+                entry = new BindingSubscriptionInfo()
+                {
+                    clientAddress = clientAddress,
+                    serverAddress = serverAddress,
+                    serverFeatureType = serverFeatureType,
+                  
+                };
+                _subsriptions.Add(entry);
+            }
             else
-            {  
-                entry.State = BindingSubscriptionState.Subscription;
+            {
+                entry.clientAddress = clientAddress;
+               
             }
             return true;
         }
 
 
-        public BindingSubscriptionState GetState(AddressType clientAddress, AddressType serverAddress)
+        public bool HasBinding(AddressType clientAddress, AddressType serverAddress/*, string serverFeatureType*/)
+        {
+            var entry = _bindings.FirstOrDefault(b =>
+                            //b.serverFeatureType == serverFeatureType &&
+                            b.clientAddress.feature == clientAddress.feature &&
+                            b.clientAddress.entity.SequenceEqual(clientAddress.entity) &&
+                            b.serverAddress.feature == serverAddress.feature &&
+                            b.serverAddress.entity.SequenceEqual(serverAddress.entity) 
+                            );
+
+            return entry != null;
+
+        }
+        public bool HasSubscription(AddressType clientAddress, AddressType serverAddress/*, string serverFeatureType*/)
         {
             var entry = _subsriptions.FirstOrDefault(b =>
                             //b.serverFeatureType == serverFeatureType &&
                             b.clientAddress.feature == clientAddress.feature &&
                             b.clientAddress.entity.SequenceEqual(clientAddress.entity) &&
                             b.serverAddress.feature == serverAddress.feature &&
-                            b.serverAddress.entity.SequenceEqual(serverAddress.entity) &&
-                            b.State == BindingSubscriptionState.Binding
+                            b.serverAddress.entity.SequenceEqual(serverAddress.entity)
                             );
 
-            return entry?.State ?? BindingSubscriptionState.None;
+            return entry != null;
 
         }
 
@@ -99,16 +130,15 @@ namespace EEBUS.Net
 
 
 
-    public enum BindingSubscriptionState
-    {
-        None,
-        Binding,
-        Subscription
-    }
+    //public enum BindingSubscriptionState
+    //{
+    //    None,
+        
+    //}
 
     public class BindingSubscriptionInfo
     {
-        public BindingSubscriptionState State { get; set; }
+        //public BindingSubscriptionState State { get; set; }
         public AddressType clientAddress { get; set; }
 
         public AddressType serverAddress { get; set; }
