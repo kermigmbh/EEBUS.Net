@@ -58,7 +58,7 @@ namespace EEBUS.KeyValues
 			List<LPCorLPPEvents> lpcOrLppEvents = connection.Local.GetUseCaseEvents<LPCorLPPEvents>();
 			foreach (var lpcOrLpp in lpcOrLppEvents)
 			{
-				await lpcOrLpp.DataUpdateFailsafeDurationMinimumAsync(0, XmlConvert.ToTimeSpan(this.Duration));
+				await lpcOrLpp.DataUpdateFailsafeDurationMinimumAsync(0, XmlConvert.ToTimeSpan(this.Duration), connection.Remote?.SKI.ToString() ?? string.Empty);
 			}
 		}
 	}

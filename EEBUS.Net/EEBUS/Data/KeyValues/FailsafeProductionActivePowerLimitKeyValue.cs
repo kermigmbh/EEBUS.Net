@@ -66,7 +66,7 @@ namespace EEBUS.KeyValues
 			List<LPPEvents> lppEvents = connection.Local.GetUseCaseEvents<LPPEvents>();
 			foreach (var lpp in lppEvents)
 			{
-				await lpp.DataUpdateFailsafeProductionActivePowerLimitAsync(0, this.Value);
+				await lpp.DataUpdateFailsafeProductionActivePowerLimitAsync(0, this.Value, connection.Remote?.SKI.ToString() ?? string.Empty);
 			}
 		}
 	}
