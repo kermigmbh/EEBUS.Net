@@ -12,12 +12,33 @@ namespace EEBUS.SPINE.Commands
 
 		public new class Class : SpineCmdPayload<CmdNodeManagementBindingRequestCallType>.Class
 		{
+
+            //public override async ValueTask EvaluateAsync(Connection connection, DatagramType datagram)
+            //{
+               
+            //}
+
 			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
-				ResultData payload = new ResultData();
 
-				return payload;
-			}
+				bool success = false;
+                var bindingReq = FromJsonNode(datagram.payload);
+                if (bindingReq != null && bindingReq.cmd.FirstOrDefault()?.nodeManagementBindingRequestCall.bindingRequest is BindingRequestType req)
+                {
+                    success = connection.BindingAndSubscriptionManager.TryAddOrUpdateClientBinding(req.clientAddress, req.serverAddress, req.serverFeatureType);
+                }
+
+
+				if (success)
+				{
+                    ResultData payload = new ResultData();
+
+                    return payload;
+                }
+                //Reject
+                return null;
+
+            }
 		}
 	}
 
