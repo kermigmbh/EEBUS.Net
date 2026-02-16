@@ -12,6 +12,7 @@ using EEBUS.Models;
 using EEBUS.SHIP.Messages;
 using EEBUS.SPINE.Commands;
 using EEBUS.Net.EEBUS.UseCases.GridConnectionPoint;
+using EEBUS.Net;
 
 
 namespace EEBUS
@@ -200,7 +201,10 @@ namespace EEBUS
             this.devices = devices;
 
             this.WaitingMessages = new(this);
+            this.BindingAndSubscriptionManager = new BindingAndSubscriptionManager(this);
         }
+
+        public BindingAndSubscriptionManager BindingAndSubscriptionManager { get; } 
 
         public WebSocket WebSocket { get { return this.ws; } }
 
