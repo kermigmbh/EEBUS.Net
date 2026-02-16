@@ -60,7 +60,7 @@ namespace EEBUS
         protected class HeartBeatTask
         {
             private bool heartbeatSubscribed = false;
-
+            private DeviceDiagnosisHeartbeatData.Class heartbeatClass = new DeviceDiagnosisHeartbeatData.Class();
             // This method is called by the timer delegate.
             public void Beat(object connectionObj)
             {
@@ -97,7 +97,7 @@ namespace EEBUS
                         reply.datagram.header.msgCounter = DataMessage.NextCount;
                         reply.datagram.header.cmdClassifier = "notify";
 
-                        SpineCmdPayloadBase heartbeat = new DeviceDiagnosisHeartbeatData.Class().CreateNotify(connection);
+                        SpineCmdPayloadBase heartbeat = heartbeatClass.CreateNotify(connection);
                         // serialize heartbeat into a JsonNode payload
                         reply.datagram.payload = heartbeat.ToJsonNode();// JsonSerializer.SerializeToNode(heartbeat);
 
@@ -344,7 +344,7 @@ namespace EEBUS
         public void HeartbeatRead()
         {
             AddressType source = this.Local.GetHeartbeatAddress(false);
-            AddressType destination = this.Remote.GetHeartbeatAddress(true);
+            AddressType  destination = this.Remote?.GetHeartbeatAddress(true) ?? throw new Exception("Remote device is not available");
 
             SpineDatagramPayload read = new SpineDatagramPayload();
             read.datagram.header.addressSource = source;
