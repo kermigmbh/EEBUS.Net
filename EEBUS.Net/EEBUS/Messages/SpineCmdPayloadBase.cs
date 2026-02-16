@@ -9,10 +9,13 @@ namespace EEBUS.Messages
 		{
 		}
 		public abstract JsonNode? ToJsonNode();
-         
+	
+
         public abstract class Class
 		{
-			public virtual async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
+            public abstract SpineCmdPayloadBase? FromJsonNode(JsonNode? node);
+
+            public virtual async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
 				return null;
 			}

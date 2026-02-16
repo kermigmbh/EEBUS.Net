@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using EEBUS.SPINE.Commands;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
@@ -81,8 +82,15 @@ namespace EEBUS.Messages
 
 			return reply;
 		}
+        public SpineCmdPayloadBase? DeserializePayload()
+        {
+            SpineCmdPayloadBase.Class? cls = GetClass();
+            if (null == cls)
+                return null;
 
-		public async ValueTask EvaluateAsync( Connection connection )
+             return cls.FromJsonNode(datagram.payload);
+        }
+        public async ValueTask EvaluateAsync( Connection connection )
 		{
 			SpineCmdPayloadBase.Class? cls = GetClass();
 			if ( null == cls )

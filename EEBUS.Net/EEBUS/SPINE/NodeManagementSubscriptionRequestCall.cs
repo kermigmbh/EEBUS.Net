@@ -16,10 +16,24 @@ namespace EEBUS.SPINE.Commands
 		{
 			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
-				ResultData payload = new ResultData();
 
-				return payload;
-			}
+
+                bool success = false;
+                var subscriptionReq = FromJsonNode(datagram.payload);
+                if (subscriptionReq != null && subscriptionReq.cmd.FirstOrDefault()?.nodeManagementSubscriptionRequestCall.subscriptionRequest is SubscriptionRequestType req)
+                {
+                    success = connection.BindingAndSubscriptionManager.TryAddOrUpdateSubscription(req.clientAddress, req.serverAddress, req.serverFeatureType);
+                }
+                if (success)
+                {
+                    ResultData payload = new ResultData();
+
+                    return payload;
+                }
+                //Reject
+                return null;
+               
+            }
 
 			public override SpineCmdPayloadBase CreateCall( Connection connection )
 			{
