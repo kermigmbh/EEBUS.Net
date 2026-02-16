@@ -10,7 +10,7 @@ namespace EEBUS.SPINE.Commands
 			Register( "measurementListData", new Class() );
 		}
 
-		static public ulong counter = 1;
+		//static public ulong counter = 1;
 
 		public new class Class : SpineCmdPayload<CmdMeasurementListDataType>.Class
 		{
