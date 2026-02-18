@@ -97,9 +97,9 @@ namespace EEBUS
                         reply.datagram.header.msgCounter = DataMessage.NextCount;
                         reply.datagram.header.cmdClassifier = "notify";
 
-                        SpineCmdPayloadBase heartbeat = heartbeatClass.CreateNotify(connection);
+                        SpineCmdPayloadBase? heartbeat = heartbeatClass.CreateNotify(connection);
                         // serialize heartbeat into a JsonNode payload
-                        reply.datagram.payload = heartbeat.ToJsonNode();// JsonSerializer.SerializeToNode(heartbeat);
+                        reply.datagram.payload = heartbeat?.ToJsonNode();// JsonSerializer.SerializeToNode(heartbeat);
 
                         DataMessage heartbeatMessage = new DataMessage();
                         heartbeatMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize heartbeat message"));
@@ -136,7 +136,7 @@ namespace EEBUS
                         reply.datagram.header.cmdClassifier = "notify";
 
                         var eccPayload = new ElectricalConnectionCharacteristicListData.Class().CreateNotify(connection);
-                        reply.datagram.payload = eccPayload.ToJsonNode();// JsonSerializer.SerializeToNode(eccPayload);
+                        reply.datagram.payload = eccPayload?.ToJsonNode();// JsonSerializer.SerializeToNode(eccPayload);
 
                         DataMessage eccMessage = new DataMessage();
                         //eccMessage.SetPayload(JsonSerializer.SerializeToNode(reply));
@@ -183,7 +183,7 @@ namespace EEBUS
                         reply.datagram.header.cmdClassifier = "notify";
 
                         var measurementPayload = new MeasurementListData.Class().CreateNotify(connection);
-                        reply.datagram.payload = measurementPayload.ToJsonNode();//JsonSerializer.SerializeToNode(measurementPayload);
+                        reply.datagram.payload = measurementPayload?.ToJsonNode();//JsonSerializer.SerializeToNode(measurementPayload);
 
                         DataMessage dataMessage = new DataMessage();
                         dataMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize measurement data message"));
@@ -308,7 +308,7 @@ namespace EEBUS
             read.datagram.payload = discoveryPayload.ToJsonNode();// JsonSerializer.SerializeToNode(discoveryPayload);
 
             DataMessage message = new DataMessage();
-            message.SetPayload(JsonSerializer.SerializeToNode(read));
+            message.SetPayload(JsonSerializer.SerializeToNode(read) ?? throw new Exception("Failed to serialize discovery read message"));
 
             PushDataMessage(message);
         }

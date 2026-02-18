@@ -69,8 +69,8 @@ namespace EEBUS.SHIP.Messages
 			{
 				if ( this.data.payload is JsonObject payloadObj && payloadObj.ContainsKey( "datagram" ) )
 				{
-					SpineDatagramPayload? payload	   = this.data.payload.Deserialize<SpineDatagramPayload>();
-					string?				 cmdClassifier = payload?.datagram?.header?.cmdClassifier;
+					SpineDatagramPayload payload	   = this.data.payload.Deserialize<SpineDatagramPayload>() ?? throw new Exception( "Failed to deserialize SpineDatagramPayload" );
+					string?				 cmdClassifier = payload.datagram?.header?.cmdClassifier;
 
 					await payload.EvaluateAsync( connection );
 
