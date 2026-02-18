@@ -8,6 +8,9 @@ using EEBUS.Messages;
 using EEBUS.SHIP.Messages;
 using EEBUS.UseCases.ControllableSystem;
 using EEBUS.KeyValues;
+using System.Text.Json.Nodes;
+using System.Text.Json;
+using EEBUS.Models;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -91,6 +94,12 @@ namespace EEBUS.SPINE.Commands
                     SendNotify(connection, datagram);
                 }
                
+            }
+
+            public override Task WriteDataAsync(LocalDevice device, JsonObject data)
+            {
+                JsonSerializer.Deserialize<LoadControlLimitListData>(data);
+                return Task.CompletedTask;
             }
 
             private void SendNotify(Connection connection, DatagramType datagram)

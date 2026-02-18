@@ -391,14 +391,29 @@ namespace EEBUS.Net
             return JsonSerializer.SerializeToNode(projection, options)!.AsArray();
         }
 
-        public DataStructure? GetLocalData(string type)
-        {
-            LocalDevice? local = _devices?.Local;
-            if (local == null) return null;
+        //public DataStructure? GetLocalData(string type)
+        //{
+        //    LocalDevice? local = _devices?.Local;
+        //    if (local == null) return null;
 
-            DataStructure? structure = local.GetDataStructures(type).FirstOrDefault();
-            return structure;
-        }
+        //    DataStructure? structure = local.GetDataStructures(type).FirstOrDefault();
+        //    return structure;
+        //}
+
+        //public async Task WriteDataAsync(string commandName, LocalDevice localDevice, JsonObject data)
+        //{
+        //    var payload = SpineCmdPayloadBase.GetClass(commandName);
+        //    await payload.WriteDataAsync(localDevice, data);
+
+        //    foreach (KeyValuePair<HostString, Connection> connectionItem in _connections)
+        //    {
+        //        if (connectionItem.Value.BindingAndSubscriptionManager.HasSubscription())
+        //        {
+        //            payload.CreateNotify(connectionItem.Value);
+        //            connectionItem.Value.PushDataMessage();
+        //        }
+        //    }
+        //}
 
         //public void SendReadMessage(string host, int port, int[] sourceEntityAddress, int sourceFeatureIndex, SKI targetSki, int[] destinationEntityAddress, int destinationFeatureIndex, string payloadType)
         //{

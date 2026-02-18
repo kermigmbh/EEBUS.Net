@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using EEBUS.Models;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace EEBUS.Messages
@@ -33,6 +34,11 @@ namespace EEBUS.Messages
 			public virtual SpineCmdPayloadBase CreateCall( Connection connection )
 			{
 				return null;
+			}
+
+			public virtual Task WriteDataAsync(LocalDevice localDevice, JsonObject data)
+			{
+				return Task.CompletedTask;
 			}
 
 			public virtual async ValueTask EvaluateAsync( Connection connection, DatagramType datagram )
