@@ -391,6 +391,15 @@ namespace EEBUS.Net
             return JsonSerializer.SerializeToNode(projection, options)!.AsArray();
         }
 
+        public IEnumerable<RemoteDeviceData> GetRemoteData()
+        {
+            return _devices.Remote.Select(rd => new RemoteDeviceData
+            {
+                Id = rd.Id,
+                Name = rd.Name,
+                Ski = rd.SKI.ToString()
+            });
+        }
         //public DataStructure? GetLocalData(string type)
         //{
         //    LocalDevice? local = _devices?.Local;
