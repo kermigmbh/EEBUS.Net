@@ -1,4 +1,6 @@
-﻿using EEBUS.Models;
+﻿using EEBUS.Messages;
+using EEBUS.Models;
+using System.Text.Json.Nodes;
 
 namespace EEBUS.UseCases.ControllableSystem
 {
@@ -22,4 +24,9 @@ namespace EEBUS.UseCases.ControllableSystem
 
         Task DataUpdateHeartbeatAsync( int counter, RemoteDevice device, uint timeout, string remoteSki);
 	}
+
+    public interface NotifyEvents : UseCaseEvents
+    {
+        Task NotifyAsync(JsonNode? payload, AddressType localFeatureAddress);
+    }
 }

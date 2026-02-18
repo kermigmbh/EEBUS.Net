@@ -88,6 +88,7 @@ namespace EEBUS.SPINE.Commands
 
                 await data.SendEventAsync(connection);
 
+                await data.SendNotifyAsync(connection.Local, datagram.header.addressDestination, CreateNotifyPayload(connection));
 
                 if ( connection.BindingAndSubscriptionManager.HasSubscription(datagram.header.addressSource, datagram.header.addressDestination))
                 {
@@ -101,6 +102,24 @@ namespace EEBUS.SPINE.Commands
                 JsonSerializer.Deserialize<LoadControlLimitListData>(data);
                 return Task.CompletedTask;
             }
+
+            private JsonNode? CreateNotifyPayload(Connection connection)
+            {
+                
+                LoadControlLimitListData limitData = new LoadControlLimitListData();
+                LoadControlLimitListDataType data = limitData.cmd[0].loadControlLimitListData;
+
+                List<LoadControlLimitDataType> datas = new();
+                foreach (LoadControlLimitDataStructure structure in connection.Local.GetDataStructures<LoadControlLimitDataStructure>())
+                {
+                    datas.Add(structure.Data);
+                }
+                data.loadControlLimitData = datas.ToArray();
+                return limitData.ToJsonNode();
+
+               
+            }
+
 
             private void SendNotify(Connection connection, DatagramType datagram)
             {

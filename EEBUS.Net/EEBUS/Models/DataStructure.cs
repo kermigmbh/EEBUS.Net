@@ -1,4 +1,7 @@
-﻿namespace EEBUS.Models
+﻿using EEBUS.Messages;
+using System.Text.Json.Nodes;
+
+namespace EEBUS.Models
 {
 	public abstract class DataStructure
 	{
@@ -11,5 +14,8 @@
 		public virtual uint Id  { get; set; }
 
 		public abstract Task SendEventAsync( Connection connection );
-	}
+
+        public abstract Task SendNotifyAsync(LocalDevice localDevice, AddressType localAddress, JsonNode? payload);
+
+    }
 }

@@ -91,9 +91,11 @@ namespace EEBUS.Net
             lpcEventHandler = new LPCEventHandler(this);
             lppEventHandler = new LPPEventHandler(this);
             lpcOrLppEventHandler = new LPCorLPPEventHandler(this);
+            notifyEventHandler = new NotifyEventHandler(this);
             _devices.Local.AddUseCaseEvents(this.lpcEventHandler);
             _devices.Local.AddUseCaseEvents(this.lppEventHandler);
             _devices.Local.AddUseCaseEvents(this.lpcOrLppEventHandler);
+            _devices.Local.AddUseCaseEvents(this.notifyEventHandler);
             _settings = settings;
             this._serviceDiscovery = serviceDiscovery;
         }
@@ -124,7 +126,14 @@ namespace EEBUS.Net
         private LPCEventHandler lpcEventHandler;
         private LPPEventHandler lppEventHandler;
         private LPCorLPPEventHandler lpcOrLppEventHandler;
-
+        private NotifyEventHandler notifyEventHandler;
+        private class NotifyEventHandler(EEBUSManager EEBusManager) : NotifyEvents
+        {
+            public Task NotifyAsync(JsonNode? payload, AddressType localFeatureAddress)
+            {
+                throw new NotImplementedException();
+            }
+        }
         private class LPCEventHandler(EEBUSManager EEBusManager) : LPCEvents
         {
             public async Task DataUpdateLimitAsync(int counter, bool active, long limit, TimeSpan duration, string remoteSki)

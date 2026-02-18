@@ -3,6 +3,8 @@ using EEBUS.SPINE.Commands;
 using EEBUS.UseCases.ControllableSystem;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Xml;
+using System.Text.Json.Nodes;
+using EEBUS.Messages;
 
 namespace EEBUS.DataStructures
 {
@@ -103,5 +105,14 @@ namespace EEBUS.DataStructures
 				}
 			}
 		}
+
+        public override async Task SendNotifyAsync(LocalDevice localDevice, AddressType localAddress, JsonNode? payload)
+        {
+            List<NotifyEvents> notifyEvents = localDevice.GetUseCaseEvents<NotifyEvents>();
+            foreach (var ev in notifyEvents)
+            {
+				await ev.NotifyAsync(payload, localAddress);
+            }
+        }
 	}
 }
