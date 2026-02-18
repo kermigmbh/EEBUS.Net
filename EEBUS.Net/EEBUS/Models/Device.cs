@@ -165,6 +165,20 @@ namespace EEBUS.Models
 			throw new Exception( "No heartbeat feature found for " + (server ? "server" : "client") );
         }
 
+		public AddressType GetFeatureAddress(string featureType, bool server)
+		{
+			string role = server ? "server" : "client";
+
+			foreach (Entity entity in this.Entities)
+			{
+                Feature? feature = entity.Features.Find(f => f != null && f.Type == featureType && f.Role == role);
+                if (feature != null)
+                    return new AddressType() { device = this.DeviceId, entity = entity.Index, feature = feature.Index };
+            }
+
+            throw new Exception($"No feature of type {featureType} with role {(server ? "server" : "client")}");
+        }
+
 		public AddressType GetElectricalConnectionAddress( bool source )
 		{
 			string role = source ? "server" : "client";

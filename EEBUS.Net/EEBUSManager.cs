@@ -409,20 +409,35 @@ namespace EEBUS.Net
         //    return structure;
         //}
 
-        //public async Task WriteDataAsync(string commandName, LocalDevice localDevice, JsonObject data)
-        //{
-        //    var payload = SpineCmdPayloadBase.GetClass(commandName);
-        //    await payload.WriteDataAsync(localDevice, data);
+        public async Task WriteDataAsync(string featureType, string commandName, JsonObject data)
+        {
+            SpineCmdPayloadBase.Class? payload = SpineCmdPayloadBase.GetClass(commandName);
+            if (payload == null) return;
 
-        //    foreach (KeyValuePair<HostString, Connection> connectionItem in _connections)
-        //    {
-        //        if (connectionItem.Value.BindingAndSubscriptionManager.HasSubscription())
-        //        {
-        //            payload.CreateNotify(connectionItem.Value);
-        //            connectionItem.Value.PushDataMessage();
-        //        }
-        //    }
-        //}
+            await payload.WriteDataAsync(_devices.Local, data);
+
+            foreach (KeyValuePair<HostString, Connection> connectionItem in _connections)
+            {
+                AddressType? clientAddress = connectionItem.Value.Remote?.GetFeatureAddress(featureType, false);
+                if (clientAddress == null) continue;
+
+                AddressType serverAddress = connectionItem.Value.Local.GetFeatureAddress(featureType, true);
+                if (connectionItem.Value.BindingAndSubscriptionManager.HasSubscription(clientAddress, serverAddress))
+                {
+                    SpineDatagramPayload reply = new SpineDatagramPayload();
+                    reply.datagram.header.addressSource = serverAddress;
+                    reply.datagram.header.addressDestination = clientAddress;
+                    reply.datagram.header.msgCounter = DataMessage.NextCount;
+                    reply.datagram.header.cmdClassifier = "notify";
+
+                    var datagramPayload = payload.CreateNotify(connectionItem.Value);
+                    reply.datagram.payload = datagramPayload?.ToJsonNode();
+                    DataMessage dataMessage = new DataMessage();
+                    dataMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize data message"));
+                    connectionItem.Value.PushDataMessage(dataMessage);
+                }
+            }
+        }
 
         //public void SendReadMessage(string host, int port, int[] sourceEntityAddress, int sourceFeatureIndex, SKI targetSki, int[] destinationEntityAddress, int destinationFeatureIndex, string payloadType)
         //{
