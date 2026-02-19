@@ -66,7 +66,7 @@ namespace EEBUS.SPINE.Commands
 				}
 			}
 
-            protected override JsonNode? CreateNotifyPayload(LocalDevice localDevice)
+            public override JsonNode? CreateNotifyPayload(LocalDevice localDevice)
             {
                 DeviceConfigurationKeyValueListData payload = new DeviceConfigurationKeyValueListData();
                 DeviceConfigurationKeyValueListDataType data = payload.cmd[0].deviceConfigurationKeyValueListData;

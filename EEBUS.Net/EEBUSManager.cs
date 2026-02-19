@@ -423,17 +423,26 @@ namespace EEBUS.Net
 
         public async Task WriteDataAsync(DeviceData deviceData)
         {
-            var loadControlLimitListData = SpineCmdPayloadBase.GetClass("loadControlLimitListData");
-            if (loadControlLimitListData != null)
+            if (deviceData.Lpc != null || deviceData.Lpp != null)
             {
-                await loadControlLimitListData.WriteDataAsync(_devices.Local, deviceData);
+                var loadControlLimitListData = SpineCmdPayloadBase.GetClass("loadControlLimitListData");
+                if (loadControlLimitListData != null)
+                {
+                    await loadControlLimitListData.WriteDataAsync(_devices.Local, deviceData);
+                }
+            }
+           
+
+            if (deviceData.FailSafeLimitDuration != null && deviceData.Lpc != null || deviceData.Lpp != null)
+            {
+                var deviceConfigurationKeyValueListData = SpineCmdPayloadBase.GetClass("deviceConfigurationKeyValueListData");
+                if (deviceConfigurationKeyValueListData != null)
+                {
+                    await deviceConfigurationKeyValueListData.WriteDataAsync(_devices.Local, deviceData);
+                }
             }
 
-            var deviceConfigurationKeyValueListData = SpineCmdPayloadBase.GetClass("deviceConfigurationKeyValueListData");
-            if (deviceConfigurationKeyValueListData != null)
-            {
-                await deviceConfigurationKeyValueListData.WriteDataAsync(_devices.Local, deviceData);
-            }
+            
         }
 
         /// <summary>
