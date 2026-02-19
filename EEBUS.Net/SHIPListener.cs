@@ -1,16 +1,22 @@
 ﻿using EEBUS.Models;
 using EEBUS.Net.Events;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Connections;
+using Microsoft.AspNetCore.Connections.Features;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.Extensions.Hosting;
 using System.Diagnostics;
+using System.Net;
 using System.Net.Security;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.ConstrainedExecution;
 using System.Security.Authentication;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
 namespace EEBUS
@@ -24,6 +30,7 @@ namespace EEBUS
         public event EventHandler<DeviceConnectionChangedEventArgs>? OnDeviceConnectionChanged;
         private Settings _settings;
 
+        public Func<NewConnectionValidationEventArgs, bool>? OnNewConnectionValidation { get; set; } = (NewConnectionValidationEventArgs args) => true;
 
         public SHIPListener(Devices devices, Settings settings)
         {
@@ -59,6 +66,26 @@ namespace EEBUS
             }
         }
 
+        private bool CertificateCallback(object sender, X509Certificate? cert, X509Chain? chain, SslPolicyErrors sslPolicyErrors, IPEndPoint remoteEndpoint)
+        {
+            if (cert == null)
+            {
+                return false;
+            }
+            Console.WriteLine(remoteEndpoint.ToString());
+
+            byte[] hash = SHA1.Create().ComputeHash(cert.GetPublicKey() ?? []);
+            var ski = new SKI(hash);
+            var skiString = ski.ToString();
+
+            return OnNewConnectionValidation?.Invoke(new NewConnectionValidationEventArgs()
+            {
+                Certificate = new X509Certificate2(cert),
+                RemoteEndpoint = remoteEndpoint.ToString(),
+                Ski = skiString
+
+            }) ?? false;
+        }
 
         private async Task StartStandaloneInternalAsync(int port, CancellationToken cancellationToken)
         {
@@ -69,16 +96,36 @@ namespace EEBUS
                 options.ConfigureHttpsDefaults(httpOptions =>
                 {
                     httpOptions.ServerCertificate = CertificateGenerator.GenerateCert(_settings.BasePath, _settings.Certificate);
-                    httpOptions.ClientCertificateMode = ClientCertificateMode.NoCertificate;
-                    httpOptions.ClientCertificateValidation = (X509Certificate2 certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors) => true;
+
+                    //commented, because the settings are in OnAuthenticate. It will not work if both are set!!!
+                    //httpOptions.ClientCertificateMode = ClientCertificateMode.RequireCertificate;
+                    //httpOptions.ClientCertificateValidation = ClientCertificateValidation;
+
                     httpOptions.SslProtocols = SslProtocols.Tls12;
                     httpOptions.OnAuthenticate = (connectionContext, authenticationOptions) =>
                     {
+
                         authenticationOptions.EnabledSslProtocols = SslProtocols.Tls12;
+                        // Get remote endpoint (IP:port) from socket feature
+                        //var socketFeature = connectionContext?.Features.Get<IConnectionSocketFeature>();
+                        //var remoteEndPoint = socketFeature?.Socket.RemoteEndPoint as IPEndPoint;
+                        //var remoteIp = remoteEndPoint?.Address;
+                        authenticationOptions.ClientCertificateRequired = true;
+                        authenticationOptions.ServerCertificate = CertificateGenerator.GenerateCert(_settings.BasePath, _settings.Certificate);
+                        authenticationOptions.RemoteCertificateValidationCallback =
+                            (sender, cert, chain, sslPolicyErrors) =>
+                            {
+                                
+                                return CertificateCallback(sender, cert, chain, sslPolicyErrors, connectionContext?.RemoteEndPoint as IPEndPoint ?? throw new Exception("not a ip endpoint: " + connectionContext?.RemoteEndPoint?.ToString()));
+                            };
                     };
                 });
 
             });
+
+
+
+
             //builder.Services.AddCors(options =>
             //{
             //    options.AddPolicy("AllowAll", builder =>

@@ -88,7 +88,7 @@ namespace EEBUS.SPINE.Commands
 
                 await data.SendEventAsync(connection);
 
-                await data.SendNotifyAsync(connection.Local, datagram.header.addressDestination, CreateNotifyPayload(connection));
+                //await data.SendNotifyAsync(connection.Local, datagram.header.addressDestination, CreateNotifyPayload(connection));
 
                 if ( connection.BindingAndSubscriptionManager.HasSubscription(datagram.header.addressSource, datagram.header.addressDestination))
                 {
