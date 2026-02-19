@@ -123,6 +123,10 @@ namespace EEBUS.Net
 
         }
 
+        public IEnumerable<AddressType> GetSubscriptionsByServerAddress(AddressType serverAddress)
+        {
+            return _subsriptions.Where(subscription => subscription.serverAddress == serverAddress).Select(subscription => subscription.clientAddress);
+        }
     }
 
 

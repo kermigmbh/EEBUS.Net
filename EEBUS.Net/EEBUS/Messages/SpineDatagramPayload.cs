@@ -138,5 +138,35 @@ namespace EEBUS.Messages
 
 		[JsonPropertyName("feature")]
 		public int?	  feature { get; set; }
-	}
+
+        public override bool Equals(object? obj)
+        {
+			if (obj is not AddressType other) return false;
+
+			return this.device == other.device && this.entity.SequenceEqual(other.entity) && this.feature == other.feature;
+        }
+
+        public override int GetHashCode()
+        {
+			return HashCode.Combine(this.device?.GetHashCode(), this.entity.GetHashCode(), this.feature.GetHashCode());
+        }
+
+        public static bool operator ==(AddressType lhs, AddressType rhs)
+        {
+            if (lhs is null)
+            {
+                if (rhs is null)
+                {
+                    return true;
+                }
+
+                // Only the left side is null.
+                return false;
+            }
+            // Equals handles case of null on right side.
+            return lhs.Equals(rhs);
+        }
+
+        public static bool operator !=(AddressType lhs, AddressType rhs) => !(lhs == rhs);
+    }
 }

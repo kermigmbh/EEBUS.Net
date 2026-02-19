@@ -1,4 +1,5 @@
-﻿using EEBUS.SPINE.Commands;
+﻿using EEBUS.Models;
+using EEBUS.SPINE.Commands;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
@@ -13,8 +14,6 @@ namespace EEBUS.Messages
 
 		public T[] cmd { get; set; } = [new T()];
 
-
-       
 
         public override JsonNode? ToJsonNode()
         {

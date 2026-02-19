@@ -11,6 +11,7 @@ using EEBUS.KeyValues;
 using System.Text.Json.Nodes;
 using System.Text.Json;
 using EEBUS.Models;
+using EEBUS.Net.EEBUS.Models.Data;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -88,78 +89,102 @@ namespace EEBUS.SPINE.Commands
 
                 await data.SendEventAsync(connection);
 
-                await data.SendNotifyAsync(connection.Local, datagram.header.addressDestination, CreateNotifyPayload(connection));
+                await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
 
-                if ( connection.BindingAndSubscriptionManager.HasSubscription(datagram.header.addressSource, datagram.header.addressDestination))
-                {
-                    SendNotify(connection, datagram);
-                }
+                //if ( connection.BindingAndSubscriptionManager.HasSubscription(datagram.header.addressSource, datagram.header.addressDestination))
+                //{
+                //    SendNotify(connection, datagram);
+                //}
                
             }
 
-            public override Task WriteDataAsync(LocalDevice device, JsonObject data)
+            public override async Task WriteDataAsync(LocalDevice device, DeviceData deviceData)
             {
-                JsonSerializer.Deserialize<LoadControlLimitListData>(data);
-                return Task.CompletedTask;
+                bool didChange = false;
+
+                if (deviceData.Lpc != null && !deviceData.Lpc.IsEmpty())
+                {
+                    var consumeDataStructures = device.GetDataStructures<LoadControlLimitDataStructure>().Where(ds => ds.LimitDirection == "consume");
+                    foreach (var consumeDataStructure in consumeDataStructures)
+                    {
+                        consumeDataStructure.LimitActive = deviceData.Lpc.LimitActive ?? consumeDataStructure.LimitActive;
+                        consumeDataStructure.Number = deviceData.Lpc.Limit ?? consumeDataStructure.Number;
+                        consumeDataStructure.EndTime = deviceData.Lpc.LimitDuration != null ? XmlConvert.ToString(TimeSpan.FromSeconds(deviceData.Lpc.LimitDuration.Value)) : consumeDataStructure.EndTime;
+                    }
+                    didChange = consumeDataStructures.Count() > 0;
+                }
+
+                if (deviceData.Lpp != null && !deviceData.Lpp.IsEmpty())
+                {
+                    var produceDataStructures = device.GetDataStructures<LoadControlLimitDataStructure>().Where(ds => ds.LimitDirection == "produce");
+                    foreach (var produceDataStructure in produceDataStructures)
+                    {
+                        produceDataStructure.LimitActive = deviceData.Lpp.LimitActive ?? produceDataStructure.LimitActive;
+                        produceDataStructure.Number = deviceData.Lpp.Limit ?? produceDataStructure.Number;
+                        produceDataStructure.EndTime = deviceData.Lpp.LimitDuration != null ? XmlConvert.ToString(TimeSpan.FromSeconds(deviceData.Lpp.LimitDuration.Value)) : produceDataStructure.EndTime;
+                    }
+                    didChange = produceDataStructures.Count() > 0;
+                }
+
+                if (didChange)
+                {
+                    await SendNotifyAsync(device, device.GetFeatureAddress("LoadControl", true));
+                }
             }
 
-            private JsonNode? CreateNotifyPayload(Connection connection)
+            protected override JsonNode? CreateNotifyPayload(LocalDevice localDevice)
             {
-                
                 LoadControlLimitListData limitData = new LoadControlLimitListData();
                 LoadControlLimitListDataType data = limitData.cmd[0].loadControlLimitListData;
 
                 List<LoadControlLimitDataType> datas = new();
-                foreach (LoadControlLimitDataStructure structure in connection.Local.GetDataStructures<LoadControlLimitDataStructure>())
+                foreach (LoadControlLimitDataStructure structure in localDevice.GetDataStructures<LoadControlLimitDataStructure>())
                 {
                     datas.Add(structure.Data);
                 }
                 data.loadControlLimitData = datas.ToArray();
                 return limitData.ToJsonNode();
-
-               
             }
 
+            //private void SendNotify(Connection connection, DatagramType datagram)
+            //{
+            //    SpineDatagramPayload notify = new SpineDatagramPayload();
+            //    notify.datagram.header.addressSource = datagram.header.addressDestination;
+            //    notify.datagram.header.addressDestination = datagram.header.addressSource;
+            //    notify.datagram.header.msgCounter = DataMessage.NextCount;
+            //    notify.datagram.header.cmdClassifier = "notify";
 
-            private void SendNotify(Connection connection, DatagramType datagram)
-            {
-                SpineDatagramPayload notify = new SpineDatagramPayload();
-                notify.datagram.header.addressSource = datagram.header.addressDestination;
-                notify.datagram.header.addressDestination = datagram.header.addressSource;
-                notify.datagram.header.msgCounter = DataMessage.NextCount;
-                notify.datagram.header.cmdClassifier = "notify";
+            //    LoadControlLimitListData limitData = new LoadControlLimitListData();
+            //    LoadControlLimitListDataType data = limitData.cmd[0].loadControlLimitListData;
 
-                LoadControlLimitListData limitData = new LoadControlLimitListData();
-                LoadControlLimitListDataType data = limitData.cmd[0].loadControlLimitListData;
+            //    List<LoadControlLimitDataType> datas = new();
 
-                List<LoadControlLimitDataType> datas = new();
+            //    //if (connection.Remote?.HeartbeatValidUntil < DateTime.UtcNow.AddMinutes(2))
+            //    //{
+            //    //    var failSafe = connection.Local.GetKeyValue<FailsafeConsumptionActivePowerLimitKeyValue>();
+            //    //    foreach (LoadControlLimitDataStructure structure in connection.Local.GetDataStructures<LoadControlLimitDataStructure>())
+            //    //    {
+            //    //        structure.Number = failSafe.Value;
+            //    //        datas.Add(structure.Data);
+            //    //    }
 
-                //if (connection.Remote?.HeartbeatValidUntil < DateTime.UtcNow.AddMinutes(2))
-                //{
-                //    var failSafe = connection.Local.GetKeyValue<FailsafeConsumptionActivePowerLimitKeyValue>();
-                //    foreach (LoadControlLimitDataStructure structure in connection.Local.GetDataStructures<LoadControlLimitDataStructure>())
-                //    {
-                //        structure.Number = failSafe.Value;
-                //        datas.Add(structure.Data);
-                //    }
+            //    //}
+            //    //else
+            //    //{
+            //    foreach (LoadControlLimitDataStructure structure in connection.Local.GetDataStructures<LoadControlLimitDataStructure>())
+            //    {
+            //        datas.Add(structure.Data);
+            //    }
+            //    //}
 
-                //}
-                //else
-                //{
-                foreach (LoadControlLimitDataStructure structure in connection.Local.GetDataStructures<LoadControlLimitDataStructure>())
-                {
-                    datas.Add(structure.Data);
-                }
-                //}
+            //    data.loadControlLimitData = datas.ToArray();
+            //    notify.datagram.payload = limitData.ToJsonNode();
 
-                data.loadControlLimitData = datas.ToArray();
-                notify.datagram.payload = limitData.ToJsonNode();
+            //    DataMessage limitMessage = new DataMessage();
+            //    limitMessage.SetPayload(System.Text.Json.JsonSerializer.SerializeToNode(notify));
 
-                DataMessage limitMessage = new DataMessage();
-                limitMessage.SetPayload(System.Text.Json.JsonSerializer.SerializeToNode(notify));
-
-                connection.PushDataMessage(limitMessage);
-            }
+            //    connection.PushDataMessage(limitMessage);
+            //}
         }
     }
 

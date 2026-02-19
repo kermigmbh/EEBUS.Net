@@ -105,14 +105,5 @@ namespace EEBUS.DataStructures
 				}
 			}
 		}
-
-        public override async Task SendNotifyAsync(LocalDevice localDevice, AddressType localAddress, JsonNode? payload)
-        {
-            List<NotifyEvents> notifyEvents = localDevice.GetUseCaseEvents<NotifyEvents>();
-            foreach (var ev in notifyEvents)
-            {
-				await ev.NotifyAsync(payload, localAddress);
-            }
-        }
 	}
 }

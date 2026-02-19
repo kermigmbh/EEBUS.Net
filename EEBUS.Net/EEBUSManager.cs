@@ -26,6 +26,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Threading;
 using System.Xml;
 
 namespace EEBUS.Net
@@ -52,6 +53,8 @@ namespace EEBUS.Net
         private X509Certificate2 _cert;
 
         public Devices Devices => _devices;
+
+        internal List<Connection> Connections => _connections.Values.ToList();
 
         public EEBUSManager(Settings settings, ServiceDiscovery? serviceDiscovery = null)
         {
@@ -129,9 +132,32 @@ namespace EEBUS.Net
         private NotifyEventHandler notifyEventHandler;
         private class NotifyEventHandler(EEBUSManager EEBusManager) : NotifyEvents
         {
-            public Task NotifyAsync(JsonNode? payload, AddressType localFeatureAddress)
+            public async Task NotifyAsync(JsonNode? payload, AddressType localFeatureAddress)
             {
-                throw new NotImplementedException();
+                if (payload == null) return;
+                AddressType serverAddress = localFeatureAddress;
+
+                foreach (Connection connection in EEBusManager.Connections)
+                {
+                    IEnumerable<AddressType> clientAddresses = connection.BindingAndSubscriptionManager.GetSubscriptionsByServerAddress(serverAddress);
+
+                    foreach (var clientAddress in clientAddresses)
+                    {
+                        //if (connection.BindingAndSubscriptionManager.HasSubscription(clientAddress, serverAddress))
+                        //{
+                            SpineDatagramPayload reply = new SpineDatagramPayload();
+                            reply.datagram.header.addressSource = serverAddress;
+                            reply.datagram.header.addressDestination = clientAddress;
+                            reply.datagram.header.msgCounter = DataMessage.NextCount;
+                            reply.datagram.header.cmdClassifier = "notify";
+
+                            reply.datagram.payload = payload;
+                            DataMessage dataMessage = new DataMessage();
+                            dataMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize data message"));
+                            connection.PushDataMessage(dataMessage);
+                        //}
+                    }
+                }
             }
         }
         private class LPCEventHandler(EEBUSManager EEBusManager) : LPCEvents
@@ -330,30 +356,6 @@ namespace EEBUS.Net
             if (null != failsafeDurationKeyValue)
                 failsafeDuration = XmlConvert.ToTimeSpan(failsafeDurationKeyValue.Duration);
 
-            //var payload = new
-            //{
-            //    name = local.Name,
-            //    ski = local.SKI.ToReadable(),
-            //    shipId = local.ShipID,
-
-            //    lpcActive = lpcActive,
-            //    lpcLimit = lpcLimit,
-            //    lpcDuration = lpcDuration,
-            //    lpcFailsafeLimit = lpcFailsafeLimit,
-
-            //    //heartbeatTimeout = 
-
-
-            //    lppActive = lppActive,
-            //    lppLimit = lppLimit,
-            //    lppDuration = lppDuration,
-            //    lppFailsafeLimit = lppFailsafeLimit,
-
-            //    failsafeDuration = failsafeDuration
-
-
-            //};
-
             return new DeviceData
             {
                 Name = local.Name,
@@ -409,102 +411,21 @@ namespace EEBUS.Net
                 Ski = rd.SKI.ToString()
             });
         }
-        //public DataStructure? GetLocalData(string type)
-        //{
-        //    LocalDevice? local = _devices?.Local;
-        //    if (local == null) return null;
 
-        //    DataStructure? structure = local.GetDataStructures(type).FirstOrDefault();
-        //    return structure;
-        //}
-
-        public async Task WriteDataAsync(string featureType, string commandName, JsonObject data)
+        public async Task WriteDataAsync(DeviceData deviceData)
         {
-            SpineCmdPayloadBase.Class? payload = SpineCmdPayloadBase.GetClass(commandName);
-            if (payload == null) return;
-
-            await payload.WriteDataAsync(_devices.Local, data);
-
-            foreach (KeyValuePair<HostString, Connection> connectionItem in _connections)
+            var loadControlLimitListData = SpineCmdPayloadBase.GetClass("loadControlLimitListData");
+            if (loadControlLimitListData != null)
             {
-                AddressType? clientAddress = connectionItem.Value.Remote?.GetFeatureAddress(featureType, false);
-                if (clientAddress == null) continue;
+                await loadControlLimitListData.WriteDataAsync(_devices.Local, deviceData);
+            }
 
-                AddressType serverAddress = connectionItem.Value.Local.GetFeatureAddress(featureType, true);
-                if (connectionItem.Value.BindingAndSubscriptionManager.HasSubscription(clientAddress, serverAddress))
-                {
-                    SpineDatagramPayload reply = new SpineDatagramPayload();
-                    reply.datagram.header.addressSource = serverAddress;
-                    reply.datagram.header.addressDestination = clientAddress;
-                    reply.datagram.header.msgCounter = DataMessage.NextCount;
-                    reply.datagram.header.cmdClassifier = "notify";
-
-                    var datagramPayload = payload.CreateNotify(connectionItem.Value);
-                    reply.datagram.payload = datagramPayload?.ToJsonNode();
-                    DataMessage dataMessage = new DataMessage();
-                    dataMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize data message"));
-                    connectionItem.Value.PushDataMessage(dataMessage);
-                }
+            var deviceConfigurationKeyValueListData = SpineCmdPayloadBase.GetClass("deviceConfigurationKeyValueListData");
+            if (deviceConfigurationKeyValueListData != null)
+            {
+                await deviceConfigurationKeyValueListData.WriteDataAsync(_devices.Local, deviceData);
             }
         }
-
-        //public void SendReadMessage(string host, int port, int[] sourceEntityAddress, int sourceFeatureIndex, SKI targetSki, int[] destinationEntityAddress, int destinationFeatureIndex, string payloadType)
-        //{
-        //    RemoteDevice? remote = _devices.Remote.FirstOrDefault(r => r.SKI == targetSki);
-        //    if (remote == null) return;
-
-        //    AddressType source = new AddressType { device = _devices.Local.DeviceId, entity = sourceEntityAddress, feature = sourceFeatureIndex };
-        //    AddressType destination = new AddressType { device = remote.DeviceId, entity = destinationEntityAddress, feature = destinationFeatureIndex };
-        //    HostString hs = new HostString(host, port);
-
-        //    Connection? activeConnection = null;
-
-        //    activeConnection = Server.Get(hs);  //Try to either get the server...
-        //    if (activeConnection == null)
-        //    {
-        //        activeConnection = _clients.GetValueOrDefault(hs);  //...or the client connection
-        //    }
-
-        //    if (activeConnection == null) return;
-
-        //    SpineDatagramPayload read = new SpineDatagramPayload();
-        //    read.datagram.header.addressSource = source;
-        //    read.datagram.header.addressDestination = destination;
-        //    read.datagram.header.msgCounter = DataMessage.NextCount;
-        //    read.datagram.header.cmdClassifier = "read";
-
-        //   // var payload = new DeviceDiagnosisHeartbeatData.Class().CreateRead(activeConnection);
-        //    var cmdClass = SpineCmdPayloadBase.GetClass(payloadType);
-
-        //    read.datagram.payload = payload.ToJsonNode();// JsonSerializer.SerializeToNode(heartbeatReadPayload);
-
-        //    DataMessage message = new DataMessage();
-        //    message.SetPayload(JsonSerializer.SerializeToNode(read) ?? throw new Exception("Failed to serialize read message"));
-
-        //    activeConnection.PushDataMessage(message);
-        //}
-
-        //public JsonArray GetRemotes()
-        //{
-        //    JsonArray devlist = new();
-
-        //    _devices.Remote.ForEach(rd =>
-        //    {
-        //        devlist.Add( new
-        //        {
-        //            id = rd.Id,
-        //            name = rd.Name,
-        //            ski = rd.SKI.ToReadable(),
-        //            url = rd.Url,
-        //            serverState = rd.serverState.ToString(),
-        //            clientState = rd.clientState.ToString()
-        //        });
-        //    });
-
-        //    return devlist;
-
-        //}
-
 
         /// <summary>
         /// returns hoststring if success, otherwise null or exception

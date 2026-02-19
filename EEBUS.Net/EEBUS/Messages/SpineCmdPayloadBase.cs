@@ -1,4 +1,6 @@
 ﻿using EEBUS.Models;
+using EEBUS.Net.EEBUS.Models.Data;
+using EEBUS.UseCases.ControllableSystem;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -10,7 +12,8 @@ namespace EEBUS.Messages
 		{
 		}
 		public abstract JsonNode? ToJsonNode();
-	
+
+
 
         public abstract class Class
 		{
@@ -36,12 +39,28 @@ namespace EEBUS.Messages
 				return null;
 			}
 
-			public virtual Task WriteDataAsync(LocalDevice localDevice, JsonObject data)
+			public virtual Task WriteDataAsync(LocalDevice localDevice, DeviceData deviceData)
 			{
 				return Task.CompletedTask;
 			}
 
-			public virtual async ValueTask EvaluateAsync( Connection connection, DatagramType datagram )
+			protected virtual JsonNode? CreateNotifyPayload(LocalDevice localDevice)
+			{
+				return null;
+			}
+
+            public async Task SendNotifyAsync(LocalDevice localDevice, AddressType localAddress)
+			{
+				var payload = CreateNotifyPayload(localDevice);
+                List<NotifyEvents> notifyEvents = localDevice.GetUseCaseEvents<NotifyEvents>();
+                foreach (var ev in notifyEvents)
+                {
+                    await ev.NotifyAsync(payload, localAddress);
+                }
+            }
+
+
+            public virtual async ValueTask EvaluateAsync( Connection connection, DatagramType datagram )
 			{
 			}
 

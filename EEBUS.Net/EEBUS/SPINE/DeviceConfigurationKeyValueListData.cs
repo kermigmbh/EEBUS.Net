@@ -1,7 +1,12 @@
-﻿using EEBUS.Messages;
+﻿using EEBUS.KeyValues;
+using EEBUS.Messages;
 using EEBUS.Models;
+using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.SHIP.Messages;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Threading;
+using System.Xml;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -56,36 +61,91 @@ namespace EEBUS.SPINE.Commands
 				{
 					keyValue.SetValue(value);
 					await keyValue.SendEventAsync(connection);
-					SendNotify(connection, datagram);
+					await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
+					//SendNotify(connection, datagram);
 				}
 			}
 
-            private void SendNotify(Connection connection, DatagramType datagram)
+            protected override JsonNode? CreateNotifyPayload(LocalDevice localDevice)
             {
-                SpineDatagramPayload notify = new SpineDatagramPayload();
-                notify.datagram.header.addressSource = datagram.header.addressDestination;
-                notify.datagram.header.addressDestination = datagram.header.addressSource;
-                notify.datagram.header.msgCounter = DataMessage.NextCount;
-                notify.datagram.header.cmdClassifier = "notify";
-
                 DeviceConfigurationKeyValueListData payload = new DeviceConfigurationKeyValueListData();
                 DeviceConfigurationKeyValueListDataType data = payload.cmd[0].deviceConfigurationKeyValueListData;
 
                 List<DeviceConfigurationKeyValueDataType> datas = new();
-                foreach (var keyValue in connection.Local.KeyValues)
+                foreach (var keyValue in localDevice.KeyValues)
                     datas.Add(keyValue.Data);
 
                 data.deviceConfigurationKeyValueData = datas.ToArray();
 
+                return payload.ToJsonNode();
+            }
+
+            public override async Task WriteDataAsync(LocalDevice localDevice, DeviceData deviceData)
+            {
+				bool didChange = false;
+
+                if (deviceData.Lpc?.FailSafeLimit != null)
+				{
+                    FailsafeConsumptionActivePowerLimitKeyValue? lpcFailsafeLimitKeyValue = localDevice.GetKeyValue<FailsafeConsumptionActivePowerLimitKeyValue>();
+					if (lpcFailsafeLimitKeyValue != null)
+					{
+						lpcFailsafeLimitKeyValue.Value = deviceData.Lpc.FailSafeLimit.Value;
+						didChange = true;
+					}
+                }
+
+                if (deviceData.Lpp?.FailSafeLimit != null)
+                {
+                    FailsafeProductionActivePowerLimitKeyValue? lppFailsafeLimitKeyValue = localDevice.GetKeyValue<FailsafeProductionActivePowerLimitKeyValue>();
+					if (lppFailsafeLimitKeyValue != null)
+					{
+						lppFailsafeLimitKeyValue.Value = deviceData.Lpp.FailSafeLimit.Value;
+						didChange = true;
+					}
+                }
+
+				if (deviceData.FailSafeLimitDuration != null)
+				{
+                    FailsafeDurationMinimumKeyValue? failsafeDurationKeyValue = localDevice.GetKeyValue<FailsafeDurationMinimumKeyValue>();
+					if (failsafeDurationKeyValue != null)
+					{
+						failsafeDurationKeyValue.Duration = XmlConvert.ToString(deviceData.FailSafeLimitDuration.Value);
+						didChange = true;
+					}
+                }
+
+				if (didChange)
+				{
+					await SendNotifyAsync(localDevice, localDevice.GetFeatureAddress("DeviceConfiguration", true));
+				}
+            }
+
+            //private void SendNotify(Connection connection, DatagramType datagram)
+            //{
+            //    SpineDatagramPayload notify = new SpineDatagramPayload();
+            //    notify.datagram.header.addressSource = datagram.header.addressDestination;
+            //    notify.datagram.header.addressDestination = datagram.header.addressSource;
+            //    notify.datagram.header.msgCounter = DataMessage.NextCount;
+            //    notify.datagram.header.cmdClassifier = "notify";
+
+            //    DeviceConfigurationKeyValueListData payload = new DeviceConfigurationKeyValueListData();
+            //    DeviceConfigurationKeyValueListDataType data = payload.cmd[0].deviceConfigurationKeyValueListData;
+
+            //    List<DeviceConfigurationKeyValueDataType> datas = new();
+            //    foreach (var keyValue in connection.Local.KeyValues)
+            //        datas.Add(keyValue.Data);
+
+            //    data.deviceConfigurationKeyValueData = datas.ToArray();
+
 
                  
-                notify.datagram.payload = payload.ToJsonNode();
+            //    notify.datagram.payload = payload.ToJsonNode();
 
-                DataMessage limitMessage = new DataMessage();
-                limitMessage.SetPayload(System.Text.Json.JsonSerializer.SerializeToNode(notify));
+            //    DataMessage limitMessage = new DataMessage();
+            //    limitMessage.SetPayload(System.Text.Json.JsonSerializer.SerializeToNode(notify));
 
-                connection.PushDataMessage(limitMessage);
-            }
+            //    connection.PushDataMessage(limitMessage);
+            //}
         }
 	}
 
