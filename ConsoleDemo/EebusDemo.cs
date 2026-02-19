@@ -1,5 +1,12 @@
 ﻿using EEBUS;
+using EEBUS.Models;
 using EEBUS.Net;
+using EEBUS.Net.Events;
+using System.Diagnostics;
+using System.Net.Security;
+using System.Runtime.ConstrainedExecution;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
@@ -13,12 +20,25 @@ namespace ConsoleDemo
 
         public async Task RunAsync(Settings settings)
         {
-            _manager = new EEBUSManager(settings);
+            var onNewConnectionValidation = (NewConnectionValidationEventArgs args) =>
+            {
+                Debug.WriteLine("Ski: " + args.Ski);
+                Debug.WriteLine("EP: " + args.RemoteEndpoint);
+                return true;
+            };
+
+            _manager = new EEBUSManager(settings, onNewConnectionValidation);
+
+            
+
 
             _manager.OnLimitDataChanged = async (args) =>
             {
                 Console.WriteLine($"Limit data changed: {args}");
             };
+
+
+
 
             _manager.Start();
 

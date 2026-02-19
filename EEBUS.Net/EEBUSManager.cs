@@ -14,12 +14,14 @@ using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Security;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.ConstrainedExecution;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -45,8 +47,12 @@ namespace EEBUS.Net
 
         public event EventHandler<RemoteDevice>? OnDeviceFound;
         //public event EventHandler<LimitDataChangedEventArgs>? OnLimitDataChanged;
-        public Func<LimitDataChangedEventArgs,Task>? OnLimitDataChanged;
+        public Func<LimitDataChangedEventArgs, Task>? OnLimitDataChanged;
         public Func<DeviceData, Task>? OnDeviceDataChanged { get; set; }
+
+        private Func<NewConnectionValidationEventArgs, bool>? _onNewConnectionValidation  = (NewConnectionValidationEventArgs args) => true;
+
+
 
         private CancellationTokenSource _cts = new();
         private CancellationTokenSource _clientCts = new();
@@ -56,14 +62,17 @@ namespace EEBUS.Net
 
         internal List<Connection> Connections => _connections.Values.ToList();
 
-        public EEBUSManager(Settings settings, ServiceDiscovery? serviceDiscovery = null)
+        public EEBUSManager(Settings settings, Func<NewConnectionValidationEventArgs, bool>? onNewConnectionValidation = null,  ServiceDiscovery? serviceDiscovery = null)
         {
-
+            if (onNewConnectionValidation != null)
+            {
+                _onNewConnectionValidation = onNewConnectionValidation;
+            }
             if (serviceDiscovery == null)
             {
                 _serviceDiscoveryNeedsDispose = true;
                 serviceDiscovery = new ServiceDiscovery();
-            }   
+            }
 
             foreach (string ns in new string[] {"EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands", "EEBUS.Entities",
                                                  "EEBUS.UseCases.ControllableSystem", "EEBUS.UseCases.GridConnectionPoint",
@@ -82,7 +91,7 @@ namespace EEBUS.Net
             byte[] hash = SHA1.Create().ComputeHash(_cert.GetPublicKey());
 
             this._mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port, serviceDiscovery);
-           
+
             LocalDevice localDevice = _devices.GetOrCreateLocal(hash, settings.Device);
 
             _mDNSService.Run(localDevice, _cts.Token);
@@ -109,7 +118,7 @@ namespace EEBUS.Net
                             .ToArray();
         }
 
-      
+
         private void OnRemoteDeviceFound(RemoteDevice device)
         {
             //using var _ = Push(new RemoteDeviceFound(device));
@@ -451,7 +460,36 @@ namespace EEBUS.Net
                 {
                     wsClient = new ClientWebSocket();
                     wsClient.Options.AddSubProtocol("ship");
-                    wsClient.Options.RemoteCertificateValidationCallback = (object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors) => true;
+                    wsClient.Options.RemoteCertificateValidationCallback = (object sender, X509Certificate? cert, X509Chain? chain, SslPolicyErrors sslPolicyErrors) =>
+                    {
+                        if (cert == null)
+                        {
+                            return false;
+                        }
+                        Console.WriteLine(hostString.ToString());
+
+                        byte[] hash = SHA1.Create().ComputeHash(cert.GetPublicKey() ?? []);
+                        var ski = new SKI(hash);
+                        var skiString = ski.ToString();
+
+                        if (device.SKI.ToString() != skiString)
+                        {
+                            Console.WriteLine($"Certificate SKI {skiString} does not match device SKI {device.SKI.ToString()}");
+                            return false;
+                        }
+
+
+                        return _onNewConnectionValidation?.Invoke(new NewConnectionValidationEventArgs()
+                        {
+                            Certificate = new X509Certificate2(cert),
+                            RemoteEndpoint = hostString.ToString(),
+                            Ski = skiString
+
+                        }) ?? false;
+
+
+                        
+                    };
                     wsClient.Options.ClientCertificates.Add(_cert);
                     await wsClient.ConnectAsync(uri, CancellationToken.None).ConfigureAwait(false);
                     if (wsClient?.State == WebSocketState.Open)
@@ -533,9 +571,28 @@ namespace EEBUS.Net
 
 
 
+
         public void Start()
         {
             _shipListener = new SHIPListener(_devices, _settings);
+            _shipListener.OnNewConnectionValidation = (args) =>
+            {
+                RemoteDevice? device = _devices.Remote.FirstOrDefault(rd => rd.SKI.ToString() == args.Ski);
+                if (null == device)
+                {
+                    Console.WriteLine($"remote device with SKI {args.Ski} has no mDNS advertisements");
+                    return false;
+                }
+                
+
+                return _onNewConnectionValidation?.Invoke(new NewConnectionValidationEventArgs()
+                    {
+                        Certificate = args.Certificate,
+                        RemoteEndpoint = args.RemoteEndpoint,
+                        Ski = args.Ski
+    
+                    }) ?? false;
+            };
             _shipListener.OnDeviceConnectionChanged += _shipListener_OnDeviceConnectionChanged;
             _shipListener.StartAsync(_settings.Device.Port);
         }
