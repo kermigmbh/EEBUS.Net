@@ -368,7 +368,7 @@ namespace EEBUS.Net
             return new DeviceData
             {
                 Name = local.Name,
-                SKI = local.SKI.ToReadable(),
+                SKI = local.SKI.ToString(),
                 ShipId = local.ShipID,
                 Lpc = new LpcLppData
                 {
