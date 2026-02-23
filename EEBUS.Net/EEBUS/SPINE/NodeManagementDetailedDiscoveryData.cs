@@ -47,9 +47,10 @@ namespace EEBUS.SPINE.Commands
 					? null
 					: System.Text.Json.JsonSerializer.Deserialize<NodeManagementDetailedDiscoveryData>(datagram.payload);
 
-				if (payload != null)
+				if (payload != null && connection.Remote != null)
 				{
-					connection.Remote?.SetDiscoveryData( payload, connection );
+					connection.Remote.SetDiscoveryData( payload, connection );
+					await SendDiscoveryCompletedEvent(connection.Local, connection.Remote);
 				}
 			}
 		}

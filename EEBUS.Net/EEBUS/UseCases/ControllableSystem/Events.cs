@@ -29,4 +29,9 @@ namespace EEBUS.UseCases.ControllableSystem
     {
         Task NotifyAsync(JsonNode? payload, AddressType localFeatureAddress);
     }
+
+	public interface DeviceConnectionStatusEvents : UseCaseEvents
+	{
+		Task RemoteDiscoveryCompletedAsync(RemoteDevice remoteDevice);
+	}
 }

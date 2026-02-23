@@ -151,6 +151,18 @@ namespace EEBUS.Models
 			}
 		}
 
+		public bool SupportsUseCase(string useCaseName)
+		{
+			foreach (Entity entity in Entities)
+			{
+				if (entity.UseCases.Any(uc => uc.Information.useCaseName == useCaseName && uc.Information.useCaseAvailable))
+				{
+					return true; 
+				}
+			}
+			return false;
+		}
+
 		public AddressType GetHeartbeatAddress( bool server )
 		{
 			string role = server ? "server" : "client";

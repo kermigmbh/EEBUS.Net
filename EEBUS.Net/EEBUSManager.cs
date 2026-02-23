@@ -49,10 +49,10 @@ namespace EEBUS.Net
         //public event EventHandler<LimitDataChangedEventArgs>? OnLimitDataChanged;
         public Func<LimitDataChangedEventArgs, Task>? OnLimitDataChanged;
         public Func<DeviceData, Task>? OnDeviceDataChanged { get; set; }
+        public Func<RemoteDevice, DeviceConnectionStatus, Task>? OnDeviceConnectionStatusChanged { get; set; }
 
         private Func<NewConnectionValidationEventArgs, bool>? _onNewConnectionValidation  = (NewConnectionValidationEventArgs args) => true;
-
-
+        private ConcurrentDictionary<string, DeviceConnectionStatus> _deviceConnectionStatus = new();
 
         private CancellationTokenSource _cts = new();
         private CancellationTokenSource _clientCts = new();
@@ -104,10 +104,12 @@ namespace EEBUS.Net
             lppEventHandler = new LPPEventHandler(this);
             lpcOrLppEventHandler = new LPCorLPPEventHandler(this);
             notifyEventHandler = new NotifyEventHandler(this);
+            deviceConnectionStatusEventHandler = new DeviceConnectionStatusEventHandler(this);
             _devices.Local.AddUseCaseEvents(this.lpcEventHandler);
             _devices.Local.AddUseCaseEvents(this.lppEventHandler);
             _devices.Local.AddUseCaseEvents(this.lpcOrLppEventHandler);
             _devices.Local.AddUseCaseEvents(this.notifyEventHandler);
+            _devices.Local.AddUseCaseEvents(this.deviceConnectionStatusEventHandler);
             _settings = settings;
             this._serviceDiscovery = serviceDiscovery;
         }
@@ -135,10 +137,25 @@ namespace EEBUS.Net
             //using var _ = Push(new ClientStateChanged(device, state));
         }
 
+        public DeviceConnectionStatus GetConnectionStatus(string ski)
+        {
+            if (_deviceConnectionStatus.ContainsKey(ski))
+            {
+                return _deviceConnectionStatus[ski];
+            }
+            return DeviceConnectionStatus.Unknown;
+        }
+
+        internal void UpdateConnectionStatus(string ski, DeviceConnectionStatus connectionStatus)
+        {
+            _deviceConnectionStatus[ski] = connectionStatus;
+        }
+
         private LPCEventHandler lpcEventHandler;
         private LPPEventHandler lppEventHandler;
         private LPCorLPPEventHandler lpcOrLppEventHandler;
         private NotifyEventHandler notifyEventHandler;
+        private DeviceConnectionStatusEventHandler deviceConnectionStatusEventHandler;
         private class NotifyEventHandler(EEBUSManager EEBusManager) : NotifyEvents
         {
             public async Task NotifyAsync(JsonNode? payload, AddressType localFeatureAddress)
@@ -169,6 +186,21 @@ namespace EEBUS.Net
                 }
             }
         }
+
+        private class DeviceConnectionStatusEventHandler(EEBUSManager EEBusManager) : DeviceConnectionStatusEvents
+        {
+            public Task RemoteDiscoveryCompletedAsync(RemoteDevice remoteDevice)
+            {
+                EEBusManager.UpdateConnectionStatus(remoteDevice.SKI.ToString(), DeviceConnectionStatus.DiscoveryCompleted);
+                var callback = EEBusManager.OnDeviceConnectionStatusChanged;
+                if (callback != null)
+                {
+                    return callback(remoteDevice, DeviceConnectionStatus.DiscoveryCompleted);
+                }
+                return Task.CompletedTask;
+            }
+        }
+
         private class LPCEventHandler(EEBUSManager EEBusManager) : LPCEvents
         {
             public async Task DataUpdateLimitAsync(int counter, bool active, long limit, TimeSpan duration, string remoteSki)
@@ -384,7 +416,7 @@ namespace EEBUS.Net
                     LimitDuration = (int)lppDuration.TotalSeconds,
                     FailSafeLimit = lppFailsafeLimit
                 },
-                FailSafeLimitDuration = failsafeDuration
+                FailSafeLimitDuration = (int)failsafeDuration.TotalSeconds
             };
         }
 
@@ -417,7 +449,9 @@ namespace EEBUS.Net
             {
                 Id = rd.Id,
                 Name = rd.Name,
-                Ski = rd.SKI.ToString()
+                Ski = rd.SKI.ToString(),
+                SupportsLpc = rd.SupportsUseCase("limitationOfPowerConsumption"),
+                SupportsLpp = rd.SupportsUseCase("limitationOfPowerProduction")
             });
         }
 
@@ -564,6 +598,10 @@ namespace EEBUS.Net
                 wsClient = null;
                 if (_connections.TryRemove(host, out Connection? removedClient) && removedClient != null)
                 {
+                    if (removedClient.Remote != null)
+                    {
+                        _deviceConnectionStatus.TryRemove(removedClient.Remote.SKI.ToString(), out _);
+                    }
                     await removedClient.CloseAsync();
                 }
             }
@@ -605,7 +643,12 @@ namespace EEBUS.Net
             }
             else
             {
-                _connections.TryRemove(e.Connection.RemoteHost, out Connection? removedremovedConnection);
+                _connections.TryRemove(e.Connection.RemoteHost, out Connection? removedConnection);
+                if (removedConnection?.Remote != null)
+                {
+                    _deviceConnectionStatus.TryRemove(removedConnection.Remote.SKI.ToString(), out _);
+                    
+                }
             }
         }
 
