@@ -132,7 +132,7 @@ namespace EEBUS.SPINE.Commands
                 }
             }
 
-            protected override JsonNode? CreateNotifyPayload(LocalDevice localDevice)
+            public  override JsonNode? CreateNotifyPayload(LocalDevice localDevice)
             {
                 LoadControlLimitListData limitData = new LoadControlLimitListData();
                 LoadControlLimitListDataType data = limitData.cmd[0].loadControlLimitListData;

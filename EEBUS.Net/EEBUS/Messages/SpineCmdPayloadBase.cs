@@ -44,7 +44,7 @@ namespace EEBUS.Messages
 				return Task.CompletedTask;
 			}
 
-			protected virtual JsonNode? CreateNotifyPayload(LocalDevice localDevice)
+			public virtual JsonNode? CreateNotifyPayload(LocalDevice localDevice)
 			{
 				return null;
 			}
