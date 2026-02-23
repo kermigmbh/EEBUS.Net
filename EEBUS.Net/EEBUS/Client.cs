@@ -6,6 +6,7 @@ using EEBUS.Enums;
 using EEBUS.Messages;
 using EEBUS.Models;
 using EEBUS.SHIP.Messages;
+using System.Diagnostics;
 
 namespace EEBUS
 {
@@ -81,6 +82,7 @@ namespace EEBUS
             catch (Exception ex)
             {
                 // consider logging ex
+                Debug.WriteLine($"Client connection closed with error: {ex.ToString()}");  
             }
             finally
             {

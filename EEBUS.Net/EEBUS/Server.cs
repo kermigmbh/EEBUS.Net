@@ -60,7 +60,7 @@ namespace EEBUS
 					CancellationToken token = cts.Token;
 					var message = await ReceiveAsync(token);
 
-					Debug.WriteLine("<=== " + message.ToString());
+					
 
 					(this.state, this.subState, string error) = message.ServerTest(this.state);
 

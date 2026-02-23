@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
@@ -8,12 +9,15 @@ namespace EEBUS
 	{
 		private static object Mutex = new();
 
-		public static X509Certificate2 GenerateCert( string subject )
+		public static X509Certificate2 GenerateCert(string basePath, string subject )
 		{
 			lock ( Mutex )
 			{
-				string dir		= Directory.GetCurrentDirectory();
-				string path		= Path.Combine( dir, subject + ".pfx" );
+				if (string.IsNullOrEmpty(basePath))
+				{
+					basePath = Directory.GetCurrentDirectory();
+                }
+				string path		= Path.Combine(basePath, subject + ".pfx" );
 				string password = Environment.GetEnvironmentVariable( "PFX_PASSWORD" ) ?? string.Empty;
 
 				// check if we have a persisted cert already
@@ -30,7 +34,7 @@ namespace EEBUS
 				{
 					try
 					{
-						string rootPath = Path.Combine( dir, subject + ".pkcs12" );
+						string rootPath = Path.Combine(basePath, subject + ".pkcs12" );
 						X509Certificate2 rootCertificate;
 						if ( File.Exists( rootPath ) )
 						{
@@ -83,8 +87,8 @@ namespace EEBUS
 							// persist the cert
 							File.WriteAllBytes( path, cert.Export( X509ContentType.Pfx, password ) );
 
-							ExtractCertFile( cert, dir, subject );	// needed by the vue frontend
-							ExtractKeyFile( cert, dir, subject );
+							ExtractCertFile( cert, basePath, subject );	// needed by the vue frontend
+							ExtractKeyFile( cert, basePath, subject );
 
 							return cert;
 						}

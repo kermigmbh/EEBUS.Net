@@ -85,9 +85,9 @@
 			return false;
 		}
 
-		public override bool Equals( object obj )
+		public override bool Equals( object? obj )
 		{
-			SKI other = obj as SKI;
+			SKI? other = obj as SKI;
 			if ( other == null )
 				return false;
 

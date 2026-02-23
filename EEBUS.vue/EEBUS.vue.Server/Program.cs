@@ -25,7 +25,7 @@ namespace EEBUS.vue.Server
             {
                 kestrelOptions.ConfigureHttpsDefaults(httpOptions =>
                 {
-                    httpOptions.ServerCertificate = CertificateGenerator.GenerateCert(settings.Get<Settings>()?.Certificate);
+                    httpOptions.ServerCertificate = CertificateGenerator.GenerateCert(settings.Get<Settings>()?.BasePath ?? string.Empty, settings.Get<Settings>()?.Certificate);
                     httpOptions.ClientCertificateMode = ClientCertificateMode.NoCertificate;
                     httpOptions.ClientCertificateValidation = ValidateClientCert;
                     httpOptions.SslProtocols = SslProtocols.Tls12;
@@ -65,7 +65,7 @@ namespace EEBUS.vue.Server
             //services.AddSingleton<MDNSService>(mDNSService);
 
             var s = settings.Get<Settings>();
-            var cert = CertificateGenerator.GenerateCert(s.Certificate);
+            var cert = CertificateGenerator.GenerateCert(s.BasePath, s.Certificate);
 
             services.AddSingleton<X509Certificate2>(cert);
 

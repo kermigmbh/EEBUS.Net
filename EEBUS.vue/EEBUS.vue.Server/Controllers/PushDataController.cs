@@ -60,13 +60,13 @@ namespace EEBUS.Controllers
 				Console.WriteLine( $"LPC Failsafe Limit Write Request: Value={request.Value}" );
 				return WriteApprovalResult.Deny();
 			}
-			
-			public async Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration )
+
+			public async Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration, string remoteSki )
 			{
-				using var _ = Push( new LimitDataChanged( true, active, limit, duration ) );
+				using var _ = Push( new LimitDataChanged( true, active, limit, duration) );
 			}
 
-			public async Task DataUpdateFailsafeConsumptionActivePowerLimitAsync( int counter, long limit )
+			public async Task DataUpdateFailsafeConsumptionActivePowerLimitAsync( int counter, long limit, string remoteSki)
 			{
 				using var _ = Push( new FailsafeLimitDataChanged( true, limit ) );
 			}
@@ -85,13 +85,13 @@ namespace EEBUS.Controllers
 				Console.WriteLine( $"LPP Failsafe Limit Write Request: Value={request.Value}" );
 				return WriteApprovalResult.Accept();
 			}
-			
-			public async Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration )
+
+			public async Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration, string remoteSki )
 			{
 				using var _ = Push( new LimitDataChanged( false, active, limit, duration ) );
 			}
 
-			public async Task DataUpdateFailsafeProductionActivePowerLimitAsync( int counter, long limit  )
+			public async Task DataUpdateFailsafeProductionActivePowerLimitAsync( int counter, long limit , string remoteSki)
 			{
 				using var _ = Push( new FailsafeLimitDataChanged( false, limit ) );
 			}
@@ -105,12 +105,12 @@ namespace EEBUS.Controllers
 				return WriteApprovalResult.Accept();
 			}
 
-			public async Task DataUpdateFailsafeDurationMinimumAsync(int counter, TimeSpan duration)
+			public async Task DataUpdateFailsafeDurationMinimumAsync( int counter, TimeSpan duration, string remoteSki )
 			{
 				using var _ = Push( new FailsafeLimitDurationChanged( duration ) );
 			}
 
-			public async Task DataUpdateHeartbeatAsync( int counter, RemoteDevice device, uint timeout )
+			public async Task DataUpdateHeartbeatAsync( int counter, RemoteDevice device, uint timeout, string remoteSki)
 			{
 				using var _ = Push( new HeartbeatReceived( device, timeout ) );
 			}

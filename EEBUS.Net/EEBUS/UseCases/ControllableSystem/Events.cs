@@ -1,4 +1,6 @@
+using EEBUS.Messages;
 using EEBUS.Models;
+using System.Text.Json.Nodes;
 
 namespace EEBUS.UseCases.ControllableSystem
 {
@@ -10,9 +12,9 @@ namespace EEBUS.UseCases.ControllableSystem
 		WriteApprovalResult ApproveFailsafeLimitWrite( FailsafeLimitWriteRequest request );
 
 		// Data update events (called AFTER approved write is applied)
-		Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration );
+		Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration, string remoteSki );
 
-		Task DataUpdateFailsafeConsumptionActivePowerLimitAsync( int counter, long limit );
+		Task DataUpdateFailsafeConsumptionActivePowerLimitAsync( int counter, long limit, string remoteSki );
 	}
 
 	public interface LPPEvents : UseCaseEvents
@@ -23,9 +25,9 @@ namespace EEBUS.UseCases.ControllableSystem
 		WriteApprovalResult ApproveFailsafeLimitWrite( FailsafeLimitWriteRequest request );
 
 		// Data update events
-        Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration );
+		Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration, string remoteSki );
 
-        Task DataUpdateFailsafeProductionActivePowerLimitAsync( int counter, long limit );
+		Task DataUpdateFailsafeProductionActivePowerLimitAsync( int counter, long limit, string remoteSki );
 	}
 
 	public interface LPCorLPPEvents : UseCaseEvents
@@ -34,8 +36,13 @@ namespace EEBUS.UseCases.ControllableSystem
 		WriteApprovalResult ApproveFailsafeDurationWrite( FailsafeDurationWriteRequest request );
 
 		// Data update events
-        Task DataUpdateFailsafeDurationMinimumAsync( int counter, TimeSpan duration );
+		Task DataUpdateFailsafeDurationMinimumAsync( int counter, TimeSpan duration, string remoteSki );
 
-        Task DataUpdateHeartbeatAsync( int counter, RemoteDevice device, uint timeout );
+		Task DataUpdateHeartbeatAsync( int counter, RemoteDevice device, uint timeout, string remoteSki );
+	}
+
+	public interface NotifyEvents : UseCaseEvents
+	{
+		Task NotifyAsync( JsonNode? payload, AddressType localFeatureAddress );
 	}
 }

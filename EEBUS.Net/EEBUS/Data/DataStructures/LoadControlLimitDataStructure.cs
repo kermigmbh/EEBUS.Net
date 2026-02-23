@@ -3,6 +3,8 @@ using EEBUS.SPINE.Commands;
 using EEBUS.UseCases.ControllableSystem;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Xml;
+using System.Text.Json.Nodes;
+using EEBUS.Messages;
 
 namespace EEBUS.DataStructures
 {
@@ -91,7 +93,7 @@ namespace EEBUS.DataStructures
 				List<LPCEvents> lpcEvents = connection.Local.GetUseCaseEvents<LPCEvents>();
 				foreach (var lpc in lpcEvents)
 				{
-					await lpc.DataUpdateLimitAsync(0, this.LimitActive, this.Number, this.EndTime == null ?  Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(this.EndTime ));
+					await lpc.DataUpdateLimitAsync(0, this.LimitActive, this.Number, this.EndTime == null ?  Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(this.EndTime ), connection.Remote?.SKI.ToString() ?? string.Empty);
 				}
 			}
 			else if (this.LimitDirection == "produce")
@@ -99,7 +101,7 @@ namespace EEBUS.DataStructures
 				List<LPPEvents> lppEvents = connection.Local.GetUseCaseEvents<LPPEvents>();
 				foreach (var lpp in lppEvents)
 				{
-					await lpp.DataUpdateLimitAsync(0, this.LimitActive, this.Number, this.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(this.EndTime));
+					await lpp.DataUpdateLimitAsync(0, this.LimitActive, this.Number, this.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(this.EndTime), connection.Remote?.SKI.ToString() ?? string.Empty);
 				}
 			}
 		}

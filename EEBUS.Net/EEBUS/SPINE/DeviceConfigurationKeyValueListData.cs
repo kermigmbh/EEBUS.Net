@@ -1,9 +1,13 @@
+using EEBUS.KeyValues;
 using EEBUS.Messages;
 using EEBUS.Models;
-using System.Xml;
+using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.SHIP.Messages;
 using EEBUS.UseCases;
 using EEBUS.UseCases.ControllableSystem;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
+using System.Xml;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -14,14 +18,14 @@ namespace EEBUS.SPINE.Commands
 			Register( "deviceConfigurationKeyValueListData", new Class() );
 		}
 
-			public new class Class : SpineCmdPayload<CmdDeviceConfigurationKeyValueListDataType>.Class
+		public new class Class : SpineCmdPayload<CmdDeviceConfigurationKeyValueListDataType>.Class
 		{
 			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
 				if ( datagram.header.cmdClassifier == "read" )
 				{
-					DeviceConfigurationKeyValueListData	    payload = new DeviceConfigurationKeyValueListData();
-					DeviceConfigurationKeyValueListDataType data	= payload.cmd[0].deviceConfigurationKeyValueListData;
+					DeviceConfigurationKeyValueListData payload = new DeviceConfigurationKeyValueListData();
+					DeviceConfigurationKeyValueListDataType data = payload.cmd[0].deviceConfigurationKeyValueListData;
 
 					List<DeviceConfigurationKeyValueDataType> datas = new();
 					foreach ( var keyValue in connection.Local.KeyValues )
@@ -43,9 +47,10 @@ namespace EEBUS.SPINE.Commands
 				}
 			}
 
-						private WriteApprovalResult GetApprovalForKeyValue( Connection connection, KeyValue keyValue, ValueType value )
+			private WriteApprovalResult GetApprovalForKeyValue( Connection connection, KeyValue keyValue, ValueType value )
 			{
-				string remoteDeviceId = connection.Remote?.DeviceId;
+				string? remoteDeviceId = connection.Remote?.DeviceId;
+				string? remoteSki = connection.Remote?.SKI?.ToString();
 
 				switch ( keyValue.KeyName )
 				{
@@ -56,7 +61,7 @@ namespace EEBUS.SPINE.Commands
 							value.scaledNumber?.number ?? 0,
 							value.scaledNumber?.scale ?? 0,
 							remoteDeviceId,
-							null
+							remoteSki
 						);
 
 						var handlers = connection.Local.GetUseCaseEvents<LPCEvents>();
@@ -79,7 +84,7 @@ namespace EEBUS.SPINE.Commands
 							value.scaledNumber?.number ?? 0,
 							value.scaledNumber?.scale ?? 0,
 							remoteDeviceId,
-							null
+							remoteSki
 						);
 
 						var handlers = connection.Local.GetUseCaseEvents<LPPEvents>();
@@ -104,7 +109,7 @@ namespace EEBUS.SPINE.Commands
 							catch { /* ignore */ }
 						}
 
-						var request = new FailsafeDurationWriteRequest( duration, remoteDeviceId, null );
+						var request = new FailsafeDurationWriteRequest( duration, remoteDeviceId, remoteSki );
 
 						var handlers = connection.Local.GetUseCaseEvents<LPCorLPPEvents>();
 						if ( handlers.Count == 0 )
@@ -123,7 +128,7 @@ namespace EEBUS.SPINE.Commands
 						return WriteApprovalResult.Accept( "Unknown key - auto-approved" );
 				}
 			}
-			
+
 			public override async ValueTask EvaluateAsync( Connection connection, DatagramType datagram )
 			{
 				if ( datagram.header.cmdClassifier != "write" )
@@ -133,10 +138,13 @@ namespace EEBUS.SPINE.Commands
 					? null
 					: System.Text.Json.JsonSerializer.Deserialize<DeviceConfigurationKeyValueListData>(datagram.payload);
 
-				int       keyId = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].keyId;
+				if (payload == null)
+					return;
+
+				int keyId = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].keyId;
 				ValueType value = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].value;
 
-				KeyValue keyValue = connection.Local.KeyValues.FirstOrDefault( kv => kv.Data.keyId == keyId );
+				KeyValue? keyValue = connection.Local.KeyValues.FirstOrDefault( kv => kv.Data.keyId == keyId );
 				if ( keyValue == null )
 				{
 					datagram.ApprovalResult = WriteApprovalResult.Deny( "Unknown key ID" );
@@ -150,40 +158,66 @@ namespace EEBUS.SPINE.Commands
 				{
 					keyValue.SetValue( value );
 					await keyValue.SendEventAsync( connection );
-					SendNotify(connection, datagram);
+					await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
 				}
 			}
-			
-			private void SendNotify(Connection connection, DatagramType datagram)
-			{
-				SpineDatagramPayload notify = new SpineDatagramPayload();
-				notify.datagram.header.addressSource = datagram.header.addressDestination;
-				notify.datagram.header.addressDestination = datagram.header.addressSource;
-				notify.datagram.header.msgCounter = DataMessage.NextCount;
-				notify.datagram.header.cmdClassifier = "notify";
 
+			public override JsonNode? CreateNotifyPayload(LocalDevice localDevice)
+			{
 				DeviceConfigurationKeyValueListData payload = new DeviceConfigurationKeyValueListData();
 				DeviceConfigurationKeyValueListDataType data = payload.cmd[0].deviceConfigurationKeyValueListData;
 
 				List<DeviceConfigurationKeyValueDataType> datas = new();
-				foreach (var keyValue in connection.Local.KeyValues)
+				foreach (var keyValue in localDevice.KeyValues)
 					datas.Add(keyValue.Data);
 
 				data.deviceConfigurationKeyValueData = datas.ToArray();
 
+				return payload.ToJsonNode();
+			}
 
-                 
-				notify.datagram.payload = payload.ToJsonNode();
+			public override async Task WriteDataAsync(LocalDevice localDevice, DeviceData deviceData)
+			{
+				bool didChange = false;
 
-				DataMessage limitMessage = new DataMessage();
-				limitMessage.SetPayload(System.Text.Json.JsonSerializer.SerializeToNode(notify));
+				if (deviceData.Lpc?.FailSafeLimit != null)
+				{
+					FailsafeConsumptionActivePowerLimitKeyValue? lpcFailsafeLimitKeyValue = localDevice.GetKeyValue<FailsafeConsumptionActivePowerLimitKeyValue>();
+					if (lpcFailsafeLimitKeyValue != null)
+					{
+						lpcFailsafeLimitKeyValue.Value = deviceData.Lpc.FailSafeLimit.Value;
+						didChange = true;
+					}
+				}
 
-				connection.PushDataMessage(limitMessage);
+				if (deviceData.Lpp?.FailSafeLimit != null)
+				{
+					FailsafeProductionActivePowerLimitKeyValue? lppFailsafeLimitKeyValue = localDevice.GetKeyValue<FailsafeProductionActivePowerLimitKeyValue>();
+					if (lppFailsafeLimitKeyValue != null)
+					{
+						lppFailsafeLimitKeyValue.Value = deviceData.Lpp.FailSafeLimit.Value;
+						didChange = true;
+					}
+				}
+
+				if (deviceData.FailSafeLimitDuration != null)
+				{
+					FailsafeDurationMinimumKeyValue? failsafeDurationKeyValue = localDevice.GetKeyValue<FailsafeDurationMinimumKeyValue>();
+					if (failsafeDurationKeyValue != null)
+					{
+						failsafeDurationKeyValue.Duration = XmlConvert.ToString(deviceData.FailSafeLimitDuration.Value);
+						didChange = true;
+					}
+				}
+
+				if (didChange)
+				{
+					await SendNotifyAsync(localDevice, localDevice.GetFeatureAddress("DeviceConfiguration", true));
+				}
 			}
 		}
 	}
-	
-	
+
 
 	[System.SerializableAttribute()]
 	public class CmdDeviceConfigurationKeyValueListDataType : CmdType
@@ -200,26 +234,26 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class DeviceConfigurationKeyValueDataType
 	{
-		public int		 keyId			   { get; set; }
+		public int keyId { get; set; }
 
-		public ValueType value			   { get; set; } = new();
+		public ValueType value { get; set; } = new();
 
-		public bool		 isValueChangeable { get; set; }
+		public bool isValueChangeable { get; set; }
 	}
 
 	[System.SerializableAttribute()]
 	public class ValueType
 	{
-		public ScaledNumberType?	scaledNumber { get; set; }
-		
-		public string?			duration	 { get; set; }
+		public ScaledNumberType? scaledNumber { get; set; }
+
+		public string? duration { get; set; }
 	}
 
 	[System.SerializableAttribute()]
 	public class ScaledNumberType
 	{
-		public long?  number	{ get; set; }
-		
-		public short? scale	{ get; set; }
+		public long? number { get; set; }
+
+		public short? scale { get; set; }
 	}
 }

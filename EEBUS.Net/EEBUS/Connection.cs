@@ -12,6 +12,7 @@ using EEBUS.Models;
 using EEBUS.SHIP.Messages;
 using EEBUS.SPINE.Commands;
 using EEBUS.Net.EEBUS.UseCases.GridConnectionPoint;
+using EEBUS.Net;
 
 
 namespace EEBUS
@@ -59,7 +60,7 @@ namespace EEBUS
         protected class HeartBeatTask
         {
             private bool heartbeatSubscribed = false;
-
+            private DeviceDiagnosisHeartbeatData.Class heartbeatClass = new DeviceDiagnosisHeartbeatData.Class();
             // This method is called by the timer delegate.
             public void Beat(object connectionObj)
             {
@@ -96,9 +97,9 @@ namespace EEBUS
                         reply.datagram.header.msgCounter = DataMessage.NextCount;
                         reply.datagram.header.cmdClassifier = "notify";
 
-                        SpineCmdPayloadBase heartbeat = new DeviceDiagnosisHeartbeatData.Class().CreateNotify(connection);
+                        SpineCmdPayloadBase? heartbeat = heartbeatClass.CreateNotify(connection);
                         // serialize heartbeat into a JsonNode payload
-                        reply.datagram.payload = heartbeat.ToJsonNode();// JsonSerializer.SerializeToNode(heartbeat);
+                        reply.datagram.payload = heartbeat?.ToJsonNode();// JsonSerializer.SerializeToNode(heartbeat);
 
                         DataMessage heartbeatMessage = new DataMessage();
                         heartbeatMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize heartbeat message"));
@@ -135,7 +136,7 @@ namespace EEBUS
                         reply.datagram.header.cmdClassifier = "notify";
 
                         var eccPayload = new ElectricalConnectionCharacteristicListData.Class().CreateNotify(connection);
-                        reply.datagram.payload = eccPayload.ToJsonNode();// JsonSerializer.SerializeToNode(eccPayload);
+                        reply.datagram.payload = eccPayload?.ToJsonNode();// JsonSerializer.SerializeToNode(eccPayload);
 
                         DataMessage eccMessage = new DataMessage();
                         //eccMessage.SetPayload(JsonSerializer.SerializeToNode(reply));
@@ -182,7 +183,7 @@ namespace EEBUS
                         reply.datagram.header.cmdClassifier = "notify";
 
                         var measurementPayload = new MeasurementListData.Class().CreateNotify(connection);
-                        reply.datagram.payload = measurementPayload.ToJsonNode();//JsonSerializer.SerializeToNode(measurementPayload);
+                        reply.datagram.payload = measurementPayload?.ToJsonNode();//JsonSerializer.SerializeToNode(measurementPayload);
 
                         DataMessage dataMessage = new DataMessage();
                         dataMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize measurement data message"));
@@ -200,7 +201,10 @@ namespace EEBUS
             this.devices = devices;
 
             this.WaitingMessages = new(this);
+            this.BindingAndSubscriptionManager = new BindingAndSubscriptionManager(this);
         }
+
+        public BindingAndSubscriptionManager BindingAndSubscriptionManager { get; } 
 
         public WebSocket WebSocket { get { return this.ws; } }
 
@@ -280,6 +284,9 @@ namespace EEBUS
             {
                 throw new Exception("Message couldn't be recognized");
             }
+
+            Debug.WriteLine("<=== " + message.ToString());
+
             return message;
         }
 
@@ -301,7 +308,7 @@ namespace EEBUS
             read.datagram.payload = discoveryPayload.ToJsonNode();// JsonSerializer.SerializeToNode(discoveryPayload);
 
             DataMessage message = new DataMessage();
-            message.SetPayload(JsonSerializer.SerializeToNode(read));
+            message.SetPayload(JsonSerializer.SerializeToNode(read) ?? throw new Exception("Failed to serialize discovery read message"));
 
             PushDataMessage(message);
         }
@@ -337,7 +344,7 @@ namespace EEBUS
         public void HeartbeatRead()
         {
             AddressType source = this.Local.GetHeartbeatAddress(false);
-            AddressType destination = this.Remote.GetHeartbeatAddress(true);
+            AddressType  destination = this.Remote?.GetHeartbeatAddress(true) ?? throw new Exception("Remote device is not available");
 
             SpineDatagramPayload read = new SpineDatagramPayload();
             read.datagram.header.addressSource = source;

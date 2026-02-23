@@ -12,17 +12,18 @@ namespace EEBUS.SPINE.Commands
 			Register( "deviceDiagnosisHeartbeatData", new Class() );
 		}
 
-		static public ulong counter = 1;
+		//static public ulong counter = 1;
 
 		public new class Class : SpineCmdPayload<CmdDeviceDiagnosisHeartbeatDataType>.Class
 		{
-			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
+            private ulong counter = 1;
+            public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
 				DeviceDiagnosisHeartbeatData	 payload = new DeviceDiagnosisHeartbeatData();
 				DeviceDiagnosisHeartbeatDataType data	 = payload.cmd[0].deviceDiagnosisHeartbeatData;
 
 				data.timestamp		  = DateTime.UtcNow.ToString( "s" ) + "Z";
-				data.heartbeatCounter = DeviceDiagnosisHeartbeatData.counter++;
+				data.heartbeatCounter = counter++;
 				data.heartbeatTimeout = "PT4S";
 
 				return payload;
@@ -34,7 +35,7 @@ namespace EEBUS.SPINE.Commands
 				DeviceDiagnosisHeartbeatDataType data	 = payload.cmd[0].deviceDiagnosisHeartbeatData;
 
 				data.timestamp		  = DateTime.UtcNow.ToString( "s" ) + "Z";
-				data.heartbeatCounter = DeviceDiagnosisHeartbeatData.counter++;
+				data.heartbeatCounter = counter++;
 				data.heartbeatTimeout = "PT4S";
 
 				return payload;
@@ -64,7 +65,7 @@ namespace EEBUS.SPINE.Commands
                     List<LPCorLPPEvents> lpcOrLppEvents = connection.Local.GetUseCaseEvents<LPCorLPPEvents>();
                     foreach (var lpcOrLpp in lpcOrLppEvents)
                     {
-                        await lpcOrLpp.DataUpdateHeartbeatAsync(0, remote, (uint)XmlConvert.ToTimeSpan(timeout).TotalSeconds);
+                        await lpcOrLpp.DataUpdateHeartbeatAsync(0, remote, (uint)XmlConvert.ToTimeSpan(timeout).TotalSeconds, connection.Remote?.SKI.ToString() ?? string.Empty);
                     }
                 }
 				

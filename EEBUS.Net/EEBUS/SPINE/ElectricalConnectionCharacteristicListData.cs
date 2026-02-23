@@ -9,7 +9,7 @@ namespace EEBUS.SPINE.Commands
 			Register( "electricalConnectionCharacteristicListData", new Class() );
 		}
 
-		static public ulong counter = 1;
+		//static public ulong counter = 1;
 
 		public new class Class : SpineCmdPayload<CmdElectricalConnectionCharacteristicListDataType>.Class
 		{

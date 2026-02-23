@@ -67,7 +67,7 @@ namespace EEBUS.KeyValues
 		{
 			List<LPCEvents> lpcEvents = connection.Local.GetUseCaseEvents<LPCEvents>();
 			foreach(var lpc in lpcEvents) {
-				await lpc.DataUpdateFailsafeConsumptionActivePowerLimitAsync(0, this.Value); 
+				await lpc.DataUpdateFailsafeConsumptionActivePowerLimitAsync(0, this.Value, connection.Remote?.SKI.ToString() ?? string.Empty); 
 			}
 		}
 	}

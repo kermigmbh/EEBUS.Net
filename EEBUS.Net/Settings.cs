@@ -6,9 +6,8 @@ namespace EEBUS
     public class Settings
     {
         public string Certificate { get; set; }
+        public string BasePath { get; set; } = string.Empty;
         public DeviceSettings Device { get; set; }
-
-
     }
 
     public class DeviceSettings

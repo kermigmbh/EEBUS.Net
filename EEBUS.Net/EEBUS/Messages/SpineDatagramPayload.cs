@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using EEBUS.SPINE.Commands;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
@@ -53,7 +54,7 @@ namespace EEBUS.Messages
 			if (command == "function" && prop.Value is JsonValue v && v.TryGetValue<string>(out var fn))
 				command = fn;
 
-			SpineCmdPayloadBase.Class cls = SpineCmdPayloadBase.GetClass( command );
+			SpineCmdPayloadBase.Class? cls = SpineCmdPayloadBase.GetClass( command );
 			if ( null == cls )
 				return null;
 
@@ -75,7 +76,7 @@ namespace EEBUS.Messages
 			reply.datagram.header.cmdClassifier		   = GetAnswerCmdClassifier();
 			reply.datagram.header.ackRequest		   = cls.GetAnswerAckRequest();
 
-			SpineCmdPayloadBase payload = await cls.CreateAnswerAsync( this.datagram, reply.datagram.header, connection );
+			SpineCmdPayloadBase? payload = await cls.CreateAnswerAsync( this.datagram, reply.datagram.header, connection );
 			if ( null == payload )
 				return null;
 
@@ -83,8 +84,15 @@ namespace EEBUS.Messages
 
 			return reply;
 		}
+        public SpineCmdPayloadBase? DeserializePayload()
+        {
+            SpineCmdPayloadBase.Class? cls = GetClass();
+            if (null == cls)
+                return null;
 
-		public async ValueTask EvaluateAsync( Connection connection )
+             return cls.FromJsonNode(datagram.payload);
+        }
+        public async ValueTask EvaluateAsync( Connection connection )
 		{
 			SpineCmdPayloadBase.Class? cls = GetClass();
 			if ( null == cls )
@@ -139,5 +147,35 @@ namespace EEBUS.Messages
 
 		[JsonPropertyName("feature")]
 		public int?	  feature { get; set; }
-	}
+
+        public override bool Equals(object? obj)
+        {
+			if (obj is not AddressType other) return false;
+
+			return this.device == other.device && this.entity.SequenceEqual(other.entity) && this.feature == other.feature;
+        }
+
+        public override int GetHashCode()
+        {
+			return HashCode.Combine(this.device?.GetHashCode(), this.entity.GetHashCode(), this.feature.GetHashCode());
+        }
+
+        public static bool operator ==(AddressType lhs, AddressType rhs)
+        {
+            if (lhs is null)
+            {
+                if (rhs is null)
+                {
+                    return true;
+                }
+
+                // Only the left side is null.
+                return false;
+            }
+            // Equals handles case of null on right side.
+            return lhs.Equals(rhs);
+        }
+
+        public static bool operator !=(AddressType lhs, AddressType rhs) => !(lhs == rhs);
+    }
 }

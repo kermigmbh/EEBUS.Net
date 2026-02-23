@@ -7,6 +7,11 @@ using EEBUS.Messages;
 using EEBUS.SHIP.Messages;
 using EEBUS.UseCases;
 using EEBUS.UseCases.ControllableSystem;
+using EEBUS.KeyValues;
+using System.Text.Json.Nodes;
+using System.Text.Json;
+using EEBUS.Models;
+using EEBUS.Net.EEBUS.Models.Data;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -86,6 +91,12 @@ namespace EEBUS.SPINE.Commands
                 if (datagram.header.cmdClassifier != "write")
                     return;
 
+                if (!connection.BindingAndSubscriptionManager.HasBinding(datagram.header.addressSource, datagram.header.addressDestination))
+                {
+                    //Reject
+                    return;
+                }
+
                 var command = datagram.payload == null
                     ? null
                     : System.Text.Json.JsonSerializer.Deserialize<LoadControlLimitListData>(datagram.payload);
@@ -94,7 +105,7 @@ namespace EEBUS.SPINE.Commands
 
                 LoadControlLimitDataType received = command.cmd[0].loadControlLimitListData.loadControlLimitData[0];
 
-                LoadControlLimitDataStructure structureData = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(received.limitId);
+                LoadControlLimitDataStructure? structureData = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(received.limitId);
                 if (structureData == null)
                 {
                     datagram.ApprovalResult = WriteApprovalResult.Deny("Unknown limit ID");
@@ -119,7 +130,7 @@ namespace EEBUS.SPINE.Commands
                     received.value.scale ?? 0,
                     duration,
                     connection.Remote?.DeviceId,
-                    null
+                    connection.Remote?.SKI?.ToString()
                 );
 
                 WriteApprovalResult approvalResult = GetApproval(connection, structureData.LimitDirection, request);
@@ -132,34 +143,56 @@ namespace EEBUS.SPINE.Commands
                     structureData.EndTime = received.timePeriod.endTime;
 
                     await structureData.SendEventAsync(connection);
-                    SendNotify(connection, datagram);
+                    await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
                 }
             }
 
-            private void SendNotify(Connection connection, DatagramType datagram)
+            public override async Task WriteDataAsync(LocalDevice device, DeviceData deviceData)
             {
-                SpineDatagramPayload notify = new SpineDatagramPayload();
-                notify.datagram.header.addressSource = datagram.header.addressDestination;
-                notify.datagram.header.addressDestination = datagram.header.addressSource;
-                notify.datagram.header.msgCounter = DataMessage.NextCount;
-                notify.datagram.header.cmdClassifier = "notify";
+                bool didChange = false;
 
+                if (deviceData.Lpc != null && !deviceData.Lpc.IsEmpty())
+                {
+                    var consumeDataStructures = device.GetDataStructures<LoadControlLimitDataStructure>().Where(ds => ds.LimitDirection == "consume");
+                    foreach (var consumeDataStructure in consumeDataStructures)
+                    {
+                        consumeDataStructure.LimitActive = deviceData.Lpc.LimitActive ?? consumeDataStructure.LimitActive;
+                        consumeDataStructure.Number = deviceData.Lpc.Limit ?? consumeDataStructure.Number;
+                        consumeDataStructure.EndTime = deviceData.Lpc.LimitDuration != null ? XmlConvert.ToString(TimeSpan.FromSeconds(deviceData.Lpc.LimitDuration.Value)) : consumeDataStructure.EndTime;
+                    }
+                    didChange = consumeDataStructures.Count() > 0;
+                }
+
+                if (deviceData.Lpp != null && !deviceData.Lpp.IsEmpty())
+                {
+                    var produceDataStructures = device.GetDataStructures<LoadControlLimitDataStructure>().Where(ds => ds.LimitDirection == "produce");
+                    foreach (var produceDataStructure in produceDataStructures)
+                    {
+                        produceDataStructure.LimitActive = deviceData.Lpp.LimitActive ?? produceDataStructure.LimitActive;
+                        produceDataStructure.Number = deviceData.Lpp.Limit ?? produceDataStructure.Number;
+                        produceDataStructure.EndTime = deviceData.Lpp.LimitDuration != null ? XmlConvert.ToString(TimeSpan.FromSeconds(deviceData.Lpp.LimitDuration.Value)) : produceDataStructure.EndTime;
+                    }
+                    didChange = produceDataStructures.Count() > 0;
+                }
+
+                if (didChange)
+                {
+                    await SendNotifyAsync(device, device.GetFeatureAddress("LoadControl", true));
+                }
+            }
+
+            public override JsonNode? CreateNotifyPayload(LocalDevice localDevice)
+            {
                 LoadControlLimitListData limitData = new LoadControlLimitListData();
                 LoadControlLimitListDataType data = limitData.cmd[0].loadControlLimitListData;
 
                 List<LoadControlLimitDataType> datas = new();
-                foreach (LoadControlLimitDataStructure structure in connection.Local.GetDataStructures<LoadControlLimitDataStructure>())
+                foreach (LoadControlLimitDataStructure structure in localDevice.GetDataStructures<LoadControlLimitDataStructure>())
                 {
                     datas.Add(structure.Data);
                 }
-
                 data.loadControlLimitData = datas.ToArray();
-                notify.datagram.payload = limitData.ToJsonNode();
-
-                DataMessage limitMessage = new DataMessage();
-                limitMessage.SetPayload(System.Text.Json.JsonSerializer.SerializeToNode(notify));
-
-                connection.PushDataMessage(limitMessage);
+                return limitData.ToJsonNode();
             }
         }
     }

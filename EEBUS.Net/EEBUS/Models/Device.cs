@@ -34,7 +34,7 @@ namespace EEBUS.Models
 
 		public DateTimeOffset HeartbeatValidUntil { get; set; } = DateTimeOffset.MaxValue;
 
-        public override bool Equals( object obj )
+        public override bool Equals( object? obj )
 		{
 			if ( (obj == null) || ! GetType().Equals( obj.GetType() ) )
 				return false;
@@ -157,13 +157,27 @@ namespace EEBUS.Models
 
 			foreach( Entity entity in this.Entities )
 			{
-				Feature feature = entity.Features.Find( f => null != f && f.Type == "DeviceDiagnosis" && f.Role == role );
+				Feature? feature = entity.Features.Find( f => null != f && f.Type == "DeviceDiagnosis" && f.Role == role );
 				if ( null != feature )
 					return new AddressType() { device = this.DeviceId, entity = entity.Index, feature = feature.Index };
 			}
 
-			return null;
-		}
+			throw new Exception( "No heartbeat feature found for " + (server ? "server" : "client") );
+        }
+
+		public AddressType GetFeatureAddress(string featureType, bool server)
+		{
+			string role = server ? "server" : "client";
+
+			foreach (Entity entity in this.Entities)
+			{
+                Feature? feature = entity.Features.Find(f => f != null && f.Type == featureType && f.Role == role);
+                if (feature != null)
+                    return new AddressType() { device = this.DeviceId, entity = entity.Index, feature = feature.Index };
+            }
+
+            throw new Exception($"No feature of type {featureType} with role {(server ? "server" : "client")}");
+        }
 
 		public AddressType GetElectricalConnectionAddress( bool source )
 		{
@@ -171,13 +185,13 @@ namespace EEBUS.Models
 
 			foreach ( Entity entity in this.Entities )
 			{
-				Feature feature = entity.Features.Find( f => null != f && f.Type == "ElectricalConnection" && f.Role == role );
+				Feature? feature = entity.Features.Find( f => null != f && f.Type == "ElectricalConnection" && f.Role == role );
 				if ( null != feature )
 					return new AddressType() { device = this.DeviceId, entity = entity.Index, feature = feature.Index };
 			}
 
-			return null;
-		}
+			throw new Exception( "No electrical connection feature found for " + (source ? "server" : "client") );
+        }
 
 		public AddressType GetMeasurementDataAddress( bool source )
 		{
@@ -185,12 +199,12 @@ namespace EEBUS.Models
 
 			foreach ( Entity entity in this.Entities )
 			{
-				Feature feature = entity.Features.Find( f => null != f && f.Type == "Measurement" && f.Role == role );
+				Feature? feature = entity.Features.Find( f => null != f && f.Type == "Measurement" && f.Role == role );
 				if ( null != feature )
 					return new AddressType() { device = this.DeviceId, entity = entity.Index, feature = feature.Index };
 			}
 
-			return null;
-		}
+			throw new Exception( "No measurement feature found for " + (source ? "server" : "client") );
+        }
 	}
 }

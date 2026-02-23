@@ -1,4 +1,7 @@
-﻿using System.Text.Json;
+﻿using EEBUS.Models;
+using EEBUS.Net.EEBUS.Models.Data;
+using EEBUS.UseCases.ControllableSystem;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace EEBUS.Messages
@@ -9,30 +12,55 @@ namespace EEBUS.Messages
 		{
 		}
 		public abstract JsonNode? ToJsonNode();
-         
+
+
+
         public abstract class Class
 		{
-			public virtual async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
+            public abstract SpineCmdPayloadBase? FromJsonNode(JsonNode? node);
+
+            public virtual async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
 				return null;
 			}
 
-			public virtual SpineCmdPayloadBase CreateNotify( Connection connection )
+			public virtual SpineCmdPayloadBase? CreateNotify( Connection connection )
 			{
 				return null;
 			}
 
-			public virtual SpineCmdPayloadBase CreateRead( Connection connection )
+			public virtual SpineCmdPayloadBase? CreateRead( Connection connection )
 			{
 				return null;
 			}
 
-			public virtual SpineCmdPayloadBase CreateCall( Connection connection )
+			public virtual SpineCmdPayloadBase? CreateCall( Connection connection )
 			{
 				return null;
 			}
 
-			public virtual async ValueTask EvaluateAsync( Connection connection, DatagramType datagram )
+			public virtual Task WriteDataAsync(LocalDevice localDevice, DeviceData deviceData)
+			{
+				return Task.CompletedTask;
+			}
+
+			public virtual JsonNode? CreateNotifyPayload(LocalDevice localDevice)
+			{
+				return null;
+			}
+
+            public async Task SendNotifyAsync(LocalDevice localDevice, AddressType localAddress)
+			{
+				var payload = CreateNotifyPayload(localDevice);
+                List<NotifyEvents> notifyEvents = localDevice.GetUseCaseEvents<NotifyEvents>();
+                foreach (var ev in notifyEvents)
+                {
+                    await ev.NotifyAsync(payload, localAddress);
+                }
+            }
+
+
+            public virtual async ValueTask EvaluateAsync( Connection connection, DatagramType datagram )
 			{
 			}
 
@@ -49,9 +77,9 @@ namespace EEBUS.Messages
 			commands.Add( cmd, cls );
 		}
 
-		static public Class GetClass( string cmd )
+		static public Class? GetClass( string cmd )
 		{
-			if ( commands.TryGetValue( cmd, out Class cls ) )
+			if ( commands.TryGetValue( cmd, out Class? cls ) )
 				return cls;
 
 			return null;

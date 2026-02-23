@@ -6,7 +6,7 @@ namespace EEBUS
 {
 	public class EEBusServiceProfile : ServiceProfile
 	{
-		public EEBusServiceProfile( string hostName, DomainName instanceName, DomainName serviceName, ushort port, IEnumerable<IPAddress> addresses = null )
+		public EEBusServiceProfile( string hostName, DomainName instanceName, DomainName serviceName, ushort port, IEnumerable<IPAddress>? addresses = null )
 			: base()
 		{
 			InstanceName = instanceName;
