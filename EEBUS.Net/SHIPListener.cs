@@ -27,7 +27,10 @@ namespace EEBUS
         private Devices devices;
         private CancellationTokenSource _cts = new CancellationTokenSource();
         private WebApplication? _app;
-        public event EventHandler<DeviceConnectionChangedEventArgs>? OnDeviceConnectionChanged;
+        //public event EventHandler<DeviceConnectionChangedEventArgs>? OnDeviceConnectionChanged;
+
+        public Func<DeviceConnectionChangedEventArgs, Task>? OnDeviceConnectionChanged;
+
         private Settings _settings;
 
         public Func<NewConnectionValidationEventArgs, bool>? OnNewConnectionValidation { get; set; } = (NewConnectionValidationEventArgs args) => true;
@@ -170,7 +173,11 @@ namespace EEBUS
                     {
                         Debug.WriteLine("Middleware Weiterleitung, Server vorhanden und stoppen");
                         await server.CloseAsync().ConfigureAwait(false);
-                        OnDeviceConnectionChanged?.Invoke(this, new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Disconnected });
+
+                        if (OnDeviceConnectionChanged != null)
+                        {
+                            await OnDeviceConnectionChanged(new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Disconnected });
+                        }
                     }
 
                     var socket = await httpContext.WebSockets.AcceptWebSocketAsync("ship").ConfigureAwait(false);
@@ -181,7 +188,10 @@ namespace EEBUS
                     }
 
                     server = new Server(httpContext.Request.Host, socket, this.devices);
-                    OnDeviceConnectionChanged?.Invoke(this, new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Connected });
+                    if (OnDeviceConnectionChanged != null)
+                    {
+                        await OnDeviceConnectionChanged(new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Connected });
+                    }
                     await server.Do().ConfigureAwait(false);
 
                 }
@@ -194,9 +204,9 @@ namespace EEBUS
                 }
                 finally
                 {
-                    if (server != null)
+                    if (server != null && OnDeviceConnectionChanged != null)
                     {
-                        OnDeviceConnectionChanged?.Invoke(this, new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Disconnected });
+                        await OnDeviceConnectionChanged(new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Disconnected });
                     }
 
                 }

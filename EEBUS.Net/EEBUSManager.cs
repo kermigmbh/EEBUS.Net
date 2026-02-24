@@ -146,9 +146,13 @@ namespace EEBUS.Net
             return DeviceConnectionStatus.Unknown;
         }
 
-        internal void UpdateConnectionStatus(string ski, DeviceConnectionStatus connectionStatus)
+        internal async Task UpdateConnectionStatusAsync(RemoteDevice remoteDevice, DeviceConnectionStatus connectionStatus)
         {
-            _deviceConnectionStatus[ski] = connectionStatus;
+            _deviceConnectionStatus[remoteDevice.SKI.ToString()] = connectionStatus;
+            if (OnDeviceConnectionStatusChanged != null)
+            {
+                await OnDeviceConnectionStatusChanged(remoteDevice, connectionStatus);
+            }
         }
 
         private LPCEventHandler lpcEventHandler;
@@ -191,13 +195,7 @@ namespace EEBUS.Net
         {
             public Task RemoteDiscoveryCompletedAsync(RemoteDevice remoteDevice)
             {
-                EEBusManager.UpdateConnectionStatus(remoteDevice.SKI.ToString(), DeviceConnectionStatus.DiscoveryCompleted);
-                var callback = EEBusManager.OnDeviceConnectionStatusChanged;
-                if (callback != null)
-                {
-                    return callback(remoteDevice, DeviceConnectionStatus.DiscoveryCompleted);
-                }
-                return Task.CompletedTask;
+                return EEBusManager.UpdateConnectionStatusAsync(remoteDevice, DeviceConnectionStatus.Connected);
             }
         }
 
@@ -450,8 +448,8 @@ namespace EEBUS.Net
                 Id = rd.Id,
                 Name = rd.Name,
                 Ski = rd.SKI.ToString(),
-                SupportsLpc = rd.SupportsUseCase("limitationOfPowerConsumption"),
-                SupportsLpp = rd.SupportsUseCase("limitationOfPowerProduction")
+                SupportsLpc = rd.SupportsLpc(),
+                SupportsLpp = rd.SupportsLpp()
             });
         }
 
@@ -640,11 +638,11 @@ namespace EEBUS.Net
     
                     }) ?? false;
             };
-            _shipListener.OnDeviceConnectionChanged += _shipListener_OnDeviceConnectionChanged;
+            _shipListener.OnDeviceConnectionChanged = OnDeviceConnectionChangedAsync;
             _shipListener.StartAsync(_settings.Device.Port);
         }
 
-        private void _shipListener_OnDeviceConnectionChanged(object? sender, DeviceConnectionChangedEventArgs e)
+        private async Task OnDeviceConnectionChangedAsync(DeviceConnectionChangedEventArgs e)
         {
             if (e.ChangeType == DeviceConnectionChangeType.Connected)
             {
@@ -656,21 +654,23 @@ namespace EEBUS.Net
                 if (removedConnection?.Remote != null)
                 {
                     _deviceConnectionStatus.TryRemove(removedConnection.Remote.SKI.ToString(), out _);
-                    
+                    if (OnDeviceConnectionStatusChanged != null)
+                    {
+                        await OnDeviceConnectionStatusChanged(removedConnection.Remote, DeviceConnectionStatus.Unknown);
+                    }
                 }
             }
         }
 
         public void Stop()
         {
-
             _shipListener?.StopAsync();
             _mDNSClient.Stop();
         }
 
         public void Dispose()
         {
-            _shipListener?.OnDeviceConnectionChanged -= _shipListener_OnDeviceConnectionChanged;
+            //_shipListener?.OnDeviceConnectionChanged -= _shipListener_OnDeviceConnectionChanged;
 
             _devices.RemoteDeviceFound -= OnRemoteDeviceFound;
             _devices.ServerStateChanged -= OnServerStateChanged;
