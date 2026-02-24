@@ -7,100 +7,120 @@ using EEBUS.SPINE.Commands;
 
 namespace EEBUS.UseCases.ControllableSystem
 {
-	public class LimitationOfPowerConsumption : UseCase
-	{
-		static LimitationOfPowerConsumption()
-		{
-			Register( "limitationOfPowerConsumption-ControllableSystem", new Class() );
-		}
+    public class LimitationOfPowerConsumption : UseCase
+    {
+        static LimitationOfPowerConsumption()
+        {
+            Register("limitationOfPowerConsumption-ControllableSystem", new Class());
+        }
 
-		public LimitationOfPowerConsumption( UseCaseSettings usecaseSettings, Entity entity )
-			: base( usecaseSettings, entity )
-		{
-			Scenarios.Add( new Scenario( 1, true, "Control active power consumption limit" ) );
-			Scenarios.Add( new Scenario( 2, true, "Failsafe values" ) );
-			Scenarios.Add( new Scenario( 3, true, "Heartbeat" ) );
-			Scenarios.Add( new Scenario( 4, true, "Constraints" ) );
+        public LimitationOfPowerConsumption(UseCaseSettings usecaseSettings, Entity entity)
+            : base(usecaseSettings, entity)
+        {
 
-			entity.GetOrAdd( Feature.Create( "DeviceDiagnosis",		 "client", entity ) );
-			entity.GetOrAdd( Feature.Create( "LoadControl",			 "server", entity ) );
-			entity.GetOrAdd( Feature.Create( "DeviceConfiguration",	 "server", entity ) );
-			entity.GetOrAdd( Feature.Create( "DeviceDiagnosis",		 "server", entity ) );
-			entity.GetOrAdd( Feature.Create( "ElectricalConnection", "server", entity ) );
 
-			bool active			  = false;
-			long limit			  = 0;
-			uint duration		  = 0;
-			long failsafeLimit	  = 4200;
-			uint failsafeDuration = 7200;
+            if (usecaseSettings.SupportedScenarios != null)
+            {
+                var scenarios = new List<Scenario>(Scenarios);
+                foreach (var scenario in scenarios)
+                {
+                    if (!usecaseSettings.SupportedScenarios.Contains(scenario.Index))
+                    {
+                        Scenarios.Remove(scenario);
+                    }
+                }
+            }
 
-			if ( null != usecaseSettings.InitLimits )
-			{
-				active			 = usecaseSettings.InitLimits.Active;
-				limit			 = usecaseSettings.InitLimits.Limit;
-				duration		 = usecaseSettings.InitLimits.Duration;
-				failsafeLimit	 = usecaseSettings.InitLimits.FailsafeLimit;
-				failsafeDuration = usecaseSettings.InitLimits.FailsafeDuration;
-			}
+            entity.GetOrAdd(Feature.Create("DeviceDiagnosis", "client", entity));
+            entity.GetOrAdd(Feature.Create("LoadControl", "server", entity));
+            entity.GetOrAdd(Feature.Create("DeviceConfiguration", "server", entity));
+            entity.GetOrAdd(Feature.Create("DeviceDiagnosis", "server", entity));
+            entity.GetOrAdd(Feature.Create("ElectricalConnection", "server", entity));
 
-			string xmlDuration		   = XmlConvert.ToString( TimeSpan.FromSeconds( duration ) );
-			string xmlFailsafeDuration = XmlConvert.ToString( TimeSpan.FromSeconds( failsafeDuration ) );
+            if (usecaseSettings.InitLimits != null)
+            {
+                bool active = false;
+                long limit = 0;
+                uint duration = 0;
+                long failsafeLimit = 4200;
+                uint failsafeDuration = 7200;
 
-			entity.Local.Add( new LoadControlLimitDataStructure( "consume", limit, 0, xmlDuration, active ) );
 
-			entity.Local.AddUnique( new FailsafeConsumptionActivePowerLimitKeyValue( entity.Local, failsafeLimit, 0, true ) );
-			entity.Local.AddUnique( new FailsafeDurationMinimumKeyValue(			 entity.Local, xmlFailsafeDuration, true ) );
-		}
+                active = usecaseSettings.InitLimits.Active;
+                limit = usecaseSettings.InitLimits.Limit;
+                duration = usecaseSettings.InitLimits.Duration;
+                failsafeLimit = usecaseSettings.InitLimits.FailsafeLimit;
+                failsafeDuration = usecaseSettings.InitLimits.FailsafeDuration;
 
-		public new class Class : UseCase.Class
-		{
-			public override UseCase Create( UseCaseSettings usecaseSettings, Entity entity )
-			{
-				return new LimitationOfPowerConsumption( usecaseSettings, entity );
-			}
-		}
+                string xmlDuration = XmlConvert.ToString(TimeSpan.FromSeconds(duration));
+                string xmlFailsafeDuration = XmlConvert.ToString(TimeSpan.FromSeconds(failsafeDuration));
 
-		public override string Actor { get { return "ControllableSystem"; } }
+                entity.Local.Add(new LoadControlLimitDataStructure("consume", limit, 0, xmlDuration, active));
 
-		public override UseCaseSupportType Information
-		{
-			get
-			{
-				List<uint> scenarios = new();
-				foreach ( var scenario in Scenarios )
-					scenarios.Add( scenario.Index );
+                entity.Local.AddUnique(new FailsafeConsumptionActivePowerLimitKeyValue(entity.Local, failsafeLimit, 0, true));
+                entity.Local.AddUnique(new FailsafeDurationMinimumKeyValue(entity.Local, xmlFailsafeDuration, true));
+            }
+        }
 
-				UseCaseSupportType support = new();
-				support.useCaseName				   = "limitationOfPowerConsumption";
-				support.useCaseVersion			   = "1.0.0";
-				support.useCaseAvailable		   = true;
-				support.scenarioSupport			   = scenarios.ToArray();
-				support.useCaseDocumentSubRevision = "release";
+        protected override List<Scenario> GetScenarios()
+        {
+            return [
+                new Scenario(1, true, "Control active power consumption limit"),
+                new Scenario(2, true, "Failsafe values"),
+                new Scenario(3, true, "Heartbeat"),
+                new Scenario(4, true, "Constraints")
+            ];
+        }
 
-				return support;
-			}
-		}
+        public new class Class : UseCase.Class
+        {
+            public override UseCase Create(UseCaseSettings usecaseSettings, Entity entity)
+            {
+                return new LimitationOfPowerConsumption(usecaseSettings, entity);
+            }
+        }
 
-		public override void FillData<T>( List<T> dataList, Connection connection, Entity entity )
-		{
-			if ( dataList is not List<ElectricalConnectionCharacteristicDataType> )
-				return;
+        public override string Actor { get { return "ControllableSystem"; } }
 
-			List<ElectricalConnectionCharacteristicDataType> eccs = dataList as List<ElectricalConnectionCharacteristicDataType>;
+        public override UseCaseSupportType Information
+        {
+            get
+            {
+                List<uint> scenarios = new();
+                foreach (var scenario in Scenarios)
+                    scenarios.Add(scenario.Index);
 
-			uint id = (uint) eccs.Count;
+                UseCaseSupportType support = new();
+                support.useCaseName = "limitationOfPowerConsumption";
+                support.useCaseVersion = "1.0.0";
+                support.useCaseAvailable = true;
+                support.scenarioSupport = scenarios.ToArray();
+                support.useCaseDocumentSubRevision = "release";
 
-			ElectricalConnectionCharacteristicDataType ecc = new();
-			ecc.electricalConnectionId = 0;
-			ecc.parameterId			   = 0;
-			ecc.characteristicId	   = id;
-			ecc.characteristicContext  = "entity";
-			ecc.characteristicType	   = "contractualConsumptionNominalMax";
-			ecc.value.number		   = connection.Local.GetSettings().GetConsumptionNominalMax();
-			ecc.value.scale			   = 0;
-			ecc.unit				   = "W";
+                return support;
+            }
+        }
 
-			eccs.Add( ecc );
-		}
-	}
+        public override void FillData<T>(List<T> dataList, Connection connection, Entity entity)
+        {
+            if (dataList is not List<ElectricalConnectionCharacteristicDataType>)
+                return;
+
+            List<ElectricalConnectionCharacteristicDataType> eccs = dataList as List<ElectricalConnectionCharacteristicDataType>;
+
+            uint id = (uint)eccs.Count;
+
+            ElectricalConnectionCharacteristicDataType ecc = new();
+            ecc.electricalConnectionId = 0;
+            ecc.parameterId = 0;
+            ecc.characteristicId = id;
+            ecc.characteristicContext = "entity";
+            ecc.characteristicType = "contractualConsumptionNominalMax";
+            ecc.value.number = connection.Local.GetSettings().GetConsumptionNominalMax();
+            ecc.value.scale = 0;
+            ecc.unit = "W";
+
+            eccs.Add(ecc);
+        }
+    }
 }

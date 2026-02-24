@@ -151,6 +151,28 @@ namespace EEBUS.Models
             }
         }
 
+        public void SetUseCaseData(NodeManagementUseCaseData useCaseData)
+        {
+            NodeManagementUseCaseDataType? data = useCaseData.cmd.ElementAtOrDefault(0)?.nodeManagementUseCaseData;
+            if (data == null) return;
+
+            foreach (UseCaseInformationType useCaseInformation in data.useCaseInformation)
+            {
+                Entity? entity = Entities.FirstOrDefault(e => e.Index == useCaseInformation.address.entity);
+                if (entity == null) continue;
+
+                foreach (UseCaseSupportType useCaseSupport in useCaseInformation.useCaseSupport)
+                {
+                    if (entity.UseCases.Any(uc => uc.Information.useCaseName == useCaseSupport.useCaseName)) continue;
+
+                    UseCaseSettings? settings = UseCaseSettings.Create(useCaseInformation.actor, useCaseSupport);
+                    if (settings == null) continue;
+
+                    entity.UseCases.Add(UseCase.Create(settings, entity));
+                }
+            }
+        }
+
         public bool SupportsUseCase(string useCaseName)
         {
             foreach (Entity entity in Entities)

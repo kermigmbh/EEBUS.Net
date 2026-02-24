@@ -1,6 +1,7 @@
 ﻿
 using EEBUS.Messages;
 using EEBUS.Models;
+using System.Text.Json;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -27,6 +28,25 @@ namespace EEBUS.SPINE.Commands
 
 				return payload;
 			}
+
+            public override ValueTask EvaluateAsync(Connection connection, DatagramType datagram)
+            {
+                if (datagram.header.cmdClassifier != "reply")
+                    return ValueTask.CompletedTask;
+
+				NodeManagementUseCaseData? payload = datagram.payload == null ? null : JsonSerializer.Deserialize<NodeManagementUseCaseData>(datagram.payload);
+
+				if (payload != null && connection.Remote != null)
+				{
+					connection.Remote.SetUseCaseData(payload);
+				}
+				return ValueTask.CompletedTask;
+            }
+
+            public override SpineCmdPayloadBase? CreateRead(Connection connection)
+            {
+				return new NodeManagementUseCaseData();
+            }
 		}
 	}
 

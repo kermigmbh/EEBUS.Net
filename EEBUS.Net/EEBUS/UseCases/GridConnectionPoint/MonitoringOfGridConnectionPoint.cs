@@ -19,17 +19,12 @@ namespace EEBUS.UseCases.GridConnectionPoint
 		public MonitoringOfGridConnectionPoint( UseCaseSettings usecaseSettings, Entity entity )
 			: base( usecaseSettings, entity )
 		{
-			Scenarios.Add( new Scenario( 1, true, "Monitor PV feed-in power limitation factor" ) );
-			Scenarios.Add( new Scenario( 2, true, "Monitor momentary power consumption/production" ) );
-			Scenarios.Add( new Scenario( 3, true, "Monitor total feed-in energy" ) );
-			Scenarios.Add( new Scenario( 4, true, "Monitor total consumed energy" ) );
-			Scenarios.Add( new Scenario( 5, true, "Monitor momentary current consumption/production phase details" ) );
-			Scenarios.Add( new Scenario( 6, true, "Monitor voltage phase details" ) );
-			Scenarios.Add( new Scenario( 7, true, "Monitor frequency" ) );
-
 			entity.GetOrAdd( Feature.Create( "ElectricalConnection", "server", entity ) );
 
-			entity.Local.AddUnique( new PvCurtailmentLimitFactorKeyValue( entity.Local, usecaseSettings.PvCurtailmentLimitFactor, 0, true ) );
+			if (usecaseSettings.PvCurtailmentLimitFactor.HasValue)
+			{
+				entity.Local.AddUnique(new PvCurtailmentLimitFactorKeyValue(entity.Local, usecaseSettings.PvCurtailmentLimitFactor.Value, 0, true));
+			}
 
 			MeasurementServerFeature measurementServer = entity.GetOrAdd( Feature.Create( "Measurement", "server", entity ) ) as MeasurementServerFeature;
 
@@ -284,6 +279,19 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				}
 			} );
 		}
+
+        protected override List<Scenario> GetScenarios()
+        {
+			return [
+				new Scenario(1, true, "Monitor PV feed-in power limitation factor"),
+				new Scenario(2, true, "Monitor momentary power consumption/production"),
+				new Scenario(3, true, "Monitor total feed-in energy"),
+				new Scenario(4, true, "Monitor total consumed energy"),
+				new Scenario(5, true, "Monitor momentary current consumption/production phase details"),
+				new Scenario(6, true, "Monitor voltage phase details"),
+				new Scenario(7, true, "Monitor frequency")
+			];
+        }
 
 		public new class Class : UseCase.Class
 		{

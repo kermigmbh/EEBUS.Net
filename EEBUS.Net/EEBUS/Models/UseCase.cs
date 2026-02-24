@@ -8,7 +8,21 @@ namespace EEBUS.Models
 		{
 			this.Type  = usecaseSettings.Type;
 			this.Owner = entity;
-		}
+
+            if (usecaseSettings.SupportedScenarios != null)
+            {
+                var scenarios = GetScenarios();
+                foreach (var scenario in scenarios)
+                {
+                    if (usecaseSettings.SupportedScenarios.Contains(scenario.Index))
+                    {
+                        Scenarios.Add(scenario);
+                    }
+                }
+            }
+        }
+
+		protected abstract List<Scenario> GetScenarios();
 
 		public abstract class Class
 		{

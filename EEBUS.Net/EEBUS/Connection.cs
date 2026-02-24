@@ -293,6 +293,12 @@ namespace EEBUS
 
         public void RequestRemoteDeviceConfiguration()
         {
+            SendNodeManagementDetailedDiscoveryRead();
+           // SendUseCaseDiscoveryRead();
+        }
+
+        private void SendNodeManagementDetailedDiscoveryRead()
+        {
             SpineDatagramPayload read = new SpineDatagramPayload();
             read.datagram.header.addressSource = new();
             read.datagram.header.addressSource.device = this.Local.DeviceId;
@@ -309,6 +315,28 @@ namespace EEBUS
 
             DataMessage message = new DataMessage();
             message.SetPayload(JsonSerializer.SerializeToNode(read) ?? throw new Exception("Failed to serialize discovery read message"));
+
+            PushDataMessage(message);
+        }
+
+        private void SendUseCaseDiscoveryRead()
+        {
+            SpineDatagramPayload read = new SpineDatagramPayload();
+            read.datagram.header.addressSource = new();
+            read.datagram.header.addressSource.device = this.Local.DeviceId;
+            read.datagram.header.addressSource.entity = [0];
+            read.datagram.header.addressSource.feature = 0;
+            read.datagram.header.addressDestination = new();
+            read.datagram.header.addressDestination.entity = [0];
+            read.datagram.header.addressDestination.feature = 0;
+            read.datagram.header.msgCounter = DataMessage.NextCount;
+            read.datagram.header.cmdClassifier = "read";
+
+            var discoveryPayload = new NodeManagementUseCaseData.Class().CreateRead(this);
+            read.datagram.payload = discoveryPayload?.ToJsonNode();// JsonSerializer.SerializeToNode(discoveryPayload);
+
+            DataMessage message = new DataMessage();
+            message.SetPayload(JsonSerializer.SerializeToNode(read) ?? throw new Exception("Failed to serialize use case discovery read message"));
 
             PushDataMessage(message);
         }
