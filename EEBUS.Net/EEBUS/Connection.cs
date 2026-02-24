@@ -23,6 +23,7 @@ namespace EEBUS
         protected WebSocket ws;
         protected EState state;
         protected ESubState subState;
+        public DeviceConnectionStatus ConnectionStatus { get; internal set; } = DeviceConnectionStatus.Unknown;
 
         public HostString RemoteHost
         {
@@ -294,7 +295,7 @@ namespace EEBUS
         public void RequestRemoteDeviceConfiguration()
         {
             SendNodeManagementDetailedDiscoveryRead();
-           // SendUseCaseDiscoveryRead();
+            SendUseCaseDiscoveryRead();
         }
 
         private void SendNodeManagementDetailedDiscoveryRead()

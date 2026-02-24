@@ -29,18 +29,20 @@ namespace EEBUS.SPINE.Commands
 				return payload;
 			}
 
-            public override ValueTask EvaluateAsync(Connection connection, DatagramType datagram)
+            public override async ValueTask EvaluateAsync(Connection connection, DatagramType datagram)
             {
                 if (datagram.header.cmdClassifier != "reply")
-                    return ValueTask.CompletedTask;
+                    return;
 
 				NodeManagementUseCaseData? payload = datagram.payload == null ? null : JsonSerializer.Deserialize<NodeManagementUseCaseData>(datagram.payload);
 
 				if (payload != null && connection.Remote != null)
 				{
 					connection.Remote.SetUseCaseData(payload);
-				}
-				return ValueTask.CompletedTask;
+                    connection.ConnectionStatus = Net.DeviceConnectionStatus.Connected;
+                    await SendDiscoveryCompletedEvent(connection);
+                }
+				return;
             }
 
             public override SpineCmdPayloadBase? CreateRead(Connection connection)

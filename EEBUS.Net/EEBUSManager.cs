@@ -52,7 +52,7 @@ namespace EEBUS.Net
         public Func<RemoteDevice, DeviceConnectionStatus, Task>? OnDeviceConnectionStatusChanged { get; set; }
 
         private Func<NewConnectionValidationEventArgs, bool>? _onNewConnectionValidation  = (NewConnectionValidationEventArgs args) => true;
-        private ConcurrentDictionary<string, DeviceConnectionStatus> _deviceConnectionStatus = new();
+        //private ConcurrentDictionary<string, DeviceConnectionStatus> _deviceConnectionStatus = new();
 
         private CancellationTokenSource _cts = new();
         private CancellationTokenSource _clientCts = new();
@@ -139,20 +139,13 @@ namespace EEBUS.Net
 
         public DeviceConnectionStatus GetConnectionStatus(string ski)
         {
-            if (_deviceConnectionStatus.ContainsKey(ski))
+            Connection? connection = _connections.Values.FirstOrDefault(c => c.Remote?.SKI.ToString() == ski);
+            if (connection != null)
             {
-                return _deviceConnectionStatus[ski];
+                return connection.ConnectionStatus;
             }
-            return DeviceConnectionStatus.Unknown;
-        }
 
-        internal async Task UpdateConnectionStatusAsync(RemoteDevice remoteDevice, DeviceConnectionStatus connectionStatus)
-        {
-            _deviceConnectionStatus[remoteDevice.SKI.ToString()] = connectionStatus;
-            if (OnDeviceConnectionStatusChanged != null)
-            {
-                await OnDeviceConnectionStatusChanged(remoteDevice, connectionStatus);
-            }
+            return DeviceConnectionStatus.Unknown;
         }
 
         private LPCEventHandler lpcEventHandler;
@@ -193,9 +186,12 @@ namespace EEBUS.Net
 
         private class DeviceConnectionStatusEventHandler(EEBUSManager EEBusManager) : DeviceConnectionStatusEvents
         {
-            public Task RemoteDiscoveryCompletedAsync(RemoteDevice remoteDevice)
+            public async Task DeviceConnectionStatusUpdatedAsync(Connection connection)
             {
-                return EEBusManager.UpdateConnectionStatusAsync(remoteDevice, DeviceConnectionStatus.Connected);
+                if (EEBusManager.OnDeviceConnectionStatusChanged != null && connection.Remote != null)
+                {
+                    await EEBusManager.OnDeviceConnectionStatusChanged(connection.Remote, connection.ConnectionStatus);
+                }
             }
         }
 
@@ -605,10 +601,6 @@ namespace EEBUS.Net
                 wsClient = null;
                 if (_connections.TryRemove(host, out Connection? removedClient) && removedClient != null)
                 {
-                    if (removedClient.Remote != null)
-                    {
-                        _deviceConnectionStatus.TryRemove(removedClient.Remote.SKI.ToString(), out _);
-                    }
                     await removedClient.CloseAsync();
                 }
             }
@@ -653,7 +645,6 @@ namespace EEBUS.Net
                 _connections.TryRemove(e.Connection.RemoteHost, out Connection? removedConnection);
                 if (removedConnection?.Remote != null)
                 {
-                    _deviceConnectionStatus.TryRemove(removedConnection.Remote.SKI.ToString(), out _);
                     if (OnDeviceConnectionStatusChanged != null)
                     {
                         await OnDeviceConnectionStatusChanged(removedConnection.Remote, DeviceConnectionStatus.Unknown);

@@ -59,12 +59,12 @@ namespace EEBUS.Messages
                 }
             }
 
-			protected async Task SendDiscoveryCompletedEvent(LocalDevice localDevice, RemoteDevice remoteDevice)
+			protected async Task SendDiscoveryCompletedEvent(Connection connection)
 			{
-                List<DeviceConnectionStatusEvents> notifyEvents = localDevice.GetUseCaseEvents<DeviceConnectionStatusEvents>();
+                List<DeviceConnectionStatusEvents> notifyEvents = connection.Local.GetUseCaseEvents<DeviceConnectionStatusEvents>();
                 foreach (var ev in notifyEvents)
                 {
-					await ev.RemoteDiscoveryCompletedAsync(remoteDevice);
+					await ev.DeviceConnectionStatusUpdatedAsync(connection);
                 }
             }
 
