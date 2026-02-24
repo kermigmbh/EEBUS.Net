@@ -61,7 +61,9 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class NodeManagementUseCaseDataType
 	{
-		public UseCaseInformationType[] useCaseInformation { get; set; } = [new()];
+		//this needs to be nullable, because for some reason if we send a read request to a remote device
+		//with useCaseInformation filled, we do not get an answer
+		public UseCaseInformationType[]? useCaseInformation { get; set; }
 	}
 
 	[System.SerializableAttribute()]

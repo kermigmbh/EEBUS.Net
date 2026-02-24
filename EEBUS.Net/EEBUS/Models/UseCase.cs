@@ -8,10 +8,11 @@ namespace EEBUS.Models
 		{
 			this.Type  = usecaseSettings.Type;
 			this.Owner = entity;
+			this.Scenarios = GetScenarios();
 
             if (usecaseSettings.SupportedScenarios != null)
             {
-                var scenarios = GetScenarios();
+                var scenarios = new List<Scenario>(Scenarios);
                 foreach (var scenario in scenarios)
                 {
                     if (usecaseSettings.SupportedScenarios.Contains(scenario.Index))

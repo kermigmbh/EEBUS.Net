@@ -1,5 +1,6 @@
 ﻿using EEBUS.Enums;
 using Makaretu.Dns;
+using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -77,7 +78,7 @@ namespace EEBUS.Messages
 			this.sentData[0] = GetDataType();
 			Buffer.BlockCopy( msg, 0, this.sentData, 1, msg.Length );
 
-            //Console.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " --> " + this.ToString() + "\n");
+            Debug.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " ===> " + this.ToString() + "\n");
             await ws.SendAsync( this.sentData, WebSocketMessageType.Binary, true, new CancellationTokenSource( SHIPMessageTimeout.CMI_TIMEOUT ).Token ).ConfigureAwait( false );
 		}
 

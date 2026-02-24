@@ -75,7 +75,7 @@ namespace EEBUS.Net
             }
 
             foreach (string ns in new string[] {"EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands", "EEBUS.Entities",
-                                                 "EEBUS.UseCases.ControllableSystem", "EEBUS.UseCases.GridConnectionPoint",
+                                                 "EEBUS.UseCases.ControllableSystem", "EEBUS.UseCases.EnergyGuard", "EEBUS.UseCases.GridConnectionPoint",
                                                  "EEBUS.Features" })
             {
                 foreach (Type type in GetTypesInNamespace(typeof(Settings).Assembly, ns))
@@ -444,8 +444,8 @@ namespace EEBUS.Net
                 Id = rd.Id,
                 Name = rd.Name,
                 Ski = rd.SKI.ToString(),
-                SupportsLpc = rd.SupportsLpc(),
-                SupportsLpp = rd.SupportsLpp()
+                SupportsLpc = rd.SupportsUseCase("limitationOfPowerConsumption", "EnergyGuard"),
+                SupportsLpp = rd.SupportsUseCase("limitationOfPowerProduction", "EnergyGuard")
             });
         }
 

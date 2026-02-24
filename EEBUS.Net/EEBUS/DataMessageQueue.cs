@@ -49,7 +49,7 @@ namespace EEBUS
                 {
                     try
                     {
-                        Debug.WriteLine("===> " + message.ToString());
+                        //Debug.WriteLine("===> " + message.ToString());
                         await message.Send(_connection.WebSocket)
                                      .ConfigureAwait(false);
                     }

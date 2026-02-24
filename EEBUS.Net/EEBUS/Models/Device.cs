@@ -156,9 +156,9 @@ namespace EEBUS.Models
             NodeManagementUseCaseDataType? data = useCaseData.cmd.ElementAtOrDefault(0)?.nodeManagementUseCaseData;
             if (data == null) return;
 
-            foreach (UseCaseInformationType useCaseInformation in data.useCaseInformation)
+            foreach (UseCaseInformationType useCaseInformation in data.useCaseInformation ?? [])
             {
-                Entity? entity = Entities.FirstOrDefault(e => e.Index == useCaseInformation.address.entity);
+                Entity? entity = Entities.FirstOrDefault(e => e.Index.SequenceEqual(useCaseInformation.address.entity));
                 if (entity == null) continue;
 
                 foreach (UseCaseSupportType useCaseSupport in useCaseInformation.useCaseSupport)
@@ -173,11 +173,11 @@ namespace EEBUS.Models
             }
         }
 
-        public bool SupportsUseCase(string useCaseName)
+        public bool SupportsUseCase(string useCaseName, string actor)
         {
             foreach (Entity entity in Entities)
             {
-                if (entity.UseCases.Any(uc => uc.Information.useCaseName == useCaseName && uc.Information.useCaseAvailable))
+                if (entity.UseCaseInformations.Any(uci => uci.actor == actor && uci.useCaseSupport.Any(ucs => ucs.useCaseName == useCaseName)))
                 {
                     return true;
                 }

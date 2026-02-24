@@ -286,7 +286,7 @@ namespace EEBUS
                 throw new Exception("Message couldn't be recognized");
             }
 
-            Debug.WriteLine("<=== " + message.ToString());
+            Debug.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " <=== " + message.ToString() + "\n");
 
             return message;
         }
@@ -294,6 +294,7 @@ namespace EEBUS
 
         public void RequestRemoteDeviceConfiguration()
         {
+            //The order here is important! We first need to get the discovery data to create the entities
             SendNodeManagementDetailedDiscoveryRead();
             SendUseCaseDiscoveryRead();
         }
