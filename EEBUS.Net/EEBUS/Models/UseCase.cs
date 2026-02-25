@@ -30,7 +30,7 @@ namespace EEBUS.Models
 			public abstract UseCase Create( UseCaseSettings usecaseSettings, Entity entity );
 		}
 
-		static public UseCase Create( UseCaseSettings usecaseSettings, Entity entity )
+		static public UseCase? Create( UseCaseSettings usecaseSettings, Entity entity )
 		{
 			if ( usecasesClasses.TryGetValue( usecaseSettings.Type + "-" + usecaseSettings.Actor, out Class cls ) )
 				return cls.Create( usecaseSettings, entity );
