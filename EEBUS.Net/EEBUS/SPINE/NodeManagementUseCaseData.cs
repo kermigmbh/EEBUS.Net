@@ -1,6 +1,7 @@
 ﻿
 using EEBUS.Messages;
 using EEBUS.Models;
+using System.Text.Json;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -27,6 +28,27 @@ namespace EEBUS.SPINE.Commands
 
 				return payload;
 			}
+
+            public override async ValueTask EvaluateAsync(Connection connection, DatagramType datagram)
+            {
+                if (datagram.header.cmdClassifier != "reply")
+                    return;
+
+				NodeManagementUseCaseData? payload = datagram.payload == null ? null : JsonSerializer.Deserialize<NodeManagementUseCaseData>(datagram.payload);
+
+				if (payload != null && connection.Remote != null)
+				{
+					connection.Remote.SetUseCaseData(payload);
+                    connection.ConnectionStatus = Net.DeviceConnectionStatus.Connected;
+                    await SendDiscoveryCompletedEvent(connection);
+                }
+				return;
+            }
+
+            public override SpineCmdPayloadBase? CreateRead(Connection connection)
+            {
+				return new NodeManagementUseCaseData();
+            }
 		}
 	}
 
@@ -39,7 +61,9 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class NodeManagementUseCaseDataType
 	{
-		public UseCaseInformationType[] useCaseInformation { get; set; } = [new()];
+		//this needs to be nullable, because for some reason if we send a read request to a remote device
+		//with useCaseInformation filled, we do not get an answer
+		public UseCaseInformationType[]? useCaseInformation { get; set; }
 	}
 
 	[System.SerializableAttribute()]

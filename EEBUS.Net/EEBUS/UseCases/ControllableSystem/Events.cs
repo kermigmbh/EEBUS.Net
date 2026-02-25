@@ -41,8 +41,13 @@ namespace EEBUS.UseCases.ControllableSystem
 		Task DataUpdateHeartbeatAsync( int counter, RemoteDevice device, uint timeout, string remoteSki );
 	}
 
-	public interface NotifyEvents : UseCaseEvents
+    public interface NotifyEvents : UseCaseEvents
+    {
+        Task NotifyAsync(JsonNode? payload, AddressType localFeatureAddress);
+    }
+
+	public interface DeviceConnectionStatusEvents : UseCaseEvents
 	{
-		Task NotifyAsync( JsonNode? payload, AddressType localFeatureAddress );
+		Task DeviceConnectionStatusUpdatedAsync(Connection connection);
 	}
 }

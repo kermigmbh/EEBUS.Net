@@ -651,6 +651,58 @@
 }
 """;
 
+
+    //public static class KermiLpcMessages
+    //{
+        // --- LoadControl ---
+
+        public static string LoadControl_Write_DeleteTimePeriod_AndUpdate = """
+    {"data":[{"header":[{"protocolId":"ee1.0"}]},{"payload":{"datagram":[{"header":[{"specificationVersion":"1.4.0"},{"addressSource":[{"device":"d:_i:002518F13E65_PPC"},{"entity":[4]},{"feature":1}]},{"addressDestination":[{"device":"Kermi-EEBUS-Demo-Client"},{"entity":[1]},{"feature":2}]},{"msgCounter":94},{"cmdClassifier":"write"},{"ackRequest":true}]},{"payload":[{"cmd":[[{"function":"loadControlLimitListData"},{"filter":[[{"cmdControl":[{"delete":[]}]},{"loadControlLimitListDataSelectors":[{"limitId":0}]},{"loadControlLimitDataElements":[{"timePeriod":[]}]}],[{"cmdControl":[{"partial":[]}]}]]},{"loadControlLimitListData":[{"loadControlLimitData":[[{"limitId":0},{"isLimitActive":false},{"value":[{"number":4884},{"scale":0}]}]]}]}]]}]}]}}]}
+    """;
+
+        public static string LoadControl_Notify_WithPartial = """
+    {"data":[{"header":[{"protocolId":"ee1.0"}]},{"payload":{"datagram":[{"header":[{"specificationVersion":"1.3.0"},{"addressSource":[{"device":"Kermi-EEBUS-Demo-Client"},{"entity":[1]},{"feature":2}]},{"addressDestination":[{"device":"d:_i:002518F13E65_PPC"},{"entity":[4]},{"feature":1}]},{"msgCounter":30536},{"cmdClassifier":"notify"}]},{"payload":[{"cmd":[[{"function":"loadControlLimitListData"},{"filter":[[{"cmdControl":[{"partial":[]}]}]]},{"loadControlLimitListData":[{"loadControlLimitData":[[{"limitId":0},{"isLimitActive":false},{"value":[{"number":4884},{"scale":0}]}]]}]}]]}]}]}}]}
+    """;
+
+        public static string LoadControl_Notify_WithoutPartial = """
+    {"data":[{"header":[{"protocolId":"ee1.0"}]},{"payload":{"datagram":[{"header":[{"specificationVersion":"1.3.0"},{"addressSource":[{"device":"Kermi-EEBUS-Demo-Client"},{"entity":[1]},{"feature":2}]},{"addressDestination":[{"device":"d:_i:002518F13E65_PPC"},{"entity":[4]},{"feature":1}]},{"msgCounter":30536},{"cmdClassifier":"notify"}]},{"payload":[{"cmd":[[{"loadControlLimitListData":[{"loadControlLimitData":[[{"limitId":0},{"isLimitChangeable":true},{"isLimitActive":false},{"value":[{"number":4884},{"scale":0}]}]]}]}]]}]}]}}]}
+    """;
+
+        public static string LoadControl_Result_ForMsgCounter94 = """
+    {"data":[{"header":[{"protocolId":"ee1.0"}]},{"payload":{"datagram":[{"header":[{"specificationVersion":"1.3.0"},{"addressSource":[{"device":"Kermi-EEBUS-Demo-Client"},{"entity":[1]},{"feature":2}]},{"addressDestination":[{"device":"d:_i:002518F13E65_PPC"},{"entity":[4]},{"feature":1}]},{"msgCounter":30537},{"msgCounterReference":94},{"cmdClassifier":"result"}]},{"payload":[{"cmd":[[{"resultData":[{"errorNumber":0}]}]]}]}]}}]}
+    """;
+
+        public static string LoadControl_Write_UpdateOnly = """
+    {"data":[{"header":[{"protocolId":"ee1.0"}]},{"payload":{"datagram":[{"header":[{"specificationVersion":"1.4.0"},{"addressSource":[{"device":"d:_i:002518F13E65_PPC"},{"entity":[4]},{"feature":1}]},{"addressDestination":[{"device":"Kermi-EEBUS-Demo-Client"},{"entity":[1]},{"feature":2}]},{"msgCounter":94},{"cmdClassifier":"write"},{"ackRequest":true}]},{"payload":[{"cmd":[[{"function":"loadControlLimitListData"},{"filter":[[{"cmdControl":[{"partial":[]}]}]]},{"loadControlLimitListData":[{"loadControlLimitData":[[{"limitId":0},{"isLimitActive":false},{"value":[{"number":4884},{"scale":0}]}]]}]}]]}]}]}}]}
+    """;
+
+
+        // --- deviceConfiguration ---
+
+        public static string DeviceConfiguration_Write_FailsafeValue = """
+    {"data":[{"header":[{"protocolId":"ee1.0"}]},{"payload":{"datagram":[{"header":[{"specificationVersion":"1.3.0"},{"addressSource":[{"device":"d:_n:Controlbox"},{"entity":[2]},{"feature":3}]},{"addressDestination":[{"device":"Kermi-EEBUS-Demo-Client"},{"entity":[1]},{"feature":3}]},{"msgCounter":44},{"cmdClassifier":"write"},{"ackRequest":true}]},{"payload":[{"cmd":[[{"function":"deviceConfigurationKeyValueListData"},{"filter":[[{"cmdControl":[{"partial":[]}]}]]},{"deviceConfigurationKeyValueListData":[{"deviceConfigurationKeyValueData":[[{"keyId":0},{"value":[{"scaledNumber":[{"number":4140},{"scale":0}]}]}]]}]}]]}]}]}}]}
+    """;
+
+        public static string DeviceConfiguration_Notify_FailsafeValueAndDuration = """
+    {"data":[{"header":[{"protocolId":"ee1.0"}]},{"payload":{"datagram":[{"header":[{"specificationVersion":"1.3.0"},{"addressSource":[{"device":"Kermi-EEBUS-Demo-Client"},{"entity":[1]},{"feature":3}]},{"addressDestination":[{"device":"d:_n:Controlbox"},{"entity":[2]},{"feature":3}]},{"msgCounter":196},{"cmdClassifier":"notify"}]},{"payload":[{"cmd":[[{"deviceConfigurationKeyValueListData":[{"deviceConfigurationKeyValueData":[[{"keyId":0},{"value":[{"scaledNumber":[{"number":4140},{"scale":0}]}]},{"isValueChangeable":true}],[{"keyId":1},{"value":[{"duration":"P0D"}]},{"isValueChangeable":true}]]}]}]]}]}]}}]}
+    """;
+
+        public static string DeviceConfiguration_Result_ForMsgCounter44 = """
+    {"data":[{"header":[{"protocolId":"ee1.0"}]},{"payload":{"datagram":[{"header":[{"specificationVersion":"1.3.0"},{"addressSource":[{"device":"Kermi-EEBUS-Demo-Client"},{"entity":[1]},{"feature":3}]},{"addressDestination":[{"device":"d:_n:Controlbox"},{"entity":[2]},{"feature":3}]},{"msgCounter":197},{"msgCounterReference":44},{"cmdClassifier":"result"}]},{"payload":[{"cmd":[[{"resultData":[{"errorNumber":0}]}]]}]}]}}]}
+    """;
+
+        public static string DeviceConfiguration_Write_MinimumFailsafeDuration = """
+    {"data":[{"header":[{"protocolId":"ee1.0"}]},{"payload":{"datagram":[{"header":[{"specificationVersion":"1.3.0"},{"addressSource":[{"device":"d:_n:Controlbox"},{"entity":[2]},{"feature":3}]},{"addressDestination":[{"device":"Kermi-EEBUS-Demo-Client"},{"entity":[1]},{"feature":3}]},{"msgCounter":201},{"cmdClassifier":"write"},{"ackRequest":true}]},{"payload":[{"cmd":[[{"function":"deviceConfigurationKeyValueListData"},{"filter":[[{"cmdControl":[{"partial":[]}]}]]},{"deviceConfigurationKeyValueListData":[{"deviceConfigurationKeyValueData":[[{"keyId":1},{"value":[{"duration":"PT2H"}]}]]}]}]]}]}]}}]}
+    """;
+
+        public static string DeviceConfiguration_Notify_MinimumFailsafeDuration = """
+    {"data":[{"header":[{"protocolId":"ee1.0"}]},{"payload":{"datagram":[{"header":[{"specificationVersion":"1.3.0"},{"addressSource":[{"device":"Kermi-EEBUS-Demo-Client"},{"entity":[1]},{"feature":3}]},{"addressDestination":[{"device":"d:_n:Controlbox"},{"entity":[2]},{"feature":3}]},{"msgCounter":2141},{"cmdClassifier":"notify"}]},{"payload":[{"cmd":[[{"deviceConfigurationKeyValueListData":[{"deviceConfigurationKeyValueData":[[{"keyId":0},{"value":[{"scaledNumber":[{"number":4140},{"scale":0}]}]},{"isValueChangeable":true}],[{"keyId":1},{"value":[{"duration":"PT2H"}]},{"isValueChangeable":true}]]}]}]]}]}]}}]}
+    """;
+
+        public static string DeviceConfiguration_Result_ForMsgCounter201 = """
+    {"data":[{"header":[{"protocolId":"ee1.0"}]},{"payload":{"datagram":[{"header":[{"specificationVersion":"1.3.0"},{"addressSource":[{"device":"Kermi-EEBUS-Demo-Client"},{"entity":[1]},{"feature":3}]},{"addressDestination":[{"device":"d:_n:Controlbox"},{"entity":[2]},{"feature":3}]},{"msgCounter":2142},{"msgCounterReference":201},{"cmdClassifier":"result"}]},{"payload":[{"cmd":[[{"resultData":[{"errorNumber":0}]}]]}]}]}}]}
+    """;
+   // }
 }
 
 

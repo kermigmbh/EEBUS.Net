@@ -143,7 +143,7 @@ namespace EEBUS.Messages
 		[JsonPropertyName("device")]
 		public string? device  { get; set; }
 
-		public int[]  entity  { get; set; }
+		public int[] entity { get; set; } = Array.Empty<int>();
 
 		[JsonPropertyName("feature")]
 		public int?	  feature { get; set; }
@@ -157,10 +157,17 @@ namespace EEBUS.Messages
 
         public override int GetHashCode()
         {
-			return HashCode.Combine(this.device?.GetHashCode(), this.entity.GetHashCode(), this.feature.GetHashCode());
+			HashCode hashCode = new HashCode();
+			hashCode.Add(this.device);
+			foreach (int entityAddressPart in this.entity)
+			{
+				hashCode.Add(entityAddressPart);
+			}
+			hashCode.Add(this.feature);
+			return hashCode.ToHashCode();
         }
 
-        public static bool operator ==(AddressType lhs, AddressType rhs)
+        public static bool operator ==(AddressType? lhs, AddressType? rhs)
         {
             if (lhs is null)
             {

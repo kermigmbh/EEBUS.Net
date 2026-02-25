@@ -1,4 +1,5 @@
 ﻿using EEBUS.Messages;
+using EEBUS.Net.EEBUS.SPINE.Types;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -38,11 +39,11 @@ namespace EEBUS.SPINE.Commands
 		public ElectricalConnectionCharacteristicListDataType electricalConnectionCharacteristicListData { get; set; }
 	}
 
-	[System.SerializableAttribute()]
-	public class FilterType
-	{
-		public object cmdControl { get; set; } = new { partial = new { } };
-	}
+	//[System.SerializableAttribute()]
+	//public class FilterType
+	//{
+	//	public object cmdControl { get; set; } = new { partial = new { } };
+	//}
 
 	[System.SerializableAttribute()]
 	public class ElectricalConnectionCharacteristicListDataType

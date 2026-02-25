@@ -48,10 +48,10 @@ namespace EEBUS.Net
         //public event EventHandler<LimitDataChangedEventArgs>? OnLimitDataChanged;
         public Func<LimitDataChangedEventArgs, Task>? OnLimitDataChanged;
         public Func<DeviceData, Task>? OnDeviceDataChanged { get; set; }
+        public Func<RemoteDevice, DeviceConnectionStatus, Task>? OnDeviceConnectionStatusChanged { get; set; }
 
         private Func<NewConnectionValidationEventArgs, bool>? _onNewConnectionValidation  = (NewConnectionValidationEventArgs args) => true;
-
-
+        //private ConcurrentDictionary<string, DeviceConnectionStatus> _deviceConnectionStatus = new();
 
         private CancellationTokenSource _cts = new();
         private CancellationTokenSource _clientCts = new();
@@ -74,7 +74,7 @@ namespace EEBUS.Net
             }
 
             foreach (string ns in new string[] {"EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands", "EEBUS.Entities",
-                                                 "EEBUS.UseCases.ControllableSystem", "EEBUS.UseCases.GridConnectionPoint",
+                                                 "EEBUS.UseCases.ControllableSystem", "EEBUS.UseCases.EnergyGuard", "EEBUS.UseCases.GridConnectionPoint",
                                                  "EEBUS.Features" })
             {
                 foreach (Type type in GetTypesInNamespace(typeof(Settings).Assembly, ns))
@@ -103,10 +103,12 @@ namespace EEBUS.Net
             lppEventHandler = new LPPEventHandler(this);
             lpcOrLppEventHandler = new LPCorLPPEventHandler(this);
             notifyEventHandler = new NotifyEventHandler(this);
+            deviceConnectionStatusEventHandler = new DeviceConnectionStatusEventHandler(this);
             _devices.Local.AddUseCaseEvents(this.lpcEventHandler);
             _devices.Local.AddUseCaseEvents(this.lppEventHandler);
             _devices.Local.AddUseCaseEvents(this.lpcOrLppEventHandler);
             _devices.Local.AddUseCaseEvents(this.notifyEventHandler);
+            _devices.Local.AddUseCaseEvents(this.deviceConnectionStatusEventHandler);
             _settings = settings;
             this._serviceDiscovery = serviceDiscovery;
         }
@@ -134,10 +136,22 @@ namespace EEBUS.Net
             //using var _ = Push(new ClientStateChanged(device, state));
         }
 
+        public DeviceConnectionStatus GetConnectionStatus(string ski)
+        {
+            Connection? connection = _connections.Values.FirstOrDefault(c => c.Remote?.SKI.ToString() == ski);
+            if (connection != null)
+            {
+                return connection.ConnectionStatus;
+            }
+
+            return DeviceConnectionStatus.Unknown;
+        }
+
         private LPCEventHandler lpcEventHandler;
         private LPPEventHandler lppEventHandler;
         private LPCorLPPEventHandler lpcOrLppEventHandler;
         private NotifyEventHandler notifyEventHandler;
+        private DeviceConnectionStatusEventHandler deviceConnectionStatusEventHandler;
         private class NotifyEventHandler(EEBUSManager EEBusManager) : NotifyEvents
         {
             public async Task NotifyAsync(JsonNode? payload, AddressType localFeatureAddress)
@@ -168,6 +182,18 @@ namespace EEBUS.Net
                 }
             }
         }
+
+        private class DeviceConnectionStatusEventHandler(EEBUSManager EEBusManager) : DeviceConnectionStatusEvents
+        {
+            public async Task DeviceConnectionStatusUpdatedAsync(Connection connection)
+            {
+                if (EEBusManager.OnDeviceConnectionStatusChanged != null && connection.Remote != null)
+                {
+                    await EEBusManager.OnDeviceConnectionStatusChanged(connection.Remote, connection.ConnectionStatus);
+                }
+            }
+        }
+
         private class LPCEventHandler(EEBUSManager EEBusManager) : LPCEvents
         {
             public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync( ActiveLimitWriteRequest request )
@@ -397,7 +423,7 @@ namespace EEBUS.Net
             return new DeviceData
             {
                 Name = local.Name,
-                SKI = local.SKI.ToReadable(),
+                SKI = local.SKI.ToString(),
                 ShipId = local.ShipID,
                 Lpc = new LpcLppData
                 {
@@ -413,7 +439,7 @@ namespace EEBUS.Net
                     LimitDuration = (int)lppDuration.TotalSeconds,
                     FailSafeLimit = lppFailsafeLimit
                 },
-                FailSafeLimitDuration = failsafeDuration
+                FailSafeLimitDuration = (int)failsafeDuration.TotalSeconds
             };
         }
 
@@ -446,7 +472,9 @@ namespace EEBUS.Net
             {
                 Id = rd.Id,
                 Name = rd.Name,
-                Ski = rd.SKI.ToString()
+                Ski = rd.SKI.ToString(),
+                SupportsLpc = rd.SupportsUseCase("limitationOfPowerConsumption", "EnergyGuard"),
+                SupportsLpp = rd.SupportsUseCase("limitationOfPowerProduction", "EnergyGuard")
             });
         }
 
@@ -631,11 +659,11 @@ namespace EEBUS.Net
     
                     }) ?? false;
             };
-            _shipListener.OnDeviceConnectionChanged += _shipListener_OnDeviceConnectionChanged;
+            _shipListener.OnDeviceConnectionChanged = OnDeviceConnectionChangedAsync;
             _shipListener.StartAsync(_settings.Device.Port);
         }
 
-        private void _shipListener_OnDeviceConnectionChanged(object? sender, DeviceConnectionChangedEventArgs e)
+        private async Task OnDeviceConnectionChangedAsync(DeviceConnectionChangedEventArgs e)
         {
             if (e.ChangeType == DeviceConnectionChangeType.Connected)
             {
@@ -643,20 +671,26 @@ namespace EEBUS.Net
             }
             else
             {
-                _connections.TryRemove(e.Connection.RemoteHost, out Connection? removedremovedConnection);
+                _connections.TryRemove(e.Connection.RemoteHost, out Connection? removedConnection);
+                if (removedConnection?.Remote != null)
+                {
+                    if (OnDeviceConnectionStatusChanged != null)
+                    {
+                        await OnDeviceConnectionStatusChanged(removedConnection.Remote, DeviceConnectionStatus.Unknown);
+                    }
+                }
             }
         }
 
         public void Stop()
         {
-
             _shipListener?.StopAsync();
             _mDNSClient.Stop();
         }
 
         public void Dispose()
         {
-            _shipListener?.OnDeviceConnectionChanged -= _shipListener_OnDeviceConnectionChanged;
+            //_shipListener?.OnDeviceConnectionChanged -= _shipListener_OnDeviceConnectionChanged;
 
             _devices.RemoteDeviceFound -= OnRemoteDeviceFound;
             _devices.ServerStateChanged -= OnServerStateChanged;

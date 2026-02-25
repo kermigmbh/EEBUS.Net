@@ -1,4 +1,5 @@
 ﻿using EEBUS.Models;
+using EEBUS.SPINE.Commands;
 using EEBUS.UseCases.ControllableSystem;
 
 namespace EEBUS
@@ -70,10 +71,25 @@ namespace EEBUS
 
     public class UseCaseSettings
     {
-        public string Type { get; set; }
-        public string Actor { get; set; }
-        public LimitSettings InitLimits { get; set; }
-        public int PvCurtailmentLimitFactor { get; set; }
+        public string Type { get; set; } = string.Empty;
+        public string Actor { get; set; } = string.Empty;
+        public LimitSettings? InitLimits { get; set; }
+        public int? PvCurtailmentLimitFactor { get; set; }
+        public IEnumerable<uint>? SupportedScenarios { get; set; }
+
+        public static UseCaseSettings? Create(string actor, UseCaseSupportType useCaseSupport)
+        {
+            if (!useCaseSupport.useCaseAvailable) return null;
+
+            return new UseCaseSettings
+            {
+                Type = useCaseSupport.useCaseName,
+                Actor = actor,
+                InitLimits = null,
+                PvCurtailmentLimitFactor = null,
+                SupportedScenarios = useCaseSupport.scenarioSupport
+            };
+        }
     }
 
     public class LimitSettings

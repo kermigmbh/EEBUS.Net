@@ -59,6 +59,14 @@ namespace EEBUS.Messages
                 }
             }
 
+			protected async Task SendDiscoveryCompletedEvent(Connection connection)
+			{
+                List<DeviceConnectionStatusEvents> notifyEvents = connection.Local.GetUseCaseEvents<DeviceConnectionStatusEvents>();
+                foreach (var ev in notifyEvents)
+                {
+					await ev.DeviceConnectionStatusUpdatedAsync(connection);
+                }
+            }
 
             public virtual async ValueTask EvaluateAsync( Connection connection, DatagramType datagram )
 			{
