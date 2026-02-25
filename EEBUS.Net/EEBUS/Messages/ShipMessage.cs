@@ -78,13 +78,13 @@ namespace EEBUS.Messages
 			this.sentData[0] = GetDataType();
 			Buffer.BlockCopy( msg, 0, this.sentData, 1, msg.Length );
 
-            Debug.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " ===> " + this.ToString() + "\n");
+            Debug.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " ---> " + this.ToString() + "\n");
             await ws.SendAsync( this.sentData, WebSocketMessageType.Binary, true, new CancellationTokenSource( SHIPMessageTimeout.CMI_TIMEOUT ).Token ).ConfigureAwait( false );
 		}
 
 		public async Task Resend( WebSocket ws )
 		{
-            //Console.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " re --> " + this.ToString() + "\n");
+            Debug.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " re ---> " + this.ToString() + "\n");
             await ws.SendAsync( this.sentData, WebSocketMessageType.Binary, true, new CancellationTokenSource( SHIPMessageTimeout.T_HELLO_PROLONG_WAITING_GAP ).Token ).ConfigureAwait( false );
 		}
 
@@ -98,7 +98,9 @@ namespace EEBUS.Messages
 			if ( (result.Count < 2) || (msg[0] != template.GetDataType()) )
 				throw new Exception( $"Expected message of type {template.GetDataType()}!" );
 
-			return template.FromJsonVirtual( msg/*, null*/ );
+			var ret = template.FromJsonVirtual(msg/*, null*/ );
+            Debug.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " re <---" + ret.ToString() + "\n");
+			return ret;
 		}
 	}
 }

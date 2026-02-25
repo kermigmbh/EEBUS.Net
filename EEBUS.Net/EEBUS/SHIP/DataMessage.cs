@@ -86,7 +86,8 @@ namespace EEBUS.SHIP.Messages
 						DataMessage reply = new DataMessage( answer );
 						if ( null != reply )
 						{
-							await reply.Send( connection.WebSocket ).ConfigureAwait( false );
+							connection.PushDataMessage(reply);
+							//await reply.Send( connection.WebSocket ).ConfigureAwait( false );
 							return (Connection.EState.Connected, Connection.ESubState.None);
 						}
 						else
