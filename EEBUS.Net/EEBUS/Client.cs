@@ -41,6 +41,7 @@ namespace EEBUS
             InitMessage initMessage = new InitMessage();
             
             await initMessage.Send(this.ws).ConfigureAwait(false);
+            
 
             var heart = new HeartBeatTask();
             var beat = new System.Threading.Timer(heart.Beat, this, 4000, 4000);
