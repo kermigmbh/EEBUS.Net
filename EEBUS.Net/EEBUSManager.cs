@@ -170,16 +170,16 @@ namespace EEBUS.Net
         }
         private class LPCEventHandler(EEBUSManager EEBusManager) : LPCEvents
         {
-            public WriteApprovalResult ApproveActiveLimitWrite( ActiveLimitWriteRequest request )
+            public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync( ActiveLimitWriteRequest request )
             {
                 Console.WriteLine( $"LPC Active Limit Write Request: Value={request.Value}, Active={request.IsLimitActive}" );
-                return WriteApprovalResult.Accept();
+                return Task.FromResult(WriteApprovalResult.Accept());
             }
 
-            public WriteApprovalResult ApproveFailsafeLimitWrite( FailsafeLimitWriteRequest request )
+            public Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync( FailsafeLimitWriteRequest request )
             {
                 Console.WriteLine( $"LPC Failsafe Limit Write Request: Value={request.Value}" );
-                return WriteApprovalResult.Accept();
+                return Task.FromResult(WriteApprovalResult.Accept());
             }
 
             public async Task DataUpdateLimitAsync(int counter, bool active, long limit, TimeSpan duration, string remoteSki)
@@ -218,16 +218,16 @@ namespace EEBUS.Net
 
         private class LPPEventHandler(EEBUSManager EEBusManager) : LPPEvents
         {
-            public WriteApprovalResult ApproveActiveLimitWrite( ActiveLimitWriteRequest request )
+            public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync( ActiveLimitWriteRequest request )
             {
                 Console.WriteLine( $"LPP Active Limit Write Request: Value={request.Value}, Active={request.IsLimitActive}" );
-                return WriteApprovalResult.Accept();
+                return Task.FromResult(WriteApprovalResult.Accept());
             }
 
-            public WriteApprovalResult ApproveFailsafeLimitWrite( FailsafeLimitWriteRequest request )
+            public Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync( FailsafeLimitWriteRequest request )
             {
                 Console.WriteLine( $"LPP Failsafe Limit Write Request: Value={request.Value}" );
-                return WriteApprovalResult.Accept();
+                return Task.FromResult(WriteApprovalResult.Accept());
             }
 
             public async Task DataUpdateLimitAsync(int counter, bool active, long limit, TimeSpan duration, string remoteSki)
@@ -243,10 +243,10 @@ namespace EEBUS.Net
 
         private class LPCorLPPEventHandler(EEBUSManager EEBusManager) : LPCorLPPEvents
         {
-            public WriteApprovalResult ApproveFailsafeDurationWrite( FailsafeDurationWriteRequest request )
+            public Task<WriteApprovalResult> ApproveFailsafeDurationWriteAsync( FailsafeDurationWriteRequest request )
             {
                 Console.WriteLine( $"Failsafe Duration Write Request: Duration={request.Duration}" );
-                return WriteApprovalResult.Accept();
+                return Task.FromResult(WriteApprovalResult.Accept());
             }
 
             public async Task DataUpdateFailsafeDurationMinimumAsync(int counter, TimeSpan duration, string remoteSki)

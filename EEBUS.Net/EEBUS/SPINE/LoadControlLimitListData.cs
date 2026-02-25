@@ -1,4 +1,3 @@
-
 using System.Text.Json.Serialization;
 using System.Xml;
 
@@ -8,6 +7,7 @@ using EEBUS.SHIP.Messages;
 using EEBUS.UseCases;
 using EEBUS.UseCases.ControllableSystem;
 using EEBUS.KeyValues;
+using EEBUS.StateMachines;
 using System.Text.Json.Nodes;
 using System.Text.Json;
 using EEBUS.Models;
@@ -52,7 +52,7 @@ namespace EEBUS.SPINE.Commands
                 }
             }
 
-            private WriteApprovalResult GetApproval(Connection connection, string limitDirection, ActiveLimitWriteRequest request)
+            private async Task<WriteApprovalResult> GetApprovalAsync(Connection connection, string limitDirection, ActiveLimitWriteRequest request)
             {
                 if (limitDirection == "consume")
                 {
@@ -62,7 +62,7 @@ namespace EEBUS.SPINE.Commands
 
                     foreach (var handler in handlers)
                     {
-                        var result = handler.ApproveActiveLimitWrite(request);
+                        var result = await handler.ApproveActiveLimitWriteAsync(request);
                         if (!result.Approved)
                             return result;
                     }
@@ -76,7 +76,7 @@ namespace EEBUS.SPINE.Commands
 
                     foreach (var handler in handlers)
                     {
-                        var result = handler.ApproveActiveLimitWrite(request);
+                        var result = await handler.ApproveActiveLimitWriteAsync(request);
                         if (!result.Approved)
                             return result;
                     }
@@ -133,11 +133,25 @@ namespace EEBUS.SPINE.Commands
                     connection.Remote?.SKI?.ToString()
                 );
 
-                WriteApprovalResult approvalResult = GetApproval(connection, structureData.LimitDirection, request);
+                // 1. State Machine Auto-Reject prüfen
+                var stateMachine = connection.Local.GetStateMachine(structureData.LimitDirection);
+                var autoRejectResult = stateMachine.EvaluateLimitWrite(request);
+                if (!autoRejectResult.Allowed)
+                {
+                    datagram.ApprovalResult = WriteApprovalResult.Deny(autoRejectResult.RejectionReason ?? "Auto-rejected by state machine");
+                    return; // Kein Callback an User
+                }
+
+                // 2. User-Callback aufrufen (nur wenn nicht auto-rejected)
+                WriteApprovalResult approvalResult = await GetApprovalAsync(connection, structureData.LimitDirection, request);
                 datagram.ApprovalResult = approvalResult;
 
+                // 3. Bei Approval: State-Übergang und Daten aktualisieren
                 if (approvalResult.Approved)
                 {
+                    // Trigger state transition
+                    stateMachine.OnLimitWriteAccepted(request);
+
                     structureData.LimitActive = received.isLimitActive;
                     structureData.Number = received.value.number ?? structureData.Number;
                     structureData.EndTime = received.timePeriod.endTime;

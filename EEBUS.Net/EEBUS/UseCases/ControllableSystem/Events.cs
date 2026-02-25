@@ -7,9 +7,9 @@ namespace EEBUS.UseCases.ControllableSystem
 	public interface LPCEvents : UseCaseEvents
 	{
 		// Write Approval methods (called BEFORE write is applied)
-		WriteApprovalResult ApproveActiveLimitWrite( ActiveLimitWriteRequest request );
+		Task<WriteApprovalResult> ApproveActiveLimitWriteAsync( ActiveLimitWriteRequest request );
 
-		WriteApprovalResult ApproveFailsafeLimitWrite( FailsafeLimitWriteRequest request );
+		Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync( FailsafeLimitWriteRequest request );
 
 		// Data update events (called AFTER approved write is applied)
 		Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration, string remoteSki );
@@ -20,9 +20,9 @@ namespace EEBUS.UseCases.ControllableSystem
 	public interface LPPEvents : UseCaseEvents
 	{
 		// Write Approval methods
-		WriteApprovalResult ApproveActiveLimitWrite( ActiveLimitWriteRequest request );
+		Task<WriteApprovalResult> ApproveActiveLimitWriteAsync( ActiveLimitWriteRequest request );
 
-		WriteApprovalResult ApproveFailsafeLimitWrite( FailsafeLimitWriteRequest request );
+		Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync( FailsafeLimitWriteRequest request );
 
 		// Data update events
 		Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration, string remoteSki );
@@ -33,7 +33,7 @@ namespace EEBUS.UseCases.ControllableSystem
 	public interface LPCorLPPEvents : UseCaseEvents
 	{
 		// Write Approval method
-		WriteApprovalResult ApproveFailsafeDurationWrite( FailsafeDurationWriteRequest request );
+		Task<WriteApprovalResult> ApproveFailsafeDurationWriteAsync( FailsafeDurationWriteRequest request );
 
 		// Data update events
 		Task DataUpdateFailsafeDurationMinimumAsync( int counter, TimeSpan duration, string remoteSki );

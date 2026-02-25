@@ -47,7 +47,7 @@ namespace EEBUS.SPINE.Commands
 				}
 			}
 
-			private WriteApprovalResult GetApprovalForKeyValue( Connection connection, KeyValue keyValue, ValueType value )
+			private async Task<WriteApprovalResult> GetApprovalForKeyValueAsync( Connection connection, KeyValue keyValue, ValueType value )
 			{
 				string? remoteDeviceId = connection.Remote?.DeviceId;
 				string? remoteSki = connection.Remote?.SKI?.ToString();
@@ -70,7 +70,7 @@ namespace EEBUS.SPINE.Commands
 
 						foreach ( var handler in handlers )
 						{
-							var result = handler.ApproveFailsafeLimitWrite( request );
+							var result = await handler.ApproveFailsafeLimitWriteAsync( request );
 							if ( !result.Approved )
 								return result;
 						}
@@ -93,7 +93,7 @@ namespace EEBUS.SPINE.Commands
 
 						foreach ( var handler in handlers )
 						{
-							var result = handler.ApproveFailsafeLimitWrite( request );
+							var result = await handler.ApproveFailsafeLimitWriteAsync( request );
 							if ( !result.Approved )
 								return result;
 						}
@@ -117,7 +117,7 @@ namespace EEBUS.SPINE.Commands
 
 						foreach ( var handler in handlers )
 						{
-							var result = handler.ApproveFailsafeDurationWrite( request );
+							var result = await handler.ApproveFailsafeDurationWriteAsync( request );
 							if ( !result.Approved )
 								return result;
 						}
@@ -151,7 +151,7 @@ namespace EEBUS.SPINE.Commands
 					return;
 				}
 
-				WriteApprovalResult approvalResult = GetApprovalForKeyValue( connection, keyValue, value );
+				WriteApprovalResult approvalResult = await GetApprovalForKeyValueAsync( connection, keyValue, value );
 				datagram.ApprovalResult = approvalResult;
 
 				if ( approvalResult.Approved )
