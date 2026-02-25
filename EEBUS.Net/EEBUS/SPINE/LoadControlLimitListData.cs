@@ -64,7 +64,6 @@ namespace EEBUS.SPINE.Commands
                 if (datagram.header.cmdClassifier != "write")
                     return;
 
-
                 if (!connection.BindingAndSubscriptionManager.HasBinding(datagram.header.addressSource, datagram.header.addressDestination))
                 {
                     //Reject
@@ -77,56 +76,52 @@ namespace EEBUS.SPINE.Commands
                 if (command == null || command.cmd == null || command.cmd.Length == 0)
                     return;
 
-                LoadControlLimitDataType received = command.cmd[0].loadControlLimitListData.loadControlLimitData[0];
                 LoadControlLimitListDataFilterType[]? filter = command.cmd[0].filter;
 
-                if (received.limitId == null) return;
+                if (filter != null)
+                {
+                    foreach (LoadControlLimitListDataFilterType filterValue in filter)
+                    {
+                        if (filterValue.cmdControl?.delete != null && filterValue.loadControlLimitListDataSelectors?.limitId != null)
+                        {
+                            LoadControlLimitDataStructure? filterSelectorData = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(filterValue.loadControlLimitListDataSelectors.limitId);
 
-                LoadControlLimitDataStructure? data = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(received.limitId.Value);
-                if (data == null)
-                    return;
+                            JsonObject? filterSelectorDataJson = JsonSerializer.SerializeToNode(filterSelectorData?.Data)?.AsObject();
+                            JsonObject? filterElementDataJson = JsonSerializer.SerializeToNode(filterValue.loadControlLimitDataElements)?.AsObject();
 
-                //Do we even need this?
-                //if (filter != null)
-                //{
-                //    foreach (LoadControlLimitListDataFilterType filterValue in filter)
-                //    {
-                //        if (filterValue.cmdControl?.delete != null && filterValue.loadControlLimitListDataSelectors?.limitId != null)
-                //        {
-                //            LoadControlLimitDataStructure? filterSelectorData = data;
+                            if (filterSelectorDataJson != null && filterElementDataJson != null)
+                            {
+                                foreach (var item in filterElementDataJson)
+                                {
+                                    //remove every property that is set in the filter data elements
+                                    if (item.Value != null)
+                                    {
+                                        filterSelectorDataJson.Remove(item.Key);
+                                    }
+                                }
 
-                //            if (filterValue.loadControlLimitListDataSelectors.limitId != received.limitId.Value)
-                //            {
-                //                filterSelectorData = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(filterValue.loadControlLimitListDataSelectors.limitId);
-                //            }
+                                LoadControlLimitDataType? newData = JsonSerializer.Deserialize<LoadControlLimitDataType>(filterSelectorDataJson) ?? throw new Exception("Error parsing data structure");
+                                filterSelectorData?.Update(newData);
+                            }
+                        }
+                    }
+                }
 
-                //            JsonObject? filterSelectorDataJson = JsonSerializer.SerializeToNode(filterSelectorData?.Data)?.AsObject();
-                //            JsonObject? filterElementDataJson = JsonSerializer.SerializeToNode(filterValue.loadControlLimitDataElements)?.AsObject();
+                foreach (LoadControlLimitDataType loadControlLimitData in command.cmd[0].loadControlLimitListData.loadControlLimitData)
+                {
+                    if (loadControlLimitData.limitId == null) return;
 
-                //            if (filterSelectorDataJson != null && filterElementDataJson != null)
-                //            {
-                //                foreach (var item in filterElementDataJson)
-                //                {
-                //                    //remove every property that is set in the filter data elements
-                //                    if (item.Value != null)
-                //                    {
-                //                        filterSelectorDataJson.Remove(item.Key);
-                //                    }
-                //                }
+                    LoadControlLimitDataStructure? data = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(loadControlLimitData.limitId.Value);
+                    if (data == null)
+                        return;
 
-                //                LoadControlLimitDataType? newData = JsonSerializer.Deserialize<LoadControlLimitDataType>(filterSelectorDataJson) ?? throw new Exception("Error parsing data structure");
-                //                filterSelectorData?.Update(newData);
-                //            }
-                //        }
-                //    }
-                //}
+                    //data.LimitActive = received.isLimitActive ?? data.LimitActive;
+                    //data.Number = received.value?.number ?? data.Number;
+                    //data.EndTime = received.timePeriod?.endTime ?? data.EndTime;
+                    data.Update(loadControlLimitData);
+                    await data.SendEventAsync(connection);
+                }
 
-                //data.LimitActive = received.isLimitActive ?? data.LimitActive;
-                //data.Number = received.value?.number ?? data.Number;
-                //data.EndTime = received.timePeriod?.endTime ?? data.EndTime;
-                data.Update(received);
-
-                await data.SendEventAsync(connection);
                 await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
             }
 
