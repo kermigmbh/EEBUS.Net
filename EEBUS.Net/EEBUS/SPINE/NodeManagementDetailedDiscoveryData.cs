@@ -50,7 +50,7 @@ namespace EEBUS.SPINE.Commands
 				if (payload != null && connection.Remote != null)
 				{
 					connection.Remote.SetDiscoveryData( payload, connection );
-					await SendDiscoveryCompletedEvent(connection.Local, connection.Remote);
+					
 				}
 			}
 		}

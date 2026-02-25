@@ -32,6 +32,6 @@ namespace EEBUS.UseCases.ControllableSystem
 
 	public interface DeviceConnectionStatusEvents : UseCaseEvents
 	{
-		Task RemoteDiscoveryCompletedAsync(RemoteDevice remoteDevice);
+		Task DeviceConnectionStatusUpdatedAsync(Connection connection);
 	}
 }

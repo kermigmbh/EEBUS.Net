@@ -9,7 +9,6 @@ namespace EEBUS.Net
         Unknown = 0,
         NotConnected = 1,
         HandshakeCompleted = 2,
-        DiscoveryCompleted = 3,
-        Connected = 4
+        Connected = 3,
     }
 }
