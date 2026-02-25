@@ -1,4 +1,5 @@
 ﻿using EEBUS.Messages;
+using EEBUS.Net.EEBUS.SPINE.Types;
 using System.Text.Json.Serialization;
 
 namespace EEBUS.SPINE.Commands
