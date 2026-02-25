@@ -12,6 +12,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json;
 using EEBUS.Models;
 using EEBUS.Net.EEBUS.Models.Data;
+using EEBUS.Net.EEBUS.SPINE.Types;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -77,15 +78,42 @@ namespace EEBUS.SPINE.Commands
                     return;
 
                 LoadControlLimitDataType received = command.cmd[0].loadControlLimitListData.loadControlLimitData[0];
-                
-                LoadControlLimitDataStructure? data = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(received.limitId);
+                LoadControlLimitListDataFilterType[]? filter = command.cmd[0].filter;
+
+                if (received.limitId == null) return;
+
+                LoadControlLimitDataStructure? data = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(received.limitId.Value);
                 if (data == null)
                     return;
+                
+                if (filter != null)
+                {
+                    foreach (LoadControlLimitListDataFilterType filterValue in filter)
+                    {
+                        if (filterValue.cmdControl?.delete != null && filterValue.loadControlLimitListDataSelectors?.limitId != null)
+                        {
+                            LoadControlLimitDataStructure? dataForDeletion = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(filterValue.loadControlLimitListDataSelectors.limitId);
+                            var dataObj = JsonSerializer.SerializeToNode(dataForDeletion)?.AsObject();
+                            var filterObj = JsonSerializer.SerializeToNode(filterValue.loadControlLimitDataElements)?.AsObject();
 
-                data.LimitActive = received.isLimitActive;
+                            if (dataObj != null && filterObj != null)
+                            {
+                                foreach (var item in filterObj)
+                                {
+                                    dataObj.Remove(item.Key);
+                                }
+                                LoadControlLimitDataStructure newStructure = JsonSerializer.Deserialize<LoadControlLimitDataStructure>(dataObj) ?? throw new Exception("Error parsing data structure");
+                                connection.Local.AddOrUpdate(newStructure);
+                                data = newStructure;
+                            }
+                        }
+                    }
+                }
+
+                data.LimitActive = received.isLimitActive ?? data.LimitActive;
                 // received.value.number is nullable, keep existing number if null
-                data.Number = received.value.number ?? data.Number;
-                data.EndTime = received.timePeriod.endTime;
+                data.Number = received.value?.number ?? data.Number;
+                data.EndTime = received.timePeriod?.endTime ?? data.EndTime;
 
                 await data.SendEventAsync(connection);
 
@@ -97,6 +125,8 @@ namespace EEBUS.SPINE.Commands
                 //}
                
             }
+
+
 
             public override async Task WriteDataAsync(LocalDevice device, DeviceData deviceData)
             {
@@ -192,6 +222,7 @@ namespace EEBUS.SPINE.Commands
     [System.SerializableAttribute()]
     public class CmdLoadControlLimitListDataType : CmdType
     {
+        public LoadControlLimitListDataFilterType[]? filter;
         public LoadControlLimitListDataType loadControlLimitListData { get; set; } = new();
     }
 
@@ -202,17 +233,44 @@ namespace EEBUS.SPINE.Commands
     }
 
     [System.SerializableAttribute()]
+    public class LoadControlLimitListDataFilterType : FilterType
+    {
+        public LoadControlLimitListDataSelectorType? loadControlLimitListDataSelectors { get; set; }
+        public LoadControlLimitDataElementsType? loadControlLimitDataElements { get; set; }
+    }
+
+
+    [System.SerializableAttribute()]
     public class LoadControlLimitDataType
     {
+        public uint? limitId { get; set; }
+
+        public bool? isLimitChangeable { get; set; }
+
+        public bool? isLimitActive { get; set; }
+
+        public TimePeriodType? timePeriod { get; set; } = new();
+
+        public ScaledNumberType? value { get; set; } = new();
+    }
+
+    [System.SerializableAttribute()]
+    public class LoadControlLimitListDataSelectorType
+    {
         public uint limitId { get; set; }
+    }
 
-        public bool isLimitChangeable { get; set; }
+    [System.SerializableAttribute()]
+    public class LoadControlLimitDataElementsType
+    {
+        public object? limitId { get; set; }
+        public object? isLimitChangeable { get; set; }
 
-        public bool isLimitActive { get; set; }
+        public object? isLimitActive { get; set; }
 
-        public TimePeriodType timePeriod { get; set; } = new();
+        public object? timePeriod { get; set; }
 
-        public ScaledNumberType value { get; set; } = new();
+        public object? value { get; set; }
     }
 
     [System.SerializableAttribute()]
