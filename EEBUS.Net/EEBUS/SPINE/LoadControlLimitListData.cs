@@ -63,7 +63,7 @@ namespace EEBUS.SPINE.Commands
             {
                 if (datagram.header.cmdClassifier != "write")
                     return;
-                
+
 
                 if (!connection.BindingAndSubscriptionManager.HasBinding(datagram.header.addressSource, datagram.header.addressDestination))
                 {
@@ -85,45 +85,49 @@ namespace EEBUS.SPINE.Commands
                 LoadControlLimitDataStructure? data = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(received.limitId.Value);
                 if (data == null)
                     return;
-                
-                if (filter != null)
-                {
-                    foreach (LoadControlLimitListDataFilterType filterValue in filter)
-                    {
-                        if (filterValue.cmdControl?.delete != null && filterValue.loadControlLimitListDataSelectors?.limitId != null)
-                        {
-                            LoadControlLimitDataStructure? dataForDeletion = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(filterValue.loadControlLimitListDataSelectors.limitId);
-                            var dataObj = JsonSerializer.SerializeToNode(dataForDeletion)?.AsObject();
-                            var filterObj = JsonSerializer.SerializeToNode(filterValue.loadControlLimitDataElements)?.AsObject();
 
-                            if (dataObj != null && filterObj != null)
-                            {
-                                foreach (var item in filterObj)
-                                {
-                                    dataObj.Remove(item.Key);
-                                }
-                                LoadControlLimitDataStructure newStructure = JsonSerializer.Deserialize<LoadControlLimitDataStructure>(dataObj) ?? throw new Exception("Error parsing data structure");
-                                connection.Local.AddOrUpdate(newStructure);
-                                data = newStructure;
-                            }
-                        }
-                    }
-                }
+                //Do we even need this?
+                //if (filter != null)
+                //{
+                //    foreach (LoadControlLimitListDataFilterType filterValue in filter)
+                //    {
+                //        if (filterValue.cmdControl?.delete != null && filterValue.loadControlLimitListDataSelectors?.limitId != null)
+                //        {
+                //            LoadControlLimitDataStructure? filterSelectorData = data;
 
-                data.LimitActive = received.isLimitActive ?? data.LimitActive;
-                // received.value.number is nullable, keep existing number if null
-                data.Number = received.value?.number ?? data.Number;
-                data.EndTime = received.timePeriod?.endTime ?? data.EndTime;
+                //            if (filterValue.loadControlLimitListDataSelectors.limitId != received.limitId.Value)
+                //            {
+                //                filterSelectorData = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(filterValue.loadControlLimitListDataSelectors.limitId);
+                //            }
+
+                //            JsonObject? filterSelectorDataJson = JsonSerializer.SerializeToNode(filterSelectorData?.Data)?.AsObject();
+                //            JsonObject? filterElementDataJson = JsonSerializer.SerializeToNode(filterValue.loadControlLimitDataElements)?.AsObject();
+
+                //            if (filterSelectorDataJson != null && filterElementDataJson != null)
+                //            {
+                //                foreach (var item in filterElementDataJson)
+                //                {
+                //                    //remove every property that is set in the filter data elements
+                //                    if (item.Value != null)
+                //                    {
+                //                        filterSelectorDataJson.Remove(item.Key);
+                //                    }
+                //                }
+
+                //                LoadControlLimitDataType? newData = JsonSerializer.Deserialize<LoadControlLimitDataType>(filterSelectorDataJson) ?? throw new Exception("Error parsing data structure");
+                //                filterSelectorData?.Update(newData);
+                //            }
+                //        }
+                //    }
+                //}
+
+                //data.LimitActive = received.isLimitActive ?? data.LimitActive;
+                //data.Number = received.value?.number ?? data.Number;
+                //data.EndTime = received.timePeriod?.endTime ?? data.EndTime;
+                data.Update(received);
 
                 await data.SendEventAsync(connection);
-
                 await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
-
-                //if ( connection.BindingAndSubscriptionManager.HasSubscription(datagram.header.addressSource, datagram.header.addressDestination))
-                //{
-                //    SendNotify(connection, datagram);
-                //}
-               
             }
 
 
@@ -162,7 +166,7 @@ namespace EEBUS.SPINE.Commands
                 }
             }
 
-            public  override JsonNode? CreateNotifyPayload(LocalDevice localDevice)
+            public override JsonNode? CreateNotifyPayload(LocalDevice localDevice)
             {
                 LoadControlLimitListData limitData = new LoadControlLimitListData();
                 LoadControlLimitListDataType data = limitData.cmd[0].loadControlLimitListData;
@@ -222,7 +226,7 @@ namespace EEBUS.SPINE.Commands
     [System.SerializableAttribute()]
     public class CmdLoadControlLimitListDataType : CmdType
     {
-        public LoadControlLimitListDataFilterType[]? filter;
+        public LoadControlLimitListDataFilterType[]? filter { get; set; }
         public LoadControlLimitListDataType loadControlLimitListData { get; set; } = new();
     }
 
@@ -249,9 +253,9 @@ namespace EEBUS.SPINE.Commands
 
         public bool? isLimitActive { get; set; }
 
-        public TimePeriodType? timePeriod { get; set; } = new();
+        public TimePeriodType? timePeriod { get; set; }
 
-        public ScaledNumberType? value { get; set; } = new();
+        public ScaledNumberType? value { get; set; }
     }
 
     [System.SerializableAttribute()]

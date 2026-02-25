@@ -3,15 +3,10 @@ using EEBUS.Messages;
 using EEBUS.Models;
 using EEBUS.SHIP.Messages;
 using EEBUS.SPINE.Commands;
-using System;
-using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
 
 namespace TestProject1
 {
@@ -39,57 +34,10 @@ namespace TestProject1
         }
 
 
-        string cmdJson = """
-                        {
-            	"function": "loadControlLimitListData",
-            	"filter": [
-            		{
-            			"cmdControl": {
-            				"delete": {}
-            			},
-            			"loadControlLimitListDataSelectors": {
-            				"limitId": 0
-            			},
-            			"loadControlLimitDataElements": {
-            				"timePeriod": {}
-            			}
-            		},
-            		{
-            			"cmdControl": {
-            				"partial": {}
-            			}
-            		}
-            	],
-            	"loadControlLimitListData": {
-            		"loadControlLimitData": [
-            			{
-            				"limitId": 0,
-            				"isLimitActive": false,
-            				"value": {
-            					"number": 4884,
-            					"scale": 0
-            				}
-            			}
-            		]
-            	}
-            }
-            """;
-
-        string partialFilterJson = """
-                        {
-            									"cmdControl": {
-            										"partial": {}
-            									}
-            								}
-            """;
-
-
-
         [Fact]
         public async Task SendMessageTestAsync()
         {
             SpineDatagramPayload payload = GetPayload(EEBusMessages.LoadControl_Write_DeleteTimePeriod_AndUpdate);
-            var filter = JsonSerializer.Deserialize<CmdLoadControlLimitListDataType>(partialFilterJson);
 
             Connection testConnection = GetMockConnection();
             testConnection.BindingAndSubscriptionManager.TryAddOrUpdateClientBinding(payload.datagram.header.addressSource, payload.datagram.header.addressDestination, "LoadControl");
@@ -173,17 +121,6 @@ namespace TestProject1
             if (discoveryData == null) throw new Exception("Failed to parse discovery data");
 
             device.SetDiscoveryData(discoveryData, connection);
-        }
-
-        static protected string JsonFromEEBUSJson(string json)
-        {
-
-            json = json.Replace("[{", "{");
-            json = json.Replace("},{", ",");
-            json = json.Replace("}]", "}");
-            json = json.Replace("[]", "{}");
-
-            return json;
         }
     }
 }
