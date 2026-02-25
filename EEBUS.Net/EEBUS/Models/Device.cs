@@ -185,15 +185,10 @@ namespace EEBUS.Models
                     UseCaseSettings? settings = UseCaseSettings.Create(useCaseInformation.actor, useCaseSupport);
                     if (settings == null) continue;
 
-                    var uc = UseCase.Create(settings, entity);
-                    if (uc != null)
-                    {
-                        entity.UseCases.Add(uc);
-                    }
-                    else
-                    {
-                        //use case not supported!
-                    }
+                    UseCase? uc = UseCase.Create(settings, entity);
+                    if (uc == null) continue;
+
+                    entity.UseCases.Add(uc);
                 }
             }
         }

@@ -657,7 +657,7 @@
         // --- LoadControl ---
 
         public static string LoadControl_Write_DeleteTimePeriod_AndUpdate = """
-    {"data":[{"header":[{"protocolId":"ee1.0"}]},{"payload":{"datagram":[{"header":[{"specificationVersion":"1.4.0"},{"addressSource":[{"device":"d:_i:002518F13E65_PPC"},{"entity":[4]},{"feature":1}]},{"addressDestination":[{"device":"Kermi-EEBUS-Demo-Client"},{"entity":[1]},{"feature":2}]},{"msgCounter":94},{"cmdClassifier":"write"},{"ackRequest":true}]},{"payload":[{"cmd":[[{"function":"loadControlLimitListData"},{"filter":[[{"cmdControl":[{"delete":[]}]},{"loadControlLimitListDataSelectors":[{"limitId":0}]},{"loadControlLimitDataElements":[{"timePeriod":[]}]}],[{"cmdControl":[{"partial":[]}]}]]},{"loadControlLimitListData":[{"loadControlLimitData":[[{"limitId":0},{"isLimitActive":false},{"value":[{"number":4884},{"scale":0}]}]]}]}]]}]}]}}]}
+    {"data":[{"header":[{"protocolId":"ee1.0"}]},{"payload":{"datagram":[{"header":[{"specificationVersion":"1.4.0"},{"addressSource":[{"device":"d:_i:002518F13E65_PPC"},{"entity":[1]},{"feature":2}]},{"addressDestination":[{"device":"Kermi-EEBUS-Demo-Client"},{"entity":[1]},{"feature":2}]},{"msgCounter":94},{"cmdClassifier":"write"},{"ackRequest":true}]},{"payload":[{"cmd":[[{"function":"loadControlLimitListData"},{"filter":[[{"cmdControl":[{"delete":[]}]},{"loadControlLimitListDataSelectors":[{"limitId":0}]},{"loadControlLimitDataElements":[{"timePeriod":[]}]}],[{"cmdControl":[{"partial":[]}]}]]},{"loadControlLimitListData":[{"loadControlLimitData":[[{"limitId":0},{"isLimitActive":false},{"value":[{"number":4884},{"scale":0}]}]]}]}]]}]}]}}]}
     """;
 
         public static string LoadControl_Notify_WithPartial = """
