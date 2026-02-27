@@ -1,4 +1,7 @@
 ﻿using EEBUS.Messages;
+using EEBUS.Models;
+using EEBUS.Net.EEBUS.Data.DataStructures;
+using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.Net.EEBUS.SPINE.Types;
 
 namespace EEBUS.SPINE.Commands
@@ -22,12 +25,55 @@ namespace EEBUS.SPINE.Commands
 				payload.cmd[0].filter = [new()];
 				payload.cmd[0].electricalConnectionCharacteristicListData = new();
 
-				List<ElectricalConnectionCharacteristicDataType> eccs = new();
-				connection.Local.FillData<ElectricalConnectionCharacteristicDataType>( eccs, connection );
-				payload.cmd[0].electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData = eccs.ToArray();
+                //connection.Local.FillData<ElectricalConnectionCharacteristicDataType>( eccs, connection );
+
+                List<ElectricalConnectionCharacteristicDataStructure> structures = connection.Local.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>();
+				payload.cmd[0].electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData = structures.Select(structure => structure.Data).ToArray();
 
 				return payload;
 			}
+
+            public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync(DatagramType datagram, HeaderType header, Connection connection)
+            {
+				if (datagram.header.cmdClassifier != "read") return null;
+
+                ElectricalConnectionCharacteristicListData payload = new ElectricalConnectionCharacteristicListData();
+                payload.cmd[0].electricalConnectionCharacteristicListData = new();
+                List<ElectricalConnectionCharacteristicDataStructure> structures = connection.Local.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>();
+                payload.cmd[0].electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData = structures.Select(structure => structure.Data).ToArray();
+
+                return payload;
+            }
+
+            public override async Task WriteDataAsync(LocalDevice localDevice, DeviceData deviceData)
+            {
+				bool didChange = false;
+
+				if (deviceData.Lpc != null && !deviceData.Lpc.IsEmpty())
+				{
+                    var consumptionDataStructures = localDevice.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>().Where(ds => ds.CharacteristicType == "contractualConsumptionNominalMax");
+					foreach (var consumptionDataStructure in consumptionDataStructures)
+					{
+						didChange = deviceData.Lpc.ContractualNominalMax != null && consumptionDataStructure.Number != deviceData.Lpc.ContractualNominalMax;
+						consumptionDataStructure.Number = deviceData.Lpc.ContractualNominalMax ?? consumptionDataStructure.Number;
+					}
+				}
+
+                if (deviceData.Lpp != null && !deviceData.Lpp.IsEmpty())
+                {
+                    var productionDataStructures = localDevice.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>().Where(ds => ds.CharacteristicType == "contractualProductionNominalMax");
+                    foreach (var productionDataStructure in productionDataStructures)
+                    {
+                        didChange = deviceData.Lpp.ContractualNominalMax != null && productionDataStructure.Number != deviceData.Lpp.ContractualNominalMax;
+                        productionDataStructure.Number = deviceData.Lpp.ContractualNominalMax ?? productionDataStructure.Number;
+                    }
+                }
+
+				if (didChange)
+				{
+                    await SendNotifyAsync(localDevice, localDevice.GetFeatureAddress("ElectricalConnection", true));
+                }
+            }
 		}
 	}
 

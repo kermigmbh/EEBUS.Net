@@ -1,4 +1,6 @@
-﻿using EEBUS.Messages;
+﻿using EEBUS.Features;
+using EEBUS.Messages;
+using EEBUS.Models;
 using System.Text.Json.Serialization;
 
 namespace EEBUS.SPINE.Commands
@@ -35,6 +37,39 @@ namespace EEBUS.SPINE.Commands
                 else
                 {
                     return null;
+                }
+            }
+
+            public override async ValueTask EvaluateAsync(Connection connection, DatagramType datagram)
+            {
+                if (datagram.header.cmdClassifier != "reply")
+                    return;
+
+                ElectricalConnectionParameterDescriptionListData? command = datagram.payload == null
+                    ? null
+                    : System.Text.Json.JsonSerializer.Deserialize<ElectricalConnectionParameterDescriptionListData>(datagram.payload);
+                if (command == null || command.cmd == null || command.cmd.Length == 0)
+                    return;
+
+                Entity? entity = connection.Remote?.Entities.FirstOrDefault(e => e.Index.SequenceEqual(datagram.header.addressSource.entity));
+                MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == datagram.header.addressSource.feature) as MeasurementServerFeature;
+                if (measurementFeature == null) return;
+
+                foreach (ElectricalConnectionParameterDescriptionDataType parameterDescription in command.cmd.First().electricalConnectionParameterDescriptionListData?.electricalConnectionParameterDescriptionData ?? [])
+                {
+                    MeasurementData.MeasurementData? corresponding = measurementFeature.measurementData.FirstOrDefault(data => data.measurementId == parameterDescription.measurementId);
+                    if (corresponding == null)
+                    {
+                        measurementFeature.measurementData.Add(new MeasurementData.MeasurementData
+                        {
+                            measurementId = parameterDescription.measurementId,
+                            electricalConnectionParameterDescriptionData = parameterDescription
+                        });
+                    }
+                    else
+                    {
+                        corresponding.electricalConnectionParameterDescriptionData = parameterDescription;
+                    }
                 }
             }
         }

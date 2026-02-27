@@ -2,6 +2,7 @@
 using EEBUS.DataStructures;
 using EEBUS.KeyValues;
 using EEBUS.Models;
+using EEBUS.Net.EEBUS.Data.DataStructures;
 using EEBUS.SPINE.Commands;
 
 namespace EEBUS.UseCases.ControllableSystem
@@ -41,6 +42,7 @@ namespace EEBUS.UseCases.ControllableSystem
                 string xmlFailsafeDuration = XmlConvert.ToString(TimeSpan.FromSeconds(failsafeDuration));
 
                 entity.Local.Add(new LoadControlLimitDataStructure("produce", limit, 0, xmlDuration, active));
+                entity.Local.Add(new ElectricalConnectionCharacteristicDataStructure("contractualProductionNominalMax", usecaseSettings.InitLimits.NominalMax, 0));
 
                 entity.Local.AddUnique(new FailsafeProductionActivePowerLimitKeyValue(entity.Local, failsafeLimit, 0, true));
                 entity.Local.AddUnique(new FailsafeDurationMinimumKeyValue(entity.Local, xmlFailsafeDuration, true));
@@ -87,26 +89,26 @@ namespace EEBUS.UseCases.ControllableSystem
             }
         }
 
-        public override void FillData<T>(List<T> dataList, Connection connection, Entity entity)
-        {
-            if (dataList is not List<ElectricalConnectionCharacteristicDataType>)
-                return;
+        //public override void FillData<T>(List<T> dataList, Connection connection, Entity entity)
+        //{
+        //    if (dataList is not List<ElectricalConnectionCharacteristicDataType>)
+        //        return;
 
-            List<ElectricalConnectionCharacteristicDataType> eccs = dataList as List<ElectricalConnectionCharacteristicDataType>;
+        //    List<ElectricalConnectionCharacteristicDataType> eccs = dataList as List<ElectricalConnectionCharacteristicDataType>;
 
-            uint id = (uint)eccs.Count;
+        //    uint id = (uint)eccs.Count;
 
-            ElectricalConnectionCharacteristicDataType ecc = new();
-            ecc.electricalConnectionId = 0;
-            ecc.parameterId = 0;
-            ecc.characteristicId = id;
-            ecc.characteristicContext = "entity";
-            ecc.characteristicType = "contractualProductionNominalMax";
-            ecc.value.number = connection.Local.GetSettings().GetProductionNominalMax();
-            ecc.value.scale = 0;
-            ecc.unit = "W";
+        //    ElectricalConnectionCharacteristicDataType ecc = new();
+        //    ecc.electricalConnectionId = 0;
+        //    ecc.parameterId = 0;
+        //    ecc.characteristicId = id;
+        //    ecc.characteristicContext = "entity";
+        //    ecc.characteristicType = "contractualProductionNominalMax";
+        //    ecc.value.number = connection.Local.GetSettings().GetProductionNominalMax();
+        //    ecc.value.scale = 0;
+        //    ecc.unit = "W";
 
-            eccs.Add(ecc);
-        }
+        //    eccs.Add(ecc);
+        //}
     }
 }

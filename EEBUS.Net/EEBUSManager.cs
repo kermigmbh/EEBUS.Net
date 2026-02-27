@@ -2,6 +2,7 @@
 using EEBUS.KeyValues;
 using EEBUS.Messages;
 using EEBUS.Models;
+using EEBUS.Net.EEBUS.Data.DataStructures;
 using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.Net.Events;
 using EEBUS.SHIP.Messages;
@@ -75,7 +76,7 @@ namespace EEBUS.Net
             }
 
             foreach (string ns in new string[] {"EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands", "EEBUS.Entities",
-                                                 "EEBUS.UseCases.ControllableSystem", "EEBUS.UseCases.EnergyGuard", "EEBUS.UseCases.GridConnectionPoint",
+                                                 "EEBUS.UseCases.ControllableSystem", "EEBUS.UseCases.EnergyGuard", "EEBUS.UseCases.GridConnectionPoint", "EEBUS.UseCases.MonitoringAppliance",
                                                  "EEBUS.Features" })
             {
                 foreach (Type type in GetTypesInNamespace(typeof(Settings).Assembly, ns))
@@ -355,11 +356,13 @@ namespace EEBUS.Net
             long lpcLimit = 0;
             TimeSpan lpcDuration = new();
             long lpcFailsafeLimit = 0;
+            long lpcContractualNominalMax = 0;
 
             bool lppActive = false;
             long lppLimit = 0;
             TimeSpan lppDuration = new();
             long lppFailsafeLimit = 0;
+            long lppContractualNominalMax = 0;
 
             TimeSpan failsafeDuration = new();
 
@@ -376,6 +379,17 @@ namespace EEBUS.Net
                     lppActive = data.LimitActive;
                     lppLimit = data.Number;
                     lppDuration = data.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(data.EndTime);
+                }
+            }
+
+            foreach (ElectricalConnectionCharacteristicDataStructure data in local.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>())
+            {
+                if (data.CharacteristicType == "contractualConsumptionNominalMax")
+                {
+                    lpcContractualNominalMax = data.Number;
+                } else if (data.CharacteristicType == "contractualConsumptionNominalMax")
+                {
+                    lppContractualNominalMax = data.Number;
                 }
             }
 
@@ -401,14 +415,16 @@ namespace EEBUS.Net
                     LimitActive = lpcActive,
                     Limit = lpcLimit,
                     LimitDuration = (int)lpcDuration.TotalSeconds,
-                    FailSafeLimit = lpcFailsafeLimit
+                    FailSafeLimit = lpcFailsafeLimit,
+                    ContractualNominalMax = lpcContractualNominalMax
                 },
                 Lpp = new LpcLppData
                 {
                     LimitActive = lppActive,
                     Limit = lppLimit,
                     LimitDuration = (int)lppDuration.TotalSeconds,
-                    FailSafeLimit = lppFailsafeLimit
+                    FailSafeLimit = lppFailsafeLimit,
+                    ContractualNominalMax = lppContractualNominalMax
                 },
                 FailSafeLimitDuration = (int)failsafeDuration.TotalSeconds
             };
