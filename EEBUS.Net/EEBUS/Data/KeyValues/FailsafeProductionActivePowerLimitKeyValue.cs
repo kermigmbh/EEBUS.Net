@@ -1,5 +1,6 @@
 ﻿using EEBUS.Models;
 using EEBUS.SPINE.Commands;
+using EEBUS.UseCases;
 using EEBUS.UseCases.ControllableSystem;
 using ValueType = EEBUS.SPINE.Commands.ValueType;
 
@@ -63,6 +64,10 @@ namespace EEBUS.KeyValues
 
 		public override async Task SendEventAsync( Connection connection )
 		{
+			// Update state machine with new failsafe limit
+			var stateMachine = connection.Local.GetStateMachine(PowerDirection.Production);
+			stateMachine.SetFailsafeLimit(this.Value);
+
 			List<LPPEvents> lppEvents = connection.Local.GetUseCaseEvents<LPPEvents>();
 			foreach (var lpp in lppEvents)
 			{

@@ -1,13 +1,11 @@
-﻿using System.Diagnostics;
-using System.Xml;
-
 using System.Text.Json.Serialization;
+using System.Xml;
 
 using EEBUS.DataStructures;
 using EEBUS.Messages;
 using EEBUS.SHIP.Messages;
+using EEBUS.UseCases;
 using EEBUS.UseCases.ControllableSystem;
-using EEBUS.KeyValues;
 using System.Text.Json.Nodes;
 using System.Text.Json;
 using EEBUS.Models;
@@ -31,32 +29,60 @@ namespace EEBUS.SPINE.Commands
                 {
                     LoadControlLimitListData payload = new LoadControlLimitListData();
                     LoadControlLimitListDataType data = payload.cmd[0].loadControlLimitListData;
-
-
-
-
                     List<LoadControlLimitDataType> datas = new();
-
 
                     foreach (LoadControlLimitDataStructure structure in connection.Local.GetDataStructures<LoadControlLimitDataStructure>())
                     {
                         datas.Add(structure.Data);
                     }
 
-
-
                     data.loadControlLimitData = datas.ToArray();
-
                     return payload;
                 }
                 else if (datagram.header.cmdClassifier == "write")
                 {
-                    return new ResultData();    // Alternative: send Error 7 and a text message
+                    // ApprovalResult was set in EvaluateAsync (which runs before CreateAnswerAsync)
+                    var approvalResult = datagram.ApprovalResult ?? WriteApprovalResult.Accept();
+                    return ResultData.FromApprovalResult(approvalResult);
                 }
                 else
                 {
                     return null;
                 }
+            }
+
+            private async Task<WriteApprovalResult> GetApprovalAsync(Connection connection, string limitDirection, ActiveLimitWriteRequest request)
+            {
+                if (limitDirection == "consume")
+                {
+                    List<LPCEvents> handlers = connection.Local.GetUseCaseEvents<LPCEvents>();
+                    if (handlers.Count == 0)
+                        return WriteApprovalResult.Accept("No handlers registered - auto-approved");
+
+                    foreach (var handler in handlers)
+                    {
+                        var result = await handler.ApproveActiveLimitWriteAsync(request);
+                        if (!result.Approved)
+                            return result;
+                    }
+                    return WriteApprovalResult.Accept();
+                }
+                else if (limitDirection == "produce")
+                {
+                    List<LPPEvents> handlers = connection.Local.GetUseCaseEvents<LPPEvents>();
+                    if (handlers.Count == 0)
+                        return WriteApprovalResult.Accept("No handlers registered - auto-approved");
+
+                    foreach (var handler in handlers)
+                    {
+                        var result = await handler.ApproveActiveLimitWriteAsync(request);
+                        if (!result.Approved)
+                            return result;
+                    }
+                    return WriteApprovalResult.Accept();
+                }
+
+                return WriteApprovalResult.Deny("Unknown limit direction");
             }
 
             public override async ValueTask EvaluateAsync(Connection connection, DatagramType datagram)
@@ -107,24 +133,80 @@ namespace EEBUS.SPINE.Commands
                     }
                 }
 
+                WriteApprovalResult approvalResult = WriteApprovalResult.Accept();
                 foreach (LoadControlLimitDataType loadControlLimitData in command.cmd[0].loadControlLimitListData.loadControlLimitData)
                 {
-                    if (loadControlLimitData.limitId == null) return;
+                    if (loadControlLimitData.limitId == null)
+                    {
+                        datagram.ApprovalResult = WriteApprovalResult.Deny("Invalid limit ID");
+                        return;
+                    }
 
                     LoadControlLimitDataStructure? data = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(loadControlLimitData.limitId.Value);
                     if (data == null)
+                    {
+                        datagram.ApprovalResult = WriteApprovalResult.Deny("Unknown limit ID");
                         return;
+                    }
 
-                    //data.LimitActive = received.isLimitActive ?? data.LimitActive;
-                    //data.Number = received.value?.number ?? data.Number;
-                    //data.EndTime = received.timePeriod?.endTime ?? data.EndTime;
-                    data.Update(loadControlLimitData);
-                    await data.SendEventAsync(connection);
+                    PowerDirection direction = data.LimitDirection == "consume"
+                        ? PowerDirection.Consumption
+                        : PowerDirection.Production;
+
+                    TimeSpan? duration = null;
+                    if (!string.IsNullOrEmpty(loadControlLimitData.timePeriod?.endTime))
+                    {
+                        try { duration = XmlConvert.ToTimeSpan(loadControlLimitData.timePeriod.endTime); }
+                        catch
+                        {
+                            /* return error for parsing errors */
+                            datagram.ApprovalResult = WriteApprovalResult.Deny("invalid timePeriod.endTime");
+                            return;
+                        }
+                    }
+
+                    var request = new ActiveLimitWriteRequest(
+                        direction,
+                        loadControlLimitData.isLimitActive ?? false,
+                        loadControlLimitData.value?.number ?? 0,
+                        loadControlLimitData.value?.scale ?? 0,
+                        duration,
+                        connection.Remote?.DeviceId,
+                        connection.Remote?.SKI?.ToString()
+                    );
+
+                    // User-Callback aufrufen
+                    if (approvalResult.Approved)
+                    {
+                        approvalResult = await GetApprovalAsync(connection, data.LimitDirection, request);
+                    }
                 }
 
-                await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
-            }
+                datagram.ApprovalResult = approvalResult;
+                if (approvalResult.Approved)
+                {
+                    // Only update data if all limits are approved
+                    foreach (LoadControlLimitDataType loadControlLimitData in command.cmd[0].loadControlLimitListData.loadControlLimitData)
+                    {
+                        if (loadControlLimitData.limitId == null)
+                        {
+                            // checked above, cannot occur
+                            return;
+                        }
 
+                        LoadControlLimitDataStructure? data = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(loadControlLimitData.limitId.Value);
+                        if (data == null)
+                        {
+                            // checked above, cannot occur
+                            return;
+                        }
+                        data.Update(loadControlLimitData);
+
+                        await data.SendEventAsync(connection);
+                    }
+                    await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
+                }
+            }
 
 
             public override async Task WriteDataAsync(LocalDevice device, DeviceData deviceData)
@@ -174,46 +256,6 @@ namespace EEBUS.SPINE.Commands
                 data.loadControlLimitData = datas.ToArray();
                 return limitData.ToJsonNode();
             }
-
-            //private void SendNotify(Connection connection, DatagramType datagram)
-            //{
-            //    SpineDatagramPayload notify = new SpineDatagramPayload();
-            //    notify.datagram.header.addressSource = datagram.header.addressDestination;
-            //    notify.datagram.header.addressDestination = datagram.header.addressSource;
-            //    notify.datagram.header.msgCounter = DataMessage.NextCount;
-            //    notify.datagram.header.cmdClassifier = "notify";
-
-            //    LoadControlLimitListData limitData = new LoadControlLimitListData();
-            //    LoadControlLimitListDataType data = limitData.cmd[0].loadControlLimitListData;
-
-            //    List<LoadControlLimitDataType> datas = new();
-
-            //    //if (connection.Remote?.HeartbeatValidUntil < DateTime.UtcNow.AddMinutes(2))
-            //    //{
-            //    //    var failSafe = connection.Local.GetKeyValue<FailsafeConsumptionActivePowerLimitKeyValue>();
-            //    //    foreach (LoadControlLimitDataStructure structure in connection.Local.GetDataStructures<LoadControlLimitDataStructure>())
-            //    //    {
-            //    //        structure.Number = failSafe.Value;
-            //    //        datas.Add(structure.Data);
-            //    //    }
-
-            //    //}
-            //    //else
-            //    //{
-            //    foreach (LoadControlLimitDataStructure structure in connection.Local.GetDataStructures<LoadControlLimitDataStructure>())
-            //    {
-            //        datas.Add(structure.Data);
-            //    }
-            //    //}
-
-            //    data.loadControlLimitData = datas.ToArray();
-            //    notify.datagram.payload = limitData.ToJsonNode();
-
-            //    DataMessage limitMessage = new DataMessage();
-            //    limitMessage.SetPayload(System.Text.Json.JsonSerializer.SerializeToNode(notify));
-
-            //    connection.PushDataMessage(limitMessage);
-            //}
         }
     }
 
