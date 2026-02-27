@@ -68,22 +68,22 @@ namespace EEBUS.Models
             this.DataStructures.Add(dataStructure);
         }
 
-        public void AddOrUpdate(DataStructure dataStructure)
-        {
-            DataStructure? existing = this.DataStructures.FirstOrDefault(ds => ds.Id == dataStructure.Id);
-            if (existing == null)
-            {
-                dataStructure.Id = (uint)this.DataStructures.Count;
-                this.DataStructures.Add(dataStructure);
-            } else
-            {
-                int index = this.DataStructures.IndexOf(existing);
-                if (index != -1)
-                {
-                    this.DataStructures[index] = dataStructure;
-                }
-            }
-        }
+        //public void AddOrUpdate(DataStructure dataStructure)
+        //{
+        //    DataStructure? existing = this.DataStructures.FirstOrDefault(ds => ds.Id == dataStructure.Id);
+        //    if (existing == null)
+        //    {
+        //        dataStructure.Id = (uint)this.DataStructures.Count;
+        //        this.DataStructures.Add(dataStructure);
+        //    } else
+        //    {
+        //        int index = this.DataStructures.IndexOf(existing);
+        //        if (index != -1)
+        //        {
+        //            this.DataStructures[index] = dataStructure;
+        //        }
+        //    }
+        //}
 
         public List<T> GetDataStructures<T>() where T : DataStructure
         {

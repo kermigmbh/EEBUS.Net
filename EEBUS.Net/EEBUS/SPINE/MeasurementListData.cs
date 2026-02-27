@@ -1,4 +1,6 @@
-﻿using EEBUS.Messages;
+﻿using EEBUS.Features;
+using EEBUS.Messages;
+using EEBUS.Models;
 using EEBUS.Net.EEBUS.SPINE.Types;
 using System.Text.Json.Serialization;
 
@@ -105,6 +107,39 @@ namespace EEBUS.SPINE.Commands
 
 				return payload;
 			}
+
+            public override async ValueTask EvaluateAsync(Connection connection, DatagramType datagram)
+            {
+                if (datagram.header.cmdClassifier != "reply")
+                    return;
+
+                MeasurementListData? command = datagram.payload == null
+                    ? null
+                    : System.Text.Json.JsonSerializer.Deserialize<MeasurementListData>(datagram.payload);
+                if (command == null || command.cmd == null || command.cmd.Length == 0)
+                    return;
+
+                Entity? entity = connection.Remote?.Entities.FirstOrDefault(e => e.Index.SequenceEqual(datagram.header.addressSource.entity));
+                MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == datagram.header.addressSource.feature) as MeasurementServerFeature;
+				if (measurementFeature == null) return;
+
+				foreach (MeasurementDataType measurement in command.cmd.First().measurementListData.measurementData)
+				{
+                    MeasurementData.MeasurementData? corresponding = measurementFeature.measurementData.FirstOrDefault(data => data.measurementId == measurement.measurementId);
+					if (corresponding == null)
+					{
+						measurementFeature.measurementData.Add(new MeasurementData.MeasurementData
+						{
+							measurementId = measurement.measurementId,
+							measurementDataType = measurement
+						});
+					}
+					else
+					{
+						corresponding.measurementDataType = measurement;
+					}
+				}
+            }
 		}
 	}
 

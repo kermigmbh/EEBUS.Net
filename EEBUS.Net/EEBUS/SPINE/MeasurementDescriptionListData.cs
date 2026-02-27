@@ -1,4 +1,6 @@
-﻿using EEBUS.Messages;
+﻿using EEBUS.Features;
+using EEBUS.Messages;
+using EEBUS.Models;
 using System.Text.Json.Serialization;
 
 namespace EEBUS.SPINE.Commands
@@ -98,6 +100,39 @@ namespace EEBUS.SPINE.Commands
 					return null;
 				}
 			}
+
+            public override async ValueTask EvaluateAsync(Connection connection, DatagramType datagram)
+            {
+                if (datagram.header.cmdClassifier != "reply")
+                    return;
+
+                MeasurementDescriptionListData? command = datagram.payload == null
+                    ? null
+                    : System.Text.Json.JsonSerializer.Deserialize<MeasurementDescriptionListData>(datagram.payload);
+                if (command == null || command.cmd == null || command.cmd.Length == 0)
+                    return;
+
+                Entity? entity = connection.Remote?.Entities.FirstOrDefault(e => e.Index.SequenceEqual(datagram.header.addressSource.entity));
+                MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == datagram.header.addressSource.feature) as MeasurementServerFeature;
+                if (measurementFeature == null) return;
+
+                foreach (MeasurementDescriptionDataType measurementDescription in command.cmd.First().measurementDescriptionListData.measurementDescriptionData)
+				{
+                    MeasurementData.MeasurementData? corresponding = measurementFeature.measurementData.FirstOrDefault(data => data.measurementId == measurementDescription.measurementId);
+                    if (corresponding == null)
+                    {
+                        measurementFeature.measurementData.Add(new MeasurementData.MeasurementData
+                        {
+                            measurementId = measurementDescription.measurementId,
+                            measurementDescriptionDataType = measurementDescription
+                        });
+                    }
+                    else
+                    {
+                        corresponding.measurementDescriptionDataType = measurementDescription;
+                    }
+                }
+            }
 		}
 	}
 

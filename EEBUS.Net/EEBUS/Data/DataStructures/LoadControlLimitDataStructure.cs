@@ -1,10 +1,7 @@
 ﻿using EEBUS.Models;
 using EEBUS.SPINE.Commands;
 using EEBUS.UseCases.ControllableSystem;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Xml;
-using System.Text.Json.Nodes;
-using EEBUS.Messages;
 
 namespace EEBUS.DataStructures
 {
@@ -36,7 +33,7 @@ namespace EEBUS.DataStructures
 		public string  LimitDirection { get; set; }
 		public bool	   LimitChangable { get; set; }
 		public bool	   LimitActive	  { get; set; }
-		public string  EndTime		  { get; set; }
+		public string?  EndTime		  { get; set; }
 		public long	   Number		  { get; set; }
 		public short   Scale		  { get; set; }
 
@@ -52,7 +49,18 @@ namespace EEBUS.DataStructures
 			}
 		}
 
-		public LoadControlLimitDescriptionDataType DescriptionData
+		public void Update(LoadControlLimitDataType data)
+		{
+            //this.LimitChangable = data.isLimitChangeable ?? this.LimitChangable;	not changeable according to the LPC definition
+            this.LimitActive = data.isLimitActive ?? this.LimitActive;
+
+			this.EndTime = data.timePeriod?.endTime;	//timePeriod is optional according to the LPC definition
+				
+			this.Number = data.value?.number ?? this.Number;
+			this.Scale = data.value?.scale ?? this.Scale;
+		}
+
+        public LoadControlLimitDescriptionDataType DescriptionData
 		{
 			get
 			{
@@ -78,11 +86,22 @@ namespace EEBUS.DataStructures
 				data.limitId			= this.limitId;
 				data.isLimitChangeable	= this.LimitChangable;
 				data.isLimitActive		= this.LimitActive;
-				data.timePeriod.endTime	= this.EndTime;
-				data.value.number		= this.Number;
-				data.value.scale        = this.Scale;
 
-				return data;
+				if (this.EndTime != null)
+				{
+                    data.timePeriod = new()
+                    {
+                        endTime = this.EndTime
+                    };
+                }
+
+                data.value = new()
+                {
+                    number = this.Number,
+                    scale = this.Scale
+                };
+
+                return data;
 			}
 		}
 
