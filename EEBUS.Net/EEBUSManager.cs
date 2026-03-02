@@ -79,7 +79,7 @@ namespace EEBUS.Net
 
             foreach (string ns in new string[] {"EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands", "EEBUS.Entities",
                                                  "EEBUS.UseCases.ControllableSystem", "EEBUS.UseCases.EnergyGuard", "EEBUS.UseCases.GridConnectionPoint", "EEBUS.UseCases.MonitoringAppliance",
-                                                 "EEBUS.Features" })
+                                                 "EEBUS.UseCases.MonitoredUnit", "EEBUS.Features" })
             {
                 foreach (Type type in GetTypesInNamespace(typeof(Settings).Assembly, ns))
                     RuntimeHelpers.RunClassConstructor(type.TypeHandle);
