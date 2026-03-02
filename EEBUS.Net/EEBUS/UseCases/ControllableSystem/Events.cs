@@ -52,8 +52,9 @@ namespace EEBUS.UseCases.ControllableSystem
 		Task DeviceConnectionStatusUpdatedAsync(Connection connection);
 	}
 
-	public interface DeviceConfigurationEvents : UseCaseEvents
+	public interface MgcpEvents : UseCaseEvents
 	{
 		Task RemoteDeviceConfigurationChangedAsync(Connection connection);
+		Task DataUpdateMeasurementsAsync(Connection connection, List<MeasurementData.MeasurementData> measurementData);
 	}
 }

@@ -1,6 +1,7 @@
 ﻿using EEBUS.Features;
 using EEBUS.Messages;
 using EEBUS.Models;
+using EEBUS.UseCases.ControllableSystem;
 using System.Text.Json.Serialization;
 
 namespace EEBUS.SPINE.Commands
@@ -131,9 +132,21 @@ namespace EEBUS.SPINE.Commands
 							corresponding.measurementDescriptionDataType = measurementDescription;
 						}
 					}
+					await SendMeasurementDataChangedAsync(connection, measurementFeature.measurementData);
 				}
             }
-		}
+
+            private async Task SendMeasurementDataChangedAsync(Connection connection, List<MeasurementData.MeasurementData> measurementData)
+            {
+                if (connection.Remote == null) return;
+
+                var deviceConfigEvents = connection.Local.GetUseCaseEvents<MgcpEvents>();
+                foreach (var ev in deviceConfigEvents)
+                {
+                    await ev.DataUpdateMeasurementsAsync(connection, measurementData);
+                }
+            }
+        }
 	}
 
 	[System.SerializableAttribute()]

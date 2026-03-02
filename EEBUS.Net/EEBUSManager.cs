@@ -106,12 +106,14 @@ namespace EEBUS.Net
             lpcEventHandler = new LPCEventHandler(this);
             lppEventHandler = new LPPEventHandler(this);
             lpcOrLppEventHandler = new LPCorLPPEventHandler(this);
+            mgcpEventHandler = new MgcpEventHandler(this);
             notifyEventHandler = new NotifyEventHandler(this);
             deviceConnectionStatusEventHandler = new DeviceConnectionStatusEventHandler(this);
             _devices.Local.AddUseCaseEvents(this.lpcEventHandler);
             _devices.Local.AddUseCaseEvents(this.lppEventHandler);
             _devices.Local.AddUseCaseEvents(this.lpcOrLppEventHandler);
             _devices.Local.AddUseCaseEvents(this.notifyEventHandler);
+            _devices.Local.AddUseCaseEvents(this.mgcpEventHandler);
             _devices.Local.AddUseCaseEvents(this.deviceConnectionStatusEventHandler);
             _settings = settings;
             this._serviceDiscovery = serviceDiscovery;
@@ -154,6 +156,7 @@ namespace EEBUS.Net
         private LPCEventHandler lpcEventHandler;
         private LPPEventHandler lppEventHandler;
         private LPCorLPPEventHandler lpcOrLppEventHandler;
+        private MgcpEventHandler mgcpEventHandler;
         private NotifyEventHandler notifyEventHandler;
         private DeviceConnectionStatusEventHandler deviceConnectionStatusEventHandler;
         private class NotifyEventHandler(EEBUSManager EEBusManager) : NotifyEvents
@@ -198,8 +201,43 @@ namespace EEBUS.Net
             }
         }
 
-        private class DeviceConfigurataionEventHandler(EEBUSManager eebusManager) : DeviceConfigurationEvents
+        private class MgcpEventHandler(EEBUSManager eebusManager) : MgcpEvents
         {
+            public async Task DataUpdateMeasurementsAsync(Connection connection, List<MeasurementData.MeasurementData> measurementData)
+            {
+                RemoteDevice? remote = connection.Remote;
+                if (remote == null) return;
+
+                MgcpData mgcpData = new MgcpData
+                {
+                    AcPowerTotal = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acPowerTotal")?.measurementDataType.value?.number,
+                    GridFeedIn = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "gridFeedIn")?.measurementDataType.value?.number,
+                    GridConsumption = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "gridConsumption")?.measurementDataType.value?.number,
+                    AcCurrent = new AcPhaseData
+                    {
+                        PhaseA = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "a")?.measurementDataType.value?.number,
+                        PhaseB = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "b")?.measurementDataType.value?.number,
+                        PhaseC = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "c")?.measurementDataType.value?.number
+                    },
+                    AcVoltage = new AcPhaseData
+                    {
+                        PhaseA = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "a")?.measurementDataType.value?.number,
+                        PhaseB = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "b")?.measurementDataType.value?.number,
+                        PhaseC = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "c")?.measurementDataType.value?.number
+                    },
+                    AcFrequency = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acFrequency")?.measurementDataType.value?.number,
+                };
+
+                if (eebusManager.OnDeviceDataChanged != null)
+                {
+                    await eebusManager.OnDeviceDataChanged(new DeviceData
+                    {
+                        SKI = remote.SKI.ToString(),
+                        Mgcp = mgcpData
+                    });
+                }
+            }
+
             public async Task RemoteDeviceConfigurationChangedAsync(Connection connection)
             {
                 RemoteDevice? remote = connection.Remote;
@@ -785,6 +823,9 @@ namespace EEBUS.Net
             _devices.Local.RemoveUseCaseEvents(this.lpcEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.lppEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.lpcOrLppEventHandler);
+            _devices.Local.RemoveUseCaseEvents(this.notifyEventHandler);
+            _devices.Local.RemoveUseCaseEvents(this.mgcpEventHandler);
+            _devices.Local.RemoveUseCaseEvents(this.deviceConnectionStatusEventHandler);
 
             _cts.Cancel();
             _clientCts.Cancel();

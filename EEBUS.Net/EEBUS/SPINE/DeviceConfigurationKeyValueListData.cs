@@ -202,7 +202,7 @@ namespace EEBUS.SPINE.Commands
 			{
 				if (connection.Remote == null) return;
 
-				var deviceConfigEvents = connection.Local.GetUseCaseEvents<DeviceConfigurationEvents>();
+				var deviceConfigEvents = connection.Local.GetUseCaseEvents<MgcpEvents>();
 				foreach (var ev in deviceConfigEvents)
 				{
 					await ev.RemoteDeviceConfigurationChangedAsync(connection);
