@@ -103,26 +103,26 @@ namespace EEBUS.UseCases.ControllableSystem
             }
         }
 
-        public override void FillData<T>(List<T> dataList, Connection connection, Entity entity)
-        {
-            //if (dataList is not List<ElectricalConnectionCharacteristicDataType>)
-            //    return;
+        //public override void FillData<T>(List<T> dataList, Connection connection, Entity entity)
+        //{
+        //    //if (dataList is not List<ElectricalConnectionCharacteristicDataType>)
+        //    //    return;
 
-            //List<ElectricalConnectionCharacteristicDataType> eccs = dataList as List<ElectricalConnectionCharacteristicDataType>;
+        //    //List<ElectricalConnectionCharacteristicDataType> eccs = dataList as List<ElectricalConnectionCharacteristicDataType>;
 
-            //uint id = (uint)eccs.Count;
+        //    //uint id = (uint)eccs.Count;
 
-            //ElectricalConnectionCharacteristicDataType ecc = new();
-            //ecc.electricalConnectionId = 0;
-            //ecc.parameterId = 0;
-            //ecc.characteristicId = id;
-            //ecc.characteristicContext = "entity";
-            //ecc.characteristicType = "contractualConsumptionNominalMax";
-            //ecc.value.number = connection.Local.GetSettings().GetConsumptionNominalMax();
-            //ecc.value.scale = 0;
-            //ecc.unit = "W";
+        //    //ElectricalConnectionCharacteristicDataType ecc = new();
+        //    //ecc.electricalConnectionId = 0;
+        //    //ecc.parameterId = 0;
+        //    //ecc.characteristicId = id;
+        //    //ecc.characteristicContext = "entity";
+        //    //ecc.characteristicType = "contractualConsumptionNominalMax";
+        //    //ecc.value.number = connection.Local.GetSettings().GetConsumptionNominalMax();
+        //    //ecc.value.scale = 0;
+        //    //ecc.unit = "W";
 
-            //eccs.Add(ecc);
-        }
+        //    //eccs.Add(ecc);
+        //}
     }
 }

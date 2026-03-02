@@ -198,6 +198,34 @@ namespace EEBUS.Net
             }
         }
 
+        private class DeviceConfigurataionEventHandler(EEBUSManager eebusManager) : DeviceConfigurationEvents
+        {
+            public async Task RemoteDeviceConfigurationChangedAsync(Connection connection)
+            {
+                RemoteDevice? remote = connection.Remote;
+                if (remote == null) return;
+
+                MgcpData? mgcpData = null;
+                KeyValue? pvCurtailmentLimitFactor = remote.KeyValues.FirstOrDefault(kv => kv.KeyName == "pvCurtailmentLimitFactor");
+                if (pvCurtailmentLimitFactor != null)
+                {
+                    mgcpData = new MgcpData
+                    {
+                        PvCurtailmentLimitFactor = pvCurtailmentLimitFactor.Data.value.scaledNumber?.number
+                    };
+                }
+
+                if (eebusManager.OnDeviceDataChanged != null)
+                {
+                    await eebusManager.OnDeviceDataChanged(new DeviceData
+                    {
+                        SKI = remote.SKI.ToString(),
+                        Mgcp = mgcpData
+                    });
+                }
+            }
+        }
+
         private class LPCEventHandler(EEBUSManager EEBusManager) : LPCEvents
         {
             public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync( ActiveLimitWriteRequest request )
@@ -470,8 +498,8 @@ namespace EEBUS.Net
                     mgcpData.AcFrequency = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acFrequency")?.measurementDataType.value?.number;
                 }
 
-                PvCurtailmentLimitFactorKeyValue? pvCurtailmentKeyValue = remote.GetKeyValue<PvCurtailmentLimitFactorKeyValue>();
-                mgcpData.PvCurtailmentLimitFactor = pvCurtailmentKeyValue?.Value;
+                KeyValue? pvCurtailmentKeyValue = remote.KeyValues.FirstOrDefault(kv => kv.KeyName == "pvCurtailmentLimitFactor");
+                mgcpData.PvCurtailmentLimitFactor = pvCurtailmentKeyValue?.Data.value.scaledNumber?.number;
             }
 
             return new DeviceData
@@ -531,7 +559,8 @@ namespace EEBUS.Net
                 Name = rd.Name,
                 Ski = rd.SKI.ToString(),
                 SupportsLpc = rd.SupportsUseCase("limitationOfPowerConsumption", "EnergyGuard"),
-                SupportsLpp = rd.SupportsUseCase("limitationOfPowerProduction", "EnergyGuard")
+                SupportsLpp = rd.SupportsUseCase("limitationOfPowerProduction", "EnergyGuard"),
+                SupportsMgcp = rd.SupportsUseCase("monitoringOfGridConnectionPoint", "GridConnectionPoint")
             });
         }
 

@@ -205,30 +205,6 @@ namespace EEBUS.Models
             return false;
         }
 
-
-        public bool SupportsLpc()
-        {
-            string[] lpcFeatureList = ["DeviceDiagnosis", "LoadControl", "DeviceConfiguration", "DeviceDiagnosis", "ElectricalConnection"];
-            return SupportsFeatures(lpcFeatureList);
-        }
-
-        public bool SupportsLpp()
-        {
-            return SupportsLpc();
-        }
-
-        private bool SupportsFeatures(IEnumerable<string> featureTypes)
-        {
-            foreach (Entity entity in Entities)
-            {
-                if (featureTypes.All(featureType => entity.Features.FirstOrDefault(entityFeature => entityFeature.Type == featureType) != null)) //checking if we find a matching feature for every declared featureType
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
         public AddressType GetHeartbeatAddress(bool server)
         {
             string role = server ? "server" : "client";

@@ -11,5 +11,6 @@ namespace EEBUS.Net.EEBUS.Models.Data
         public string Id { get; set; } = string.Empty;
         public bool SupportsLpc { get; set; }
         public bool SupportsLpp { get; set; }
+        public bool SupportsMgcp { get; set; }
     }
 }

@@ -390,9 +390,5 @@ namespace EEBUS
 
             PushDataMessage(message);
         }
-
-
-
-
     }
 }
