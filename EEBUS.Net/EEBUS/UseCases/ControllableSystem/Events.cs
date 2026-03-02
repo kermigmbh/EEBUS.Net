@@ -1,4 +1,4 @@
-﻿using EEBUS.Messages;
+using EEBUS.Messages;
 using EEBUS.Models;
 using System.Text.Json.Nodes;
 
@@ -6,23 +6,39 @@ namespace EEBUS.UseCases.ControllableSystem
 {
 	public interface LPCEvents : UseCaseEvents
 	{
-		Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration, string remoteSki);
+		// Write Approval methods (called BEFORE write is applied)
+		Task<WriteApprovalResult> ApproveActiveLimitWriteAsync( ActiveLimitWriteRequest request );
 
-        Task DataUpdateFailsafeConsumptionActivePowerLimitAsync( int counter, long limit, string remoteSki);
+		Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync( FailsafeLimitWriteRequest request );
+
+		// Data update events (called AFTER approved write is applied)
+		Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration, string remoteSki );
+
+		Task DataUpdateFailsafeConsumptionActivePowerLimitAsync( int counter, long limit, string remoteSki );
 	}
 
 	public interface LPPEvents : UseCaseEvents
 	{
-        Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration, string remoteSki);
+		// Write Approval methods
+		Task<WriteApprovalResult> ApproveActiveLimitWriteAsync( ActiveLimitWriteRequest request );
 
-        Task DataUpdateFailsafeProductionActivePowerLimitAsync( int counter, long limit, string remoteSki);
+		Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync( FailsafeLimitWriteRequest request );
+
+		// Data update events
+		Task DataUpdateLimitAsync( int counter, bool active, long limit, TimeSpan duration, string remoteSki );
+
+		Task DataUpdateFailsafeProductionActivePowerLimitAsync( int counter, long limit, string remoteSki );
 	}
 
 	public interface LPCorLPPEvents : UseCaseEvents
 	{
-        Task DataUpdateFailsafeDurationMinimumAsync( int counter, TimeSpan duration, string remoteSki);
+		// Write Approval method
+		Task<WriteApprovalResult> ApproveFailsafeDurationWriteAsync( FailsafeDurationWriteRequest request );
 
-        Task DataUpdateHeartbeatAsync( int counter, RemoteDevice device, uint timeout, string remoteSki);
+		// Data update events
+		Task DataUpdateFailsafeDurationMinimumAsync( int counter, TimeSpan duration, string remoteSki );
+
+		Task DataUpdateHeartbeatAsync( int counter, RemoteDevice device, uint timeout, string remoteSki );
 	}
 
     public interface NotifyEvents : UseCaseEvents
