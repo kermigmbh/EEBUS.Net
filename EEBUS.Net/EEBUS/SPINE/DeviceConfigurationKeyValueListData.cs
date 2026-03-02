@@ -130,7 +130,7 @@ namespace EEBUS.SPINE.Commands
 				}
 			}
 
-			public override async ValueTask EvaluateAsync( Connection connection, DatagramType datagram )
+			public override async ValueTask EvaluateAsync(Connection connection, DatagramType datagram)
 			{
 				if (datagram.header.cmdClassifier == "write")
 				{
@@ -139,59 +139,63 @@ namespace EEBUS.SPINE.Commands
 						? null
 						: System.Text.Json.JsonSerializer.Deserialize<DeviceConfigurationKeyValueListData>(datagram.payload);
 
-				if (payload == null)
-					return;
+					if (payload == null)
+						return;
 
-				int keyId = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].keyId;
-				ValueType value = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].value;
+					int keyId = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].keyId;
+					ValueType value = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].value;
 
-				KeyValue? keyValue = connection.Local.KeyValues.FirstOrDefault( kv => kv.Data.keyId == keyId );
-				if ( keyValue == null )
-				{
-					datagram.ApprovalResult = WriteApprovalResult.Deny( "Unknown key ID" );
-					return;
+					KeyValue? keyValue = connection.Local.KeyValues.FirstOrDefault(kv => kv.Data.keyId == keyId);
+					if (keyValue == null)
+					{
+						datagram.ApprovalResult = WriteApprovalResult.Deny("Unknown key ID");
+						return;
+					}
+
+					//foreach (var kvp in payload?.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData ?? []) {
+						//                   KeyValue? keyValue = connection.Local.KeyValues.FirstOrDefault(kv => kv.Data.keyId == kvp.keyId);
+						//                   if (null != keyValue)
+						//                   {
+						//                       keyValue.SetValue(kvp.value);
+						//                       await keyValue.SendEventAsync(connection);
+						//                   }
+						//               }
+						//               await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
+
+					WriteApprovalResult approvalResult = await GetApprovalForKeyValueAsync(connection, keyValue, value);
+					datagram.ApprovalResult = approvalResult;
+
+					if (approvalResult.Approved)
+					{
+						keyValue.SetValue(value);
+						await keyValue.SendEventAsync(connection);
+						await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
+						
+					}
 				}
-
-				WriteApprovalResult approvalResult = await GetApprovalForKeyValueAsync( connection, keyValue, value );
-				datagram.ApprovalResult = approvalResult;
-
-				if ( approvalResult.Approved )
+				else if (datagram.header.cmdClassifier == "reply" || datagram.header.cmdClassifier == "notify")
 				{
-					keyValue.SetValue( value );
-					await keyValue.SendEventAsync( connection );
-					await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
-					foreach (var kvp in payload?.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData ?? []) {
-                        KeyValue? keyValue = connection.Local.KeyValues.FirstOrDefault(kv => kv.Data.keyId == kvp.keyId);
-                        if (null != keyValue)
-                        {
-                            keyValue.SetValue(kvp.value);
-                            await keyValue.SendEventAsync(connection);
-                        }
-                    }
-                    await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
-                }
-                else if (datagram.header.cmdClassifier == "reply" || datagram.header.cmdClassifier == "notify")
-				{
-                    DeviceConfigurationKeyValueListData? payload = datagram.payload == null
-                        ? null
-                        : System.Text.Json.JsonSerializer.Deserialize<DeviceConfigurationKeyValueListData>(datagram.payload);
+					DeviceConfigurationKeyValueListData? payload = datagram.payload == null
+						? null
+						: System.Text.Json.JsonSerializer.Deserialize<DeviceConfigurationKeyValueListData>(datagram.payload);
 
 					if (payload == null || connection.Remote == null) return;
 
-                    foreach (var kvp in payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData)
+					foreach (var kvp in payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData)
 					{
-                        RemoteKeyValue? existing = connection.Remote.KeyValues.FirstOrDefault(kv => kv is RemoteKeyValue rkv && rkv.KeyId == kvp.keyId) as RemoteKeyValue;
+						RemoteKeyValue? existing = connection.Remote.KeyValues.FirstOrDefault(kv => kv is RemoteKeyValue rkv && rkv.KeyId == kvp.keyId) as RemoteKeyValue;
 						if (existing != null)
 						{
 							existing.Update(null, kvp);
-						} else
+						}
+						else
 						{
 							connection.Remote.KeyValues.Add(new RemoteKeyValue(connection.Remote, null, kvp));
 						}
 					}
 
 					await SendDeviceConfigurationChangedEventAsync(connection);
-                }
+				}
 			}
 
 			private async Task SendDeviceConfigurationChangedEventAsync(Connection connection)
