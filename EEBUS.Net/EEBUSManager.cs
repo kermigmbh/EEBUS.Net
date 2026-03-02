@@ -7,12 +7,9 @@ using EEBUS.Net.EEBUS.Data.DataStructures;
 using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.Net.Events;
 using EEBUS.SHIP.Messages;
-using EEBUS.SPINE.Commands;
 using EEBUS.UseCases.ControllableSystem;
-using Makaretu.Dns;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -32,6 +29,8 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Xml;
+using EEBUS.UseCases;
+using Makaretu.Dns;
 
 namespace EEBUS.Net
 {
@@ -117,13 +116,13 @@ namespace EEBUS.Net
             _settings = settings;
             this._serviceDiscovery = serviceDiscovery;
         }
+
         private static Type[] GetTypesInNamespace(Assembly assembly, string nameSpace)
         {
             return assembly.GetTypes()
                             .Where(t => String.Equals(t.Namespace, nameSpace, StringComparison.Ordinal))
                             .ToArray();
         }
-
 
         private void OnRemoteDeviceFound(RemoteDevice device)
         {
@@ -201,6 +200,18 @@ namespace EEBUS.Net
 
         private class LPCEventHandler(EEBUSManager EEBusManager) : LPCEvents
         {
+            public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync( ActiveLimitWriteRequest request )
+            {
+                Console.WriteLine( $"LPC Active Limit Write Request: Value={request.Value}, Active={request.IsLimitActive}" );
+                return Task.FromResult(WriteApprovalResult.Accept());
+            }
+
+            public Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync( FailsafeLimitWriteRequest request )
+            {
+                Console.WriteLine( $"LPC Failsafe Limit Write Request: Value={request.Value}" );
+                return Task.FromResult(WriteApprovalResult.Accept());
+            }
+
             public async Task DataUpdateLimitAsync(int counter, bool active, long limit, TimeSpan duration, string remoteSki)
             {
                 //using var _ = Push(new LimitDataChanged(true, active, limit, duration));
@@ -237,6 +248,18 @@ namespace EEBUS.Net
 
         private class LPPEventHandler(EEBUSManager EEBusManager) : LPPEvents
         {
+            public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync( ActiveLimitWriteRequest request )
+            {
+                Console.WriteLine( $"LPP Active Limit Write Request: Value={request.Value}, Active={request.IsLimitActive}" );
+                return Task.FromResult(WriteApprovalResult.Accept());
+            }
+
+            public Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync( FailsafeLimitWriteRequest request )
+            {
+                Console.WriteLine( $"LPP Failsafe Limit Write Request: Value={request.Value}" );
+                return Task.FromResult(WriteApprovalResult.Accept());
+            }
+
             public async Task DataUpdateLimitAsync(int counter, bool active, long limit, TimeSpan duration, string remoteSki)
             {
                 //using var _ = Push(new LimitDataChanged(false, active, limit, duration));
@@ -250,6 +273,12 @@ namespace EEBUS.Net
 
         private class LPCorLPPEventHandler(EEBUSManager EEBusManager) : LPCorLPPEvents
         {
+            public Task<WriteApprovalResult> ApproveFailsafeDurationWriteAsync( FailsafeDurationWriteRequest request )
+            {
+                Console.WriteLine( $"Failsafe Duration Write Request: Duration={request.Duration}" );
+                return Task.FromResult(WriteApprovalResult.Accept());
+            }
+
             public async Task DataUpdateFailsafeDurationMinimumAsync(int counter, TimeSpan duration, string remoteSki)
             {
                 //using var _ = Push(new FailsafeLimitDurationChanged(duration));
