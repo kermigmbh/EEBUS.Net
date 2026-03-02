@@ -1,8 +1,10 @@
 ﻿using EEBUS.KeyValues;
 using EEBUS.Messages;
 using EEBUS.Models;
+using EEBUS.Net.EEBUS.Data.KeyValues;
 using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.SHIP.Messages;
+using EEBUS.UseCases.ControllableSystem;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -46,23 +48,55 @@ namespace EEBUS.SPINE.Commands
 
 			public override async ValueTask EvaluateAsync( Connection connection, DatagramType datagram )
 			{
-				if ( datagram.header.cmdClassifier != "write" )
-					return;
-
-				DeviceConfigurationKeyValueListData? payload = datagram.payload == null
-					? null
-					: System.Text.Json.JsonSerializer.Deserialize<DeviceConfigurationKeyValueListData>(datagram.payload);
-
-				int		  keyId = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].keyId;
-				ValueType value = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].value;
-
-				KeyValue? keyValue = connection.Local.KeyValues.FirstOrDefault( kv => kv.Data.keyId == keyId );
-				if (null != keyValue)
+				if (datagram.header.cmdClassifier == "write")
 				{
-					keyValue.SetValue(value);
-					await keyValue.SendEventAsync(connection);
-					await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
-					//SendNotify(connection, datagram);
+
+					DeviceConfigurationKeyValueListData? payload = datagram.payload == null
+						? null
+						: System.Text.Json.JsonSerializer.Deserialize<DeviceConfigurationKeyValueListData>(datagram.payload);
+
+					foreach (var kvp in payload?.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData ?? []) {
+                        KeyValue? keyValue = connection.Local.KeyValues.FirstOrDefault(kv => kv.Data.keyId == kvp.keyId);
+                        if (null != keyValue)
+                        {
+                            keyValue.SetValue(kvp.value);
+                            await keyValue.SendEventAsync(connection);
+                        }
+                    }
+                    await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
+                }
+                else if (datagram.header.cmdClassifier == "reply" || datagram.header.cmdClassifier == "notify")
+				{
+                    DeviceConfigurationKeyValueListData? payload = datagram.payload == null
+                        ? null
+                        : System.Text.Json.JsonSerializer.Deserialize<DeviceConfigurationKeyValueListData>(datagram.payload);
+
+					if (payload == null || connection.Remote == null) return;
+
+                    foreach (var kvp in payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData)
+					{
+                        RemoteKeyValue? existing = connection.Remote.KeyValues.FirstOrDefault(kv => kv is RemoteKeyValue rkv && rkv.KeyId == kvp.keyId) as RemoteKeyValue;
+						if (existing != null)
+						{
+							existing.Update(null, kvp);
+						} else
+						{
+							connection.Remote.KeyValues.Add(new RemoteKeyValue(connection.Remote, null, kvp));
+						}
+					}
+
+					await SendDeviceConfigurationChangedEventAsync(connection);
+                }
+			}
+
+			private async Task SendDeviceConfigurationChangedEventAsync(Connection connection)
+			{
+				if (connection.Remote == null) return;
+
+				var deviceConfigEvents = connection.Local.GetUseCaseEvents<DeviceConfigurationEvents>();
+				foreach (var ev in deviceConfigEvents)
+				{
+					await ev.RemoteDeviceConfigurationChangedAsync(connection);
 				}
 			}
 
@@ -152,6 +186,7 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class CmdDeviceConfigurationKeyValueListDataType : CmdType
 	{
+
 		public DeviceConfigurationKeyValueListDataType deviceConfigurationKeyValueListData { get; set; } = new();
 	}
 

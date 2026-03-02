@@ -9,8 +9,9 @@ namespace EEBUS.Net.EEBUS.Models.Data
         public LpcLppData? Lpc { get; set; }
         public LpcLppData? Lpp { get; set; }
         public int? FailSafeLimitDuration { get; set; }
+        public MgcpData? Mgcp { get; set; }
         public string SKI { get; set; } = string.Empty;
-        public string ShipId { get; set; } = string.Empty;
-        public string Name {  get; set; } = string.Empty;
+        //public string ShipId { get; set; } = string.Empty;
+        //public string Name {  get; set; } = string.Empty;
     }
 }

@@ -1,4 +1,5 @@
 ﻿using EEBUS.DataStructures;
+using EEBUS.Features;
 using EEBUS.KeyValues;
 using EEBUS.Messages;
 using EEBUS.Models;
@@ -62,6 +63,8 @@ namespace EEBUS.Net
         public Devices Devices => _devices;
 
         internal List<Connection> Connections => _connections.Values.ToList();
+
+        public string LocalSki => _devices.Local?.SKI.ToString() ?? string.Empty;
 
         public EEBUSManager(Settings settings, Func<NewConnectionValidationEventArgs, bool>? onNewConnectionValidation = null,  ServiceDiscovery? serviceDiscovery = null)
         {
@@ -345,13 +348,14 @@ namespace EEBUS.Net
 
         }
 
-        public DeviceData GetDeviceData()
+        public DeviceData GetDeviceData(string ski)
         {
             LocalDevice? local = _devices?.Local;
 
             if (null == local)
                 return new();
 
+            //LPC and LPP (data saved in local device)
             bool lpcActive = false;
             long lpcLimit = 0;
             TimeSpan lpcDuration = new();
@@ -405,11 +409,47 @@ namespace EEBUS.Net
             if (null != failsafeDurationKeyValue)
                 failsafeDuration = XmlConvert.ToTimeSpan(failsafeDurationKeyValue.Duration);
 
+            //MGCP 
+            MgcpData? mgcpData = null;
+            RemoteDevice? remote = _devices?.Remote.FirstOrDefault(r => r.SKI.ToString() == ski);
+            if (remote != null)
+            {
+                mgcpData = new();
+                AddressType address = remote.GetFeatureAddress("Measurement", true);
+                Entity? entity = remote.Entities.FirstOrDefault(e => e.Index.SequenceEqual(address.entity));
+                MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == address.feature) as MeasurementServerFeature;
+                if (measurementFeature != null)
+                {
+                    mgcpData.AcPowerTotal = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acPowerTotal")?.measurementDataType.value?.number;
+                    mgcpData.GridFeedIn = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "gridFeedIn")?.measurementDataType.value?.number;
+                    mgcpData.GridConsumption = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "gridConsumption")?.measurementDataType.value?.number;
+
+                    mgcpData.AcCurrent = new AcPhaseData
+                    {
+                        PhaseA = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "a")?.measurementDataType.value?.number,
+                        PhaseB = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "b")?.measurementDataType.value?.number,
+                        PhaseC = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "c")?.measurementDataType.value?.number
+                    };
+
+                    mgcpData.AcVoltage = new AcPhaseData
+                    {
+                        PhaseA = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "a")?.measurementDataType.value?.number,
+                        PhaseB = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "b")?.measurementDataType.value?.number,
+                        PhaseC = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "c")?.measurementDataType.value?.number
+                    };
+
+                    mgcpData.AcFrequency = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acFrequency")?.measurementDataType.value?.number;
+                }
+
+                PvCurtailmentLimitFactorKeyValue? pvCurtailmentKeyValue = remote.GetKeyValue<PvCurtailmentLimitFactorKeyValue>();
+                mgcpData.PvCurtailmentLimitFactor = pvCurtailmentKeyValue?.Value;
+            }
+
             return new DeviceData
             {
-                Name = local.Name,
-                SKI = local.SKI.ToString(),
-                ShipId = local.ShipID,
+                //Name = local.Name,
+                SKI = ski,
+                //ShipId = local.ShipID,
                 Lpc = new LpcLppData
                 {
                     LimitActive = lpcActive,
@@ -426,6 +466,7 @@ namespace EEBUS.Net
                     FailSafeLimit = lppFailsafeLimit,
                     ContractualNominalMax = lppContractualNominalMax
                 },
+                Mgcp = mgcpData,
                 FailSafeLimitDuration = (int)failsafeDuration.TotalSeconds
             };
         }

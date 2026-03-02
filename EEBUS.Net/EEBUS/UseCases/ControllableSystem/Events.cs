@@ -1,5 +1,6 @@
 ﻿using EEBUS.Messages;
 using EEBUS.Models;
+using EEBUS.Net.EEBUS.Data.KeyValues;
 using System.Text.Json.Nodes;
 
 namespace EEBUS.UseCases.ControllableSystem
@@ -33,5 +34,10 @@ namespace EEBUS.UseCases.ControllableSystem
 	public interface DeviceConnectionStatusEvents : UseCaseEvents
 	{
 		Task DeviceConnectionStatusUpdatedAsync(Connection connection);
+	}
+
+	public interface DeviceConfigurationEvents : UseCaseEvents
+	{
+		Task RemoteDeviceConfigurationChangedAsync(Connection connection);
 	}
 }

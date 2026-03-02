@@ -21,10 +21,10 @@ namespace EEBUS.UseCases.MonitoringAppliance
 		{
 			entity.GetOrAdd( Feature.Create( "ElectricalConnection", "client", entity ) );
 
-			if (usecaseSettings.PvCurtailmentLimitFactor.HasValue)
-			{
-				entity.Local.AddUnique(new PvCurtailmentLimitFactorKeyValue(entity.Local, usecaseSettings.PvCurtailmentLimitFactor.Value, 0, true));
-			}
+			//if (usecaseSettings.PvCurtailmentLimitFactor.HasValue)
+			//{
+			//	entity.Local.AddUnique(new PvCurtailmentLimitFactorKeyValue(entity.Local, usecaseSettings.PvCurtailmentLimitFactor.Value, 0, true));
+			//}
 
 			MeasurementClientFeature? measurementClient = entity.GetOrAdd( Feature.Create( "Measurement", "client", entity ) ) as MeasurementClientFeature;
 
