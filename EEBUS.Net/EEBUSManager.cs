@@ -6,31 +6,24 @@ using EEBUS.Models;
 using EEBUS.Net.EEBUS.Data.DataStructures;
 using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.Net.Events;
+using EEBUS.Net.Extensions;
 using EEBUS.SHIP.Messages;
+using EEBUS.UseCases;
 using EEBUS.UseCases.ControllableSystem;
+using Makaretu.Dns;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Data.SqlTypes;
 using System.Diagnostics;
-using System.Net;
 using System.Net.Security;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Runtime.ConstrainedExecution;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using System.Threading;
 using System.Xml;
-using EEBUS.UseCases;
-using Makaretu.Dns;
 
 namespace EEBUS.Net
 {
@@ -52,7 +45,7 @@ namespace EEBUS.Net
         public Func<DeviceData, Task>? OnDeviceDataChanged { get; set; }
         public Func<RemoteDevice, DeviceConnectionStatus, Task>? OnDeviceConnectionStatusChanged { get; set; }
 
-        private Func<NewConnectionValidationEventArgs, bool>? _onNewConnectionValidation  = (NewConnectionValidationEventArgs args) => true;
+        private Func<NewConnectionValidationEventArgs, bool>? _onNewConnectionValidation = (NewConnectionValidationEventArgs args) => true;
         //private ConcurrentDictionary<string, DeviceConnectionStatus> _deviceConnectionStatus = new();
 
         private CancellationTokenSource _cts = new();
@@ -63,9 +56,9 @@ namespace EEBUS.Net
 
         internal List<Connection> Connections => _connections.Values.ToList();
 
-        public string LocalSki => _devices.Local?.SKI.ToString() ?? string.Empty;
+        //public string LocalSki => _devices.Local?.SKI.ToString() ?? string.Empty;
 
-        public EEBUSManager(Settings settings, Func<NewConnectionValidationEventArgs, bool>? onNewConnectionValidation = null,  ServiceDiscovery? serviceDiscovery = null)
+        public EEBUSManager(Settings settings, Func<NewConnectionValidationEventArgs, bool>? onNewConnectionValidation = null, ServiceDiscovery? serviceDiscovery = null)
         {
             if (onNewConnectionValidation != null)
             {
@@ -174,16 +167,16 @@ namespace EEBUS.Net
                     {
                         //if (connection.BindingAndSubscriptionManager.HasSubscription(clientAddress, serverAddress))
                         //{
-                            SpineDatagramPayload reply = new SpineDatagramPayload();
-                            reply.datagram.header.addressSource = serverAddress;
-                            reply.datagram.header.addressDestination = clientAddress;
-                            reply.datagram.header.msgCounter = DataMessage.NextCount;
-                            reply.datagram.header.cmdClassifier = "notify";
+                        SpineDatagramPayload reply = new SpineDatagramPayload();
+                        reply.datagram.header.addressSource = serverAddress;
+                        reply.datagram.header.addressDestination = clientAddress;
+                        reply.datagram.header.msgCounter = DataMessage.NextCount;
+                        reply.datagram.header.cmdClassifier = "notify";
 
-                            reply.datagram.payload = payload;
-                            DataMessage dataMessage = new DataMessage();
-                            dataMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize data message"));
-                            connection.PushDataMessage(dataMessage);
+                        reply.datagram.payload = payload;
+                        DataMessage dataMessage = new DataMessage();
+                        dataMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize data message"));
+                        connection.PushDataMessage(dataMessage);
                         //}
                     }
                 }
@@ -205,71 +198,24 @@ namespace EEBUS.Net
         {
             public async Task DataUpdateMeasurementsAsync(List<MeasurementData.MeasurementData> measurementData, string ski)
             {
-                AcPhaseData acCurrent = new AcPhaseData
-                {
-                    PhaseA = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "a")?.measurementDataType.value?.number,
-                    PhaseB = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "b")?.measurementDataType.value?.number,
-                    PhaseC = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "c")?.measurementDataType.value?.number
-                };
-
-                AcPhaseData acVoltage = new AcPhaseData
-                {
-                    PhaseA = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "a")?.measurementDataType.value?.number,
-                    PhaseB = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "b")?.measurementDataType.value?.number,
-                    PhaseC = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "c")?.measurementDataType.value?.number
-                };
-
-                AcPhaseData acPower = new AcPhaseData
-                {
-                    PhaseA = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acPower" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "a")?.measurementDataType.value?.number,
-                    PhaseB = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acPower" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "b")?.measurementDataType.value?.number,
-                    PhaseC = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acPower" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "c")?.measurementDataType.value?.number
-                };
-
-                long? acPowerTotal = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acPowerTotal")?.measurementDataType.value?.number;
-                long? gridFeedIn = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "gridFeedIn")?.measurementDataType.value?.number;
-                long? gridConsumption = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "gridConsumption")?.measurementDataType.value?.number;
-                long? acFrequency = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acFrequency")?.measurementDataType.value?.number;
-                long? acEnergyConsumed = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acEnergyConsumed")?.measurementDataType.value?.number;
-
-                MgcpData mgcpData = new MgcpData
-                {
-                    AcPowerTotal = acPowerTotal,
-                    GridFeedIn = gridFeedIn,
-                    GridConsumption = gridConsumption,
-                    AcCurrent = acCurrent,
-                    AcVoltage = acVoltage,
-                    AcFrequency = acFrequency,
-                };
-
-                MpcData mpcData = new MpcData
-                {
-                    AcPowerTotal = acPowerTotal,
-                    AcPower = acPower,
-                    AcEnergyConsumed = acEnergyConsumed,
-                    AcCurrent = acCurrent,
-                    AcVoltage = acVoltage,
-                    AcFrequency = acFrequency
-                };
+                MeasurementsData measurements = measurementData.CollectData();
 
                 if (eebusManager.OnDeviceDataChanged != null)
                 {
                     await eebusManager.OnDeviceDataChanged(new DeviceData
                     {
                         SKI = ski,
-                        Mgcp = mgcpData,
-                        Mpc = mpcData
+                        //Mgcp = mgcpData,
+                        //Mpc = mpcData
+                        Measurements = measurements
                     });
                 }
             }
 
-            public async Task RemoteDeviceConfigurationChangedAsync(Connection connection)
+            public async Task DeviceConfigurationChangedAsync(Device device)
             {
-                RemoteDevice? remote = connection.Remote;
-                if (remote == null) return;
-
                 MgcpData? mgcpData = null;
-                KeyValue? pvCurtailmentLimitFactor = remote.KeyValues.FirstOrDefault(kv => kv.KeyName == "pvCurtailmentLimitFactor");
+                KeyValue? pvCurtailmentLimitFactor = device.KeyValues.FirstOrDefault(kv => kv.KeyName == "pvCurtailmentLimitFactor");
                 if (pvCurtailmentLimitFactor != null)
                 {
                     mgcpData = new MgcpData
@@ -282,7 +228,7 @@ namespace EEBUS.Net
                 {
                     await eebusManager.OnDeviceDataChanged(new DeviceData
                     {
-                        SKI = remote.SKI.ToString(),
+                        SKI = device.SKI.ToString(),
                         Mgcp = mgcpData
                     });
                 }
@@ -291,15 +237,15 @@ namespace EEBUS.Net
 
         private class LPCEventHandler(EEBUSManager EEBusManager) : LPCEvents
         {
-            public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync( ActiveLimitWriteRequest request )
+            public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync(ActiveLimitWriteRequest request)
             {
-                Console.WriteLine( $"LPC Active Limit Write Request: Value={request.Value}, Active={request.IsLimitActive}" );
+                Console.WriteLine($"LPC Active Limit Write Request: Value={request.Value}, Active={request.IsLimitActive}");
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
-            public Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync( FailsafeLimitWriteRequest request )
+            public Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync(FailsafeLimitWriteRequest request)
             {
-                Console.WriteLine( $"LPC Failsafe Limit Write Request: Value={request.Value}" );
+                Console.WriteLine($"LPC Failsafe Limit Write Request: Value={request.Value}");
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
@@ -339,15 +285,15 @@ namespace EEBUS.Net
 
         private class LPPEventHandler(EEBUSManager EEBusManager) : LPPEvents
         {
-            public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync( ActiveLimitWriteRequest request )
+            public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync(ActiveLimitWriteRequest request)
             {
-                Console.WriteLine( $"LPP Active Limit Write Request: Value={request.Value}, Active={request.IsLimitActive}" );
+                Console.WriteLine($"LPP Active Limit Write Request: Value={request.Value}, Active={request.IsLimitActive}");
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
-            public Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync( FailsafeLimitWriteRequest request )
+            public Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync(FailsafeLimitWriteRequest request)
             {
-                Console.WriteLine( $"LPP Failsafe Limit Write Request: Value={request.Value}" );
+                Console.WriteLine($"LPP Failsafe Limit Write Request: Value={request.Value}");
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
@@ -364,9 +310,9 @@ namespace EEBUS.Net
 
         private class LPCorLPPEventHandler(EEBUSManager EEBusManager) : LPCorLPPEvents
         {
-            public Task<WriteApprovalResult> ApproveFailsafeDurationWriteAsync( FailsafeDurationWriteRequest request )
+            public Task<WriteApprovalResult> ApproveFailsafeDurationWriteAsync(FailsafeDurationWriteRequest request)
             {
-                Console.WriteLine( $"Failsafe Duration Write Request: Duration={request.Duration}" );
+                Console.WriteLine($"Failsafe Duration Write Request: Duration={request.Duration}");
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
@@ -468,7 +414,115 @@ namespace EEBUS.Net
 
         }
 
-        public DeviceData GetDeviceData(string ski)
+        //public DeviceData GetDeviceData(string ski)
+        //{
+        //    LocalDevice? local = _devices?.Local;
+
+        //    if (null == local)
+        //        return new();
+
+        //    //LPC and LPP (data saved in local device)
+        //    bool lpcActive = false;
+        //    long lpcLimit = 0;
+        //    TimeSpan lpcDuration = new();
+        //    long lpcFailsafeLimit = 0;
+        //    long lpcContractualNominalMax = 0;
+
+        //    bool lppActive = false;
+        //    long lppLimit = 0;
+        //    TimeSpan lppDuration = new();
+        //    long lppFailsafeLimit = 0;
+        //    long lppContractualNominalMax = 0;
+
+        //    TimeSpan failsafeDuration = new();
+
+        //    foreach (LoadControlLimitDataStructure data in local.GetDataStructures<LoadControlLimitDataStructure>())
+        //    {
+        //        if (data.LimitDirection == "consume")
+        //        {
+        //            lpcActive = data.LimitActive;
+        //            lpcLimit = data.Number;
+        //            lpcDuration = data.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(data.EndTime);
+        //        }
+        //        else if (data.LimitDirection == "produce")
+        //        {
+        //            lppActive = data.LimitActive;
+        //            lppLimit = data.Number;
+        //            lppDuration = data.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(data.EndTime);
+        //        }
+        //    }
+
+        //    foreach (ElectricalConnectionCharacteristicDataStructure data in local.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>())
+        //    {
+        //        if (data.CharacteristicType == "contractualConsumptionNominalMax")
+        //        {
+        //            lpcContractualNominalMax = data.Number;
+        //        }
+        //        else if (data.CharacteristicType == "contractualConsumptionNominalMax")
+        //        {
+        //            lppContractualNominalMax = data.Number;
+        //        }
+        //    }
+
+        //    FailsafeConsumptionActivePowerLimitKeyValue? lpcFailsafeLimitKeyValue = local.GetKeyValue<FailsafeConsumptionActivePowerLimitKeyValue>();
+        //    if (null != lpcFailsafeLimitKeyValue)
+        //        lpcFailsafeLimit = lpcFailsafeLimitKeyValue.Value;
+
+        //    FailsafeProductionActivePowerLimitKeyValue? lppFailsafeLimitKeyValue = local.GetKeyValue<FailsafeProductionActivePowerLimitKeyValue>();
+        //    if (null != lppFailsafeLimitKeyValue)
+        //        lppFailsafeLimit = lppFailsafeLimitKeyValue.Value;
+
+        //    FailsafeDurationMinimumKeyValue? failsafeDurationKeyValue = local.GetKeyValue<FailsafeDurationMinimumKeyValue>();
+        //    if (null != failsafeDurationKeyValue)
+        //        failsafeDuration = XmlConvert.ToTimeSpan(failsafeDurationKeyValue.Duration);
+
+        //    //MGCP 
+        //    MgcpData? mgcpData = null;
+        //    MeasurementsData? measurements = null;
+        //    RemoteDevice? remote = _devices?.Remote.FirstOrDefault(r => r.SKI.ToString() == ski);
+        //    if (remote != null)
+        //    {
+        //        AddressType address = remote.GetFeatureAddress("Measurement", true);
+        //        Entity? entity = remote.Entities.FirstOrDefault(e => e.Index.SequenceEqual(address.entity));
+        //        MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == address.feature) as MeasurementServerFeature;
+        //        if (measurementFeature != null)
+        //        {
+        //            measurements = measurementFeature.measurementData.CollectData();
+        //        }
+
+        //        mgcpData = new();
+        //        KeyValue? pvCurtailmentKeyValue = remote.KeyValues.FirstOrDefault(kv => kv.KeyName == "pvCurtailmentLimitFactor");
+        //        mgcpData.PvCurtailmentLimitFactor = pvCurtailmentKeyValue?.Data.value.scaledNumber?.number;
+        //    }
+
+        //    return new DeviceData
+        //    {
+        //        //Name = local.Name,
+        //        SKI = ski,
+        //        //ShipId = local.ShipID,
+        //        Lpc = new LpcLppData
+        //        {
+        //            LimitActive = lpcActive,
+        //            Limit = lpcLimit,
+        //            LimitDuration = (int)lpcDuration.TotalSeconds,
+        //            FailSafeLimit = lpcFailsafeLimit,
+        //            ContractualNominalMax = lpcContractualNominalMax
+        //        },
+        //        Lpp = new LpcLppData
+        //        {
+        //            LimitActive = lppActive,
+        //            Limit = lppLimit,
+        //            LimitDuration = (int)lppDuration.TotalSeconds,
+        //            FailSafeLimit = lppFailsafeLimit,
+        //            ContractualNominalMax = lppContractualNominalMax
+        //        },
+        //        Mgcp = mgcpData,
+        //        Measurements = measurements,
+        //        FailSafeLimitDuration = (int)failsafeDuration.TotalSeconds
+        //    };
+        //}
+
+        public DeviceData GetLocalData()
         {
             LocalDevice? local = _devices?.Local;
 
@@ -511,7 +565,8 @@ namespace EEBUS.Net
                 if (data.CharacteristicType == "contractualConsumptionNominalMax")
                 {
                     lpcContractualNominalMax = data.Number;
-                } else if (data.CharacteristicType == "contractualConsumptionNominalMax")
+                }
+                else if (data.CharacteristicType == "contractualConsumptionNominalMax")
                 {
                     lppContractualNominalMax = data.Number;
                 }
@@ -529,47 +584,15 @@ namespace EEBUS.Net
             if (null != failsafeDurationKeyValue)
                 failsafeDuration = XmlConvert.ToTimeSpan(failsafeDurationKeyValue.Duration);
 
-            //MGCP 
-            MgcpData? mgcpData = null;
-            RemoteDevice? remote = _devices?.Remote.FirstOrDefault(r => r.SKI.ToString() == ski);
-            if (remote != null)
-            {
-                mgcpData = new();
-                AddressType address = remote.GetFeatureAddress("Measurement", true);
-                Entity? entity = remote.Entities.FirstOrDefault(e => e.Index.SequenceEqual(address.entity));
-                MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == address.feature) as MeasurementServerFeature;
-                if (measurementFeature != null)
-                {
-                    mgcpData.AcPowerTotal = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acPowerTotal")?.measurementDataType.value?.number;
-                    mgcpData.GridFeedIn = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "gridFeedIn")?.measurementDataType.value?.number;
-                    mgcpData.GridConsumption = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "gridConsumption")?.measurementDataType.value?.number;
-
-                    mgcpData.AcCurrent = new AcPhaseData
-                    {
-                        PhaseA = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "a")?.measurementDataType.value?.number,
-                        PhaseB = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "b")?.measurementDataType.value?.number,
-                        PhaseC = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "c")?.measurementDataType.value?.number
-                    };
-
-                    mgcpData.AcVoltage = new AcPhaseData
-                    {
-                        PhaseA = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "a")?.measurementDataType.value?.number,
-                        PhaseB = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "b")?.measurementDataType.value?.number,
-                        PhaseC = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "c")?.measurementDataType.value?.number
-                    };
-
-                    mgcpData.AcFrequency = measurementFeature.measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acFrequency")?.measurementDataType.value?.number;
-                }
-
-                KeyValue? pvCurtailmentKeyValue = remote.KeyValues.FirstOrDefault(kv => kv.KeyName == "pvCurtailmentLimitFactor");
-                mgcpData.PvCurtailmentLimitFactor = pvCurtailmentKeyValue?.Data.value.scaledNumber?.number;
-            }
+            MeasurementsData? measurements = null;
+            AddressType address = local.GetFeatureAddress("Measurement", true);
+            Entity? entity = local.Entities.FirstOrDefault(e => e.Index.SequenceEqual(address.entity));
+            MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == address.feature) as MeasurementServerFeature;
+            measurements = measurementFeature?.measurementData.CollectData();
 
             return new DeviceData
             {
-                //Name = local.Name,
-                SKI = ski,
-                //ShipId = local.ShipID,
+                SKI = local.SKI.ToString(),
                 Lpc = new LpcLppData
                 {
                     LimitActive = lpcActive,
@@ -586,8 +609,37 @@ namespace EEBUS.Net
                     FailSafeLimit = lppFailsafeLimit,
                     ContractualNominalMax = lppContractualNominalMax
                 },
+                Measurements = measurements,
+                FailSafeLimitDuration = (int)failsafeDuration.TotalSeconds,
+                UseCaseSupport = local.GetUseCaseSupport()
+            };
+        }
+
+        public DeviceData GetRemoteData(string ski)
+        {
+            RemoteDevice? remote = _devices.Remote.FirstOrDefault(r => r.SKI.ToString() == ski);
+            if (remote == null) return new();
+
+            MeasurementsData? measurements = null;
+            AddressType address = remote.GetFeatureAddress("Measurement", true);
+            Entity? entity = remote.Entities.FirstOrDefault(e => e.Index.SequenceEqual(address.entity));
+            MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == address.feature) as MeasurementServerFeature;
+            if (measurementFeature != null)
+            {
+                measurements = measurementFeature.measurementData.CollectData();
+            }
+
+            MgcpData mgcpData = new();
+            KeyValue? pvCurtailmentKeyValue = remote.KeyValues.FirstOrDefault(kv => kv.KeyName == "pvCurtailmentLimitFactor");
+            mgcpData.PvCurtailmentLimitFactor = pvCurtailmentKeyValue?.Data.value.scaledNumber?.number;
+
+            return new DeviceData
+            {
+                SKI = remote.SKI.ToString(),
+                Measurements = measurements,
                 Mgcp = mgcpData,
-                FailSafeLimitDuration = (int)failsafeDuration.TotalSeconds
+                UseCaseSupport = remote.GetUseCaseSupport(),
+                Name = remote.Name,
             };
         }
 
@@ -614,16 +666,13 @@ namespace EEBUS.Net
             return JsonSerializer.SerializeToNode(projection, options)!.AsArray();
         }
 
-        public IEnumerable<RemoteDeviceData> GetRemoteData()
+        public IEnumerable<RemoteDeviceData> GetConnectedDevices()
         {
             return _devices.Remote.Select(rd => new RemoteDeviceData
             {
                 Id = rd.Id,
                 Name = rd.Name,
                 Ski = rd.SKI.ToString(),
-                SupportsLpc = rd.SupportsUseCase("limitationOfPowerConsumption", "EnergyGuard"),
-                SupportsLpp = rd.SupportsUseCase("limitationOfPowerProduction", "EnergyGuard"),
-                SupportsMgcp = rd.SupportsUseCase("monitoringOfGridConnectionPoint", "GridConnectionPoint")
             });
         }
 
@@ -637,7 +686,7 @@ namespace EEBUS.Net
                     await loadControlLimitListData.WriteDataAsync(_devices.Local, deviceData);
                 }
             }
-           
+
 
             if (deviceData.FailSafeLimitDuration != null && deviceData.Lpc != null || deviceData.Lpp != null)
             {
@@ -648,7 +697,7 @@ namespace EEBUS.Net
                 }
             }
 
-            
+
         }
 
         /// <summary>
@@ -703,7 +752,7 @@ namespace EEBUS.Net
                         }) ?? false;
 
 
-                        
+
                     };
                     wsClient.Options.ClientCertificates.Add(_cert);
                     await wsClient.ConnectAsync(uri, CancellationToken.None).ConfigureAwait(false);
@@ -784,9 +833,6 @@ namespace EEBUS.Net
             }
         }
 
-
-
-
         public void Start()
         {
             _shipListener = new SHIPListener(_devices, _settings);
@@ -798,15 +844,15 @@ namespace EEBUS.Net
                     Console.WriteLine($"remote device with SKI {args.Ski} has no mDNS advertisements");
                     return false;
                 }
-                
+
 
                 return _onNewConnectionValidation?.Invoke(new NewConnectionValidationEventArgs()
-                    {
-                        Certificate = args.Certificate,
-                        RemoteEndpoint = args.RemoteEndpoint,
-                        Ski = args.Ski
-    
-                    }) ?? false;
+                {
+                    Certificate = args.Certificate,
+                    RemoteEndpoint = args.RemoteEndpoint,
+                    Ski = args.Ski
+
+                }) ?? false;
             };
             _shipListener.OnDeviceConnectionChanged = OnDeviceConnectionChangedAsync;
             _shipListener.StartAsync(_settings.Device.Port);

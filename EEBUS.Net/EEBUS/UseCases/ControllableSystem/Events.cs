@@ -54,7 +54,7 @@ namespace EEBUS.UseCases.ControllableSystem
 
 	public interface MonitoringUseCaseEvents : UseCaseEvents
 	{
-		Task RemoteDeviceConfigurationChangedAsync(Connection connection);
+		Task DeviceConfigurationChangedAsync(Device device);
 		Task DataUpdateMeasurementsAsync(List<MeasurementData.MeasurementData> measurementData, string ski);
 	}
 }

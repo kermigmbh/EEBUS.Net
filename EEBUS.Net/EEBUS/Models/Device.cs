@@ -1,4 +1,5 @@
 ﻿using EEBUS.Messages;
+using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.SPINE.Commands;
 using EEBUS.UseCases;
 
@@ -193,7 +194,7 @@ namespace EEBUS.Models
             }
         }
 
-        public bool SupportsUseCase(string useCaseName, string actor)
+        private bool SupportsUseCase(string useCaseName, string actor)
         {
             foreach (Entity entity in Entities)
             {
@@ -203,6 +204,33 @@ namespace EEBUS.Models
                 }
             }
             return false;
+        }
+
+        public UseCaseSupportData GetUseCaseSupport()
+        {
+            return new UseCaseSupportData
+            {
+                Lpc = new UseCaseSupportDetailData
+                {
+                    Client = SupportsUseCase("limitationOfPowerConsumption", "EnergyGuard"),
+                    Server = SupportsUseCase("limitationOfPowerConsumption", "ControllableSystem"),
+                },
+                Lpp = new UseCaseSupportDetailData
+                {
+                    Client = SupportsUseCase("limitationOfPowerProduction", "EnergyGuard"),
+                    Server = SupportsUseCase("limitationOfPowerProduction", "ControllableSystem"),
+                },
+                Mgcp = new UseCaseSupportDetailData
+                {
+                    Client = SupportsUseCase("monitoringOfGridConnectionPoint", "MonitoringAppliance"),
+                    Server = SupportsUseCase("monitoringOfGridConnectionPoint", "GridConnectionPoint"),
+                },
+                Mpc = new UseCaseSupportDetailData
+                {
+                    Client = SupportsUseCase("monitoringOfPowerConsumption", "MonitoringAppliance"),
+                    Server = SupportsUseCase("monitoringOfPowerConsumption", "MonitoredUnit"),
+                }
+            };
         }
 
         public AddressType GetHeartbeatAddress(bool server)

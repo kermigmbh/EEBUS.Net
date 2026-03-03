@@ -51,18 +51,18 @@ namespace EEBUS.SPINE.Commands
                         }
                     }
 
-                    await SendDeviceConfigurationChangedEventAsync(connection);
+                    await SendRemoteConfigurationChangedEventAsync(connection);
                 }
             }
 
-            private async Task SendDeviceConfigurationChangedEventAsync(Connection connection)
+            private async Task SendRemoteConfigurationChangedEventAsync(Connection connection)
             {
                 if (connection.Remote == null) return;
 
                 var deviceConfigEvents = connection.Local.GetUseCaseEvents<MonitoringUseCaseEvents>();
                 foreach (var ev in deviceConfigEvents)
                 {
-                    await ev.RemoteDeviceConfigurationChangedAsync(connection);
+                    await ev.DeviceConfigurationChangedAsync(connection.Remote);
                 }
             }
         }

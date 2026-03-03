@@ -1,0 +1,18 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace EEBUS.Net.EEBUS.Models.Data
+{
+    public class MeasurementsData
+    {
+        public long? AcPowerTotal { get; set; }
+        public long? GridFeedIn { get; set; }
+        public long? GridConsumption { get; set; }
+        public AcPhaseData? AcPower { get; set; }
+        public long? AcEnergyConsumed { get; set; }
+        public AcPhaseData? AcCurrent { get; set; }
+        public AcPhaseData? AcVoltage { get; set; }
+        public long? AcFrequency { get; set; }
+    }
+}
