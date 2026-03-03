@@ -140,18 +140,18 @@ namespace EEBUS.SPINE.Commands
 							corresponding.measurementDataType = measurement;
 						}
 					}
-					await SendMeasurementDataChangedAsync(connection, measurementFeature.measurementData);
+					await SendRemoteMeasurementDataChangedAsync(connection, measurementFeature.measurementData);
 				}
             }
 
-            private async Task SendMeasurementDataChangedAsync(Connection connection, List<MeasurementData.MeasurementData> measurementData)
+            private async Task SendRemoteMeasurementDataChangedAsync(Connection connection, List<MeasurementData.MeasurementData> measurementData)
             {
                 if (connection.Remote == null) return;
 
-                var deviceConfigEvents = connection.Local.GetUseCaseEvents<MgcpEvents>();
+                var deviceConfigEvents = connection.Local.GetUseCaseEvents<MonitoringUseCaseEvents>();
                 foreach (var ev in deviceConfigEvents)
                 {
-                    await ev.DataUpdateMeasurementsAsync(connection, measurementData);
+                    await ev.DataUpdateMeasurementsAsync(measurementData, connection.Remote.SKI.ToString());
                 }
             }
         }

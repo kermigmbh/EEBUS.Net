@@ -106,14 +106,14 @@ namespace EEBUS.Net
             lpcEventHandler = new LPCEventHandler(this);
             lppEventHandler = new LPPEventHandler(this);
             lpcOrLppEventHandler = new LPCorLPPEventHandler(this);
-            mgcpEventHandler = new MgcpEventHandler(this);
+            monitoringUseCasesEventHandler = new MonitoringUseCasesEventHandler(this);
             notifyEventHandler = new NotifyEventHandler(this);
             deviceConnectionStatusEventHandler = new DeviceConnectionStatusEventHandler(this);
             _devices.Local.AddUseCaseEvents(this.lpcEventHandler);
             _devices.Local.AddUseCaseEvents(this.lppEventHandler);
             _devices.Local.AddUseCaseEvents(this.lpcOrLppEventHandler);
             _devices.Local.AddUseCaseEvents(this.notifyEventHandler);
-            _devices.Local.AddUseCaseEvents(this.mgcpEventHandler);
+            _devices.Local.AddUseCaseEvents(this.monitoringUseCasesEventHandler);
             _devices.Local.AddUseCaseEvents(this.deviceConnectionStatusEventHandler);
             _settings = settings;
             this._serviceDiscovery = serviceDiscovery;
@@ -156,7 +156,7 @@ namespace EEBUS.Net
         private LPCEventHandler lpcEventHandler;
         private LPPEventHandler lppEventHandler;
         private LPCorLPPEventHandler lpcOrLppEventHandler;
-        private MgcpEventHandler mgcpEventHandler;
+        private MonitoringUseCasesEventHandler monitoringUseCasesEventHandler;
         private NotifyEventHandler notifyEventHandler;
         private DeviceConnectionStatusEventHandler deviceConnectionStatusEventHandler;
         private class NotifyEventHandler(EEBUSManager EEBusManager) : NotifyEvents
@@ -201,39 +201,64 @@ namespace EEBUS.Net
             }
         }
 
-        private class MgcpEventHandler(EEBUSManager eebusManager) : MgcpEvents
+        private class MonitoringUseCasesEventHandler(EEBUSManager eebusManager) : MonitoringUseCaseEvents
         {
-            public async Task DataUpdateMeasurementsAsync(Connection connection, List<MeasurementData.MeasurementData> measurementData)
+            public async Task DataUpdateMeasurementsAsync(List<MeasurementData.MeasurementData> measurementData, string ski)
             {
-                RemoteDevice? remote = connection.Remote;
-                if (remote == null) return;
+                AcPhaseData acCurrent = new AcPhaseData
+                {
+                    PhaseA = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "a")?.measurementDataType.value?.number,
+                    PhaseB = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "b")?.measurementDataType.value?.number,
+                    PhaseC = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "c")?.measurementDataType.value?.number
+                };
+
+                AcPhaseData acVoltage = new AcPhaseData
+                {
+                    PhaseA = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "a")?.measurementDataType.value?.number,
+                    PhaseB = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "b")?.measurementDataType.value?.number,
+                    PhaseC = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "c")?.measurementDataType.value?.number
+                };
+
+                AcPhaseData acPower = new AcPhaseData
+                {
+                    PhaseA = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acPower" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "a")?.measurementDataType.value?.number,
+                    PhaseB = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acPower" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "b")?.measurementDataType.value?.number,
+                    PhaseC = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acPower" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "c")?.measurementDataType.value?.number
+                };
+
+                long? acPowerTotal = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acPowerTotal")?.measurementDataType.value?.number;
+                long? gridFeedIn = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "gridFeedIn")?.measurementDataType.value?.number;
+                long? gridConsumption = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "gridConsumption")?.measurementDataType.value?.number;
+                long? acFrequency = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acFrequency")?.measurementDataType.value?.number;
+                long? acEnergyConsumed = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acEnergyConsumed")?.measurementDataType.value?.number;
 
                 MgcpData mgcpData = new MgcpData
                 {
-                    AcPowerTotal = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acPowerTotal")?.measurementDataType.value?.number,
-                    GridFeedIn = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "gridFeedIn")?.measurementDataType.value?.number,
-                    GridConsumption = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "gridConsumption")?.measurementDataType.value?.number,
-                    AcCurrent = new AcPhaseData
-                    {
-                        PhaseA = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "a")?.measurementDataType.value?.number,
-                        PhaseB = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "b")?.measurementDataType.value?.number,
-                        PhaseC = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acCurrent" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "c")?.measurementDataType.value?.number
-                    },
-                    AcVoltage = new AcPhaseData
-                    {
-                        PhaseA = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "a")?.measurementDataType.value?.number,
-                        PhaseB = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "b")?.measurementDataType.value?.number,
-                        PhaseC = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acVoltage" && data.electricalConnectionParameterDescriptionData.acMeasuredPhases == "c")?.measurementDataType.value?.number
-                    },
-                    AcFrequency = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType.scopeType == "acFrequency")?.measurementDataType.value?.number,
+                    AcPowerTotal = acPowerTotal,
+                    GridFeedIn = gridFeedIn,
+                    GridConsumption = gridConsumption,
+                    AcCurrent = acCurrent,
+                    AcVoltage = acVoltage,
+                    AcFrequency = acFrequency,
+                };
+
+                MpcData mpcData = new MpcData
+                {
+                    AcPowerTotal = acPowerTotal,
+                    AcPower = acPower,
+                    AcEnergyConsumed = acEnergyConsumed,
+                    AcCurrent = acCurrent,
+                    AcVoltage = acVoltage,
+                    AcFrequency = acFrequency
                 };
 
                 if (eebusManager.OnDeviceDataChanged != null)
                 {
                     await eebusManager.OnDeviceDataChanged(new DeviceData
                     {
-                        SKI = remote.SKI.ToString(),
-                        Mgcp = mgcpData
+                        SKI = ski,
+                        Mgcp = mgcpData,
+                        Mpc = mpcData
                     });
                 }
             }
@@ -824,7 +849,7 @@ namespace EEBUS.Net
             _devices.Local.RemoveUseCaseEvents(this.lppEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.lpcOrLppEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.notifyEventHandler);
-            _devices.Local.RemoveUseCaseEvents(this.mgcpEventHandler);
+            _devices.Local.RemoveUseCaseEvents(this.monitoringUseCasesEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.deviceConnectionStatusEventHandler);
 
             _cts.Cancel();
