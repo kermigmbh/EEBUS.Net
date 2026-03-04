@@ -259,7 +259,11 @@ namespace EEBUS.SPINE.Commands
 
 				if (didChange)
 				{
-					await SendNotifyAsync(localDevice, localDevice.GetFeatureAddress("DeviceConfiguration", true));
+					var featureAddress = localDevice.GetFeatureAddress("DeviceConfiguration", true);
+					if (featureAddress != null)
+					{
+						await SendNotifyAsync(localDevice, featureAddress);
+					}
 				}
 			}
 		}

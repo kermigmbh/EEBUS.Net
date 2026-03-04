@@ -239,7 +239,10 @@ namespace EEBUS.SPINE.Commands
 
                 if (didChange)
                 {
-                    await SendNotifyAsync(device, device.GetFeatureAddress("LoadControl", true));
+                    AddressType? featureAddress = device.GetFeatureAddress("LoadControl", true);
+                    if (featureAddress != null) {
+                        await SendNotifyAsync(device, featureAddress);
+                    }
                 }
             }
 

@@ -71,7 +71,11 @@ namespace EEBUS.SPINE.Commands
 
 				if (didChange)
 				{
-                    await SendNotifyAsync(localDevice, localDevice.GetFeatureAddress("ElectricalConnection", true));
+                    AddressType? featureAddress = localDevice.GetFeatureAddress("ElectricalConnection", true);
+					if (featureAddress != null)
+					{
+						await SendNotifyAsync(localDevice, featureAddress);
+					}
                 }
             }
 		}

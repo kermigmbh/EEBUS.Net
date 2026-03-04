@@ -14,6 +14,7 @@ using Makaretu.Dns;
 using Microsoft.AspNetCore.Http;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Net.Security;
 using System.Net.WebSockets;
 using System.Reflection;
@@ -23,6 +24,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Threading;
 using System.Xml;
 
 namespace EEBUS.Net
@@ -585,10 +587,13 @@ namespace EEBUS.Net
                 failsafeDuration = XmlConvert.ToTimeSpan(failsafeDurationKeyValue.Duration);
 
             MeasurementsData? measurements = null;
-            AddressType address = local.GetFeatureAddress("Measurement", true);
-            Entity? entity = local.Entities.FirstOrDefault(e => e.Index.SequenceEqual(address.entity));
-            MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == address.feature) as MeasurementServerFeature;
-            measurements = measurementFeature?.measurementData.CollectData();
+            AddressType? address = local.GetFeatureAddress("Measurement", true);
+            if (address != null)
+            {
+                Entity? entity = local.Entities.FirstOrDefault(e => e.Index.SequenceEqual(address.entity));
+                MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == address.feature) as MeasurementServerFeature;
+                measurements = measurementFeature?.measurementData.CollectData();
+            }
 
             return new DeviceData
             {
@@ -621,12 +626,15 @@ namespace EEBUS.Net
             if (remote == null) return new();
 
             MeasurementsData? measurements = null;
-            AddressType address = remote.GetFeatureAddress("Measurement", true);
-            Entity? entity = remote.Entities.FirstOrDefault(e => e.Index.SequenceEqual(address.entity));
-            MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == address.feature) as MeasurementServerFeature;
-            if (measurementFeature != null)
+            AddressType? address = remote.GetFeatureAddress("Measurement", true);
+            if (address != null)
             {
-                measurements = measurementFeature.measurementData.CollectData();
+                Entity? entity = remote.Entities.FirstOrDefault(e => e.Index.SequenceEqual(address.entity));
+                MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == address.feature) as MeasurementServerFeature;
+                if (measurementFeature != null)
+                {
+                    measurements = measurementFeature.measurementData.CollectData();
+                }
             }
 
             MgcpData mgcpData = new();
@@ -697,7 +705,14 @@ namespace EEBUS.Net
                 }
             }
 
-
+            if (deviceData.Measurements != null)
+            {
+                var measurementListData = SpineCmdPayloadBase.GetClass("measurementListData");
+                if (measurementListData != null)
+                {
+                    await measurementListData.WriteDataAsync(_devices.Local, deviceData);
+                }
+            }
         }
 
         /// <summary>

@@ -1,7 +1,9 @@
 ﻿using EEBUS.Features;
 using EEBUS.Messages;
 using EEBUS.Models;
+using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.Net.EEBUS.SPINE.Types;
+using EEBUS.Net.Extensions;
 using EEBUS.UseCases.ControllableSystem;
 using System.Text.Json.Serialization;
 
@@ -153,6 +155,21 @@ namespace EEBUS.SPINE.Commands
                 {
                     await ev.DataUpdateMeasurementsAsync(measurementData, connection.Remote.SKI.ToString());
                 }
+            }
+
+            public override Task WriteDataAsync(LocalDevice localDevice, DeviceData deviceData)
+            {
+				if (deviceData.Measurements == null) return Task.CompletedTask;
+
+                AddressType? address = localDevice.GetFeatureAddress("Measurement", true);
+				if (address == null) return Task.CompletedTask;
+
+                Entity? entity = localDevice.Entities.FirstOrDefault(e => e.Index.SequenceEqual(address.entity));
+                MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == address.feature) as MeasurementServerFeature;
+				if (measurementFeature == null) return Task.CompletedTask;
+
+				measurementFeature.measurementData.Update(deviceData.Measurements);
+                return SendNotifyAsync(localDevice, address);
             }
         }
 	}

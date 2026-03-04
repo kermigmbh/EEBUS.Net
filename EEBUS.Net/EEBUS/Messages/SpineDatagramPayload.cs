@@ -183,6 +183,6 @@ namespace EEBUS.Messages
             return lhs.Equals(rhs);
         }
 
-        public static bool operator !=(AddressType lhs, AddressType rhs) => !(lhs == rhs);
+        public static bool operator !=(AddressType? lhs, AddressType? rhs) => !(lhs == rhs);
     }
 }
