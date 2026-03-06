@@ -42,13 +42,11 @@ namespace EEBUS.Net
         private bool _serviceDiscoveryNeedsDispose = false;
 
         public event EventHandler<RemoteDevice>? OnDeviceFound;
-        //public event EventHandler<LimitDataChangedEventArgs>? OnLimitDataChanged;
         public Func<LimitDataChangedEventArgs, Task>? OnLimitDataChanged;
         public Func<DeviceData, Task>? OnDeviceDataChanged { get; set; }
         public Func<RemoteDevice, DeviceConnectionStatus, Task>? OnDeviceConnectionStatusChanged { get; set; }
 
         private Func<NewConnectionValidationEventArgs, bool>? _onNewConnectionValidation = (NewConnectionValidationEventArgs args) => true;
-        //private ConcurrentDictionary<string, DeviceConnectionStatus> _deviceConnectionStatus = new();
 
         private CancellationTokenSource _cts = new();
         private CancellationTokenSource _clientCts = new();
@@ -57,8 +55,6 @@ namespace EEBUS.Net
         public Devices Devices => _devices;
 
         internal List<Connection> Connections => _connections.Values.ToList();
-
-        //public string LocalSki => _devices.Local?.SKI.ToString() ?? string.Empty;
 
         public EEBUSManager(Settings settings, Func<NewConnectionValidationEventArgs, bool>? onNewConnectionValidation = null, ServiceDiscovery? serviceDiscovery = null)
         {
@@ -167,8 +163,6 @@ namespace EEBUS.Net
 
                     foreach (var clientAddress in clientAddresses)
                     {
-                        //if (connection.BindingAndSubscriptionManager.HasSubscription(clientAddress, serverAddress))
-                        //{
                         SpineDatagramPayload reply = new SpineDatagramPayload();
                         reply.datagram.header.addressSource = serverAddress;
                         reply.datagram.header.addressDestination = clientAddress;
@@ -179,7 +173,6 @@ namespace EEBUS.Net
                         DataMessage dataMessage = new DataMessage();
                         dataMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize data message"));
                         connection.PushDataMessage(dataMessage);
-                        //}
                     }
                 }
             }
@@ -416,114 +409,6 @@ namespace EEBUS.Net
 
         }
 
-        //public DeviceData GetDeviceData(string ski)
-        //{
-        //    LocalDevice? local = _devices?.Local;
-
-        //    if (null == local)
-        //        return new();
-
-        //    //LPC and LPP (data saved in local device)
-        //    bool lpcActive = false;
-        //    long lpcLimit = 0;
-        //    TimeSpan lpcDuration = new();
-        //    long lpcFailsafeLimit = 0;
-        //    long lpcContractualNominalMax = 0;
-
-        //    bool lppActive = false;
-        //    long lppLimit = 0;
-        //    TimeSpan lppDuration = new();
-        //    long lppFailsafeLimit = 0;
-        //    long lppContractualNominalMax = 0;
-
-        //    TimeSpan failsafeDuration = new();
-
-        //    foreach (LoadControlLimitDataStructure data in local.GetDataStructures<LoadControlLimitDataStructure>())
-        //    {
-        //        if (data.LimitDirection == "consume")
-        //        {
-        //            lpcActive = data.LimitActive;
-        //            lpcLimit = data.Number;
-        //            lpcDuration = data.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(data.EndTime);
-        //        }
-        //        else if (data.LimitDirection == "produce")
-        //        {
-        //            lppActive = data.LimitActive;
-        //            lppLimit = data.Number;
-        //            lppDuration = data.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(data.EndTime);
-        //        }
-        //    }
-
-        //    foreach (ElectricalConnectionCharacteristicDataStructure data in local.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>())
-        //    {
-        //        if (data.CharacteristicType == "contractualConsumptionNominalMax")
-        //        {
-        //            lpcContractualNominalMax = data.Number;
-        //        }
-        //        else if (data.CharacteristicType == "contractualConsumptionNominalMax")
-        //        {
-        //            lppContractualNominalMax = data.Number;
-        //        }
-        //    }
-
-        //    FailsafeConsumptionActivePowerLimitKeyValue? lpcFailsafeLimitKeyValue = local.GetKeyValue<FailsafeConsumptionActivePowerLimitKeyValue>();
-        //    if (null != lpcFailsafeLimitKeyValue)
-        //        lpcFailsafeLimit = lpcFailsafeLimitKeyValue.Value;
-
-        //    FailsafeProductionActivePowerLimitKeyValue? lppFailsafeLimitKeyValue = local.GetKeyValue<FailsafeProductionActivePowerLimitKeyValue>();
-        //    if (null != lppFailsafeLimitKeyValue)
-        //        lppFailsafeLimit = lppFailsafeLimitKeyValue.Value;
-
-        //    FailsafeDurationMinimumKeyValue? failsafeDurationKeyValue = local.GetKeyValue<FailsafeDurationMinimumKeyValue>();
-        //    if (null != failsafeDurationKeyValue)
-        //        failsafeDuration = XmlConvert.ToTimeSpan(failsafeDurationKeyValue.Duration);
-
-        //    //MGCP 
-        //    MgcpData? mgcpData = null;
-        //    MeasurementsData? measurements = null;
-        //    RemoteDevice? remote = _devices?.Remote.FirstOrDefault(r => r.SKI.ToString() == ski);
-        //    if (remote != null)
-        //    {
-        //        AddressType address = remote.GetFeatureAddress("Measurement", true);
-        //        Entity? entity = remote.Entities.FirstOrDefault(e => e.Index.SequenceEqual(address.entity));
-        //        MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == address.feature) as MeasurementServerFeature;
-        //        if (measurementFeature != null)
-        //        {
-        //            measurements = measurementFeature.measurementData.CollectData();
-        //        }
-
-        //        mgcpData = new();
-        //        KeyValue? pvCurtailmentKeyValue = remote.KeyValues.FirstOrDefault(kv => kv.KeyName == "pvCurtailmentLimitFactor");
-        //        mgcpData.PvCurtailmentLimitFactor = pvCurtailmentKeyValue?.Data.value.scaledNumber?.number;
-        //    }
-
-        //    return new DeviceData
-        //    {
-        //        //Name = local.Name,
-        //        SKI = ski,
-        //        //ShipId = local.ShipID,
-        //        Lpc = new LpcLppData
-        //        {
-        //            LimitActive = lpcActive,
-        //            Limit = lpcLimit,
-        //            LimitDuration = (int)lpcDuration.TotalSeconds,
-        //            FailSafeLimit = lpcFailsafeLimit,
-        //            ContractualNominalMax = lpcContractualNominalMax
-        //        },
-        //        Lpp = new LpcLppData
-        //        {
-        //            LimitActive = lppActive,
-        //            Limit = lppLimit,
-        //            LimitDuration = (int)lppDuration.TotalSeconds,
-        //            FailSafeLimit = lppFailsafeLimit,
-        //            ContractualNominalMax = lppContractualNominalMax
-        //        },
-        //        Mgcp = mgcpData,
-        //        Measurements = measurements,
-        //        FailSafeLimitDuration = (int)failsafeDuration.TotalSeconds
-        //    };
-        //}
-
         public DeviceData GetLocalData()
         {
             LocalDevice? local = _devices?.Local;
@@ -531,7 +416,6 @@ namespace EEBUS.Net
             if (null == local)
                 return new();
 
-            //LPC and LPP (data saved in local device)
             bool lpcActive = false;
             long lpcLimit = 0;
             TimeSpan lpcDuration = new();
@@ -695,14 +579,10 @@ namespace EEBUS.Net
                 }
             }
 
-
-            if (deviceData.FailSafeLimitDuration != null && deviceData.Lpc != null || deviceData.Lpp != null)
+            var deviceConfigurationKeyValueListData = SpineCmdPayloadBase.GetClass("deviceConfigurationKeyValueListData");
+            if (deviceConfigurationKeyValueListData != null)
             {
-                var deviceConfigurationKeyValueListData = SpineCmdPayloadBase.GetClass("deviceConfigurationKeyValueListData");
-                if (deviceConfigurationKeyValueListData != null)
-                {
-                    await deviceConfigurationKeyValueListData.WriteDataAsync(_devices.Local, deviceData);
-                }
+                await deviceConfigurationKeyValueListData.WriteDataAsync(_devices.Local, deviceData);
             }
 
             if (deviceData.Measurements != null)
