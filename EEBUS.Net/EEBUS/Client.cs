@@ -41,10 +41,16 @@ namespace EEBUS
             InitMessage initMessage = new InitMessage();
             
             await initMessage.Send(this.ws).ConfigureAwait(false);
-            
 
-            var heart = new HeartBeatTask();
-            var beat = new System.Threading.Timer(heart.Beat, this, 4000, 4000);
+
+            AddressType? heartbeatSource = this.Local?.GetHeartbeatAddress(true);
+            AddressType? heartbeatDestination = this.Remote?.GetHeartbeatAddress(false);
+            Timer? beat = null;
+            if (heartbeatSource != null && heartbeatDestination != null)
+            {
+                var heart = new HeartBeatTask();
+                beat = new System.Threading.Timer(arg => heart.Beat(arg, heartbeatSource, heartbeatDestination), this, 4000, 4000);
+            }
             //var ecc = new ElectricalConnectionCharacteristicTask();
             //var eccSend = new System.Threading.Timer(ecc.SendData, this, 2000, Timeout.Infinite);
 
@@ -87,7 +93,7 @@ namespace EEBUS
             }
             finally
             {
-                beat.Change(Timeout.Infinite, Timeout.Infinite);
+                beat?.Change(Timeout.Infinite, Timeout.Infinite);
 
                 if (null != this.Remote)
                     this.Remote.SetClientState(EState.Stopped);

@@ -625,7 +625,7 @@ namespace EEBUS.Net
                         {
                             return false;
                         }
-                        Console.WriteLine(hostString.ToString());
+                        //Debug.WriteLine(hostString.ToString());
 
                         byte[] hash = SHA1.Create().ComputeHash(cert.GetPublicKey() ?? []);
                         var ski = new SKI(hash);

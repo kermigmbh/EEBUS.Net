@@ -41,17 +41,23 @@ namespace EEBUS
 
 		public async Task Do()
 		{
-			var heart = new HeartBeatTask();
-			using var beat = new System.Threading.Timer(heart.Beat, this, 4000, 4000);
+            AddressType? heartbeatSource = this.Local?.GetHeartbeatAddress(true);
+            AddressType? heartbeatDestination = this.Remote?.GetHeartbeatAddress(false);
+			Timer? beat = null;
+            if (heartbeatSource != null && heartbeatDestination != null)
+            {
+                var heart = new HeartBeatTask();
+                beat = new System.Threading.Timer(arg => heart.Beat(arg, heartbeatSource, heartbeatDestination), this, 4000, 4000);
+            }
 
-			//var ecc        = new ElectricalConnectionCharacteristicTask();
-			//using var eccSend   = new System.Threading.Timer( ecc.SendData, this, 2000, Timeout.Infinite );
+            //var ecc        = new ElectricalConnectionCharacteristicTask();
+            //using var eccSend   = new System.Threading.Timer( ecc.SendData, this, 2000, Timeout.Infinite );
 
-			//var md         = new MeasurementDataTask();
-			//using var mdSend   = new System.Threading.Timer( md.SendData, this, 3000, 3000 );
+            //var md         = new MeasurementDataTask();
+            //using var mdSend   = new System.Threading.Timer( md.SendData, this, 3000, 3000 );
 
-		 
-			try
+
+            try
 			{
 				while (this.ws.State == WebSocketState.Open)
 				{
@@ -99,7 +105,7 @@ namespace EEBUS
 				Debug.WriteLine("Exception: " + ex.Message);
 			}
 
-			beat.Change(Timeout.Infinite, Timeout.Infinite);
+			beat?.Change(Timeout.Infinite, Timeout.Infinite);
 			//eccSend.Change( Timeout.Infinite, Timeout.Infinite );
 
 			await CloseAsync().ConfigureAwait(false);

@@ -63,50 +63,45 @@ namespace EEBUS
             private bool heartbeatSubscribed = false;
             private DeviceDiagnosisHeartbeatData.Class heartbeatClass = new DeviceDiagnosisHeartbeatData.Class();
             // This method is called by the timer delegate.
-            public void Beat(object connectionObj)
+            public void Beat(object? connectionObj, AddressType source, AddressType destination)
             {
-                Connection connection = (Connection)connectionObj;
+                Connection? connection = connectionObj as Connection;
+                if (connection == null) return;
 
                 if (connection.State == Connection.EState.Connected)
                 {
-                    AddressType? source = connection.Local?.GetHeartbeatAddress(true);
-                    AddressType? destination = connection.Remote?.GetHeartbeatAddress(false);
-
-                    if (null != source && null != destination)
+                    if (!this.heartbeatSubscribed)
                     {
-                        if (!this.heartbeatSubscribed)
-                        {
-                            this.heartbeatSubscribed = true;
-
-                            if (connection is Server)
-                                Debug.WriteLine("--- Request heartbeat via server ---");
-                            else
-                                Debug.WriteLine("--- Request heartbeat via client ---");
-
-                            connection.HeartbeatSubscription();
-                            connection.HeartbeatRead();
-                        }
+                        this.heartbeatSubscribed = true;
 
                         if (connection is Server)
-                            Debug.WriteLine("--- Send heartbeat via server ---");
+                            Debug.WriteLine("--- Request heartbeat via server ---");
                         else
-                            Debug.WriteLine("--- Send heartbeat via client ---");
+                            Debug.WriteLine("--- Request heartbeat via client ---");
 
-                        SpineDatagramPayload reply = new SpineDatagramPayload();
-                        reply.datagram.header.addressSource = source;
-                        reply.datagram.header.addressDestination = destination;
-                        reply.datagram.header.msgCounter = DataMessage.NextCount;
-                        reply.datagram.header.cmdClassifier = "notify";
-
-                        SpineCmdPayloadBase? heartbeat = heartbeatClass.CreateNotify(connection);
-                        // serialize heartbeat into a JsonNode payload
-                        reply.datagram.payload = heartbeat?.ToJsonNode();// JsonSerializer.SerializeToNode(heartbeat);
-
-                        DataMessage heartbeatMessage = new DataMessage();
-                        heartbeatMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize heartbeat message"));
-
-                        connection.PushDataMessage(heartbeatMessage);
+                        connection.HeartbeatSubscription();
+                        connection.HeartbeatRead();
                     }
+
+                    if (connection is Server)
+                        Debug.WriteLine("--- Send heartbeat via server ---");
+                    else
+                        Debug.WriteLine("--- Send heartbeat via client ---");
+
+                    SpineDatagramPayload reply = new SpineDatagramPayload();
+                    reply.datagram.header.addressSource = source;
+                    reply.datagram.header.addressDestination = destination;
+                    reply.datagram.header.msgCounter = DataMessage.NextCount;
+                    reply.datagram.header.cmdClassifier = "notify";
+
+                    SpineCmdPayloadBase? heartbeat = heartbeatClass.CreateNotify(connection);
+                    // serialize heartbeat into a JsonNode payload
+                    reply.datagram.payload = heartbeat?.ToJsonNode();// JsonSerializer.SerializeToNode(heartbeat);
+
+                    DataMessage heartbeatMessage = new DataMessage();
+                    heartbeatMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize heartbeat message"));
+
+                    connection.PushDataMessage(heartbeatMessage);
                 }
             }
         }
