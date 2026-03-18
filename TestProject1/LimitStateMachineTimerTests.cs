@@ -1,3 +1,4 @@
+using EEBUS.Models;
 using EEBUS.StateMachines;
 using EEBUS.UseCases;
 
@@ -9,12 +10,16 @@ namespace TestProject1
     /// </summary>
     public class LimitStateMachineTimerTests : IDisposable
     {
-        private LimitStateMachine? _stateMachine;
+        private LimitStateMachine _stateMachine;
         private TestTimerEventHandler _eventHandler;
+        private static string _remoteSki = "9EB90FCE71E9D0705102EA55555593F9DA95FB6F";
+        private static RemoteDevice _mockRemoteDevice = new RemoteDevice("", _remoteSki, "", "", (x, y) => { }, (x, y) => { });
 
         public LimitStateMachineTimerTests()
         {
+            _stateMachine = new LpcLimitStateMachine(1000);
             _eventHandler = new TestTimerEventHandler();
+            _stateMachine.RegisterEventHandler(_eventHandler);
         }
 
         public void Dispose()
@@ -22,25 +27,39 @@ namespace TestProject1
             _stateMachine?.Dispose();
         }
 
+        #region Helper Functions
+
+        private async Task NotifyHeartbeat()
+        {
+            await _stateMachine.DataUpdateHeartbeatAsync(0, _mockRemoteDevice, 0, "");
+        }
+
+        private async Task WriteLimit(ActiveLimitWriteRequest request)
+        {
+            var result = await _stateMachine.ApproveActiveLimitWriteAsync(request);
+            Assert.True(result.Approved);
+            await _stateMachine.DataUpdateLimitAsync(1, request.IsLimitActive, request.Value, request.Duration ?? Timeout.InfiniteTimeSpan, _remoteSki);
+        }
+
+        #endregion
+
         [Fact]
         public async Task Transition6_LimitDurationExpired_ShouldTransitionToUnlimitedControlled()
         {
             // Arrange: Create state machine and get to Limited state with short duration
-            _stateMachine = new LimitStateMachine(PowerDirection.Consumption, 1000);
             _stateMachine.RegisterEventHandler(_eventHandler);
 
             var request = new ActiveLimitWriteRequest(
                 PowerDirection.Consumption,
                 isActive: true,
                 value: 5000,
-                scale: 0,
                 duration: TimeSpan.FromMilliseconds(100), // Very short duration for testing
                 remoteDeviceId: "test",
-                remoteSKI: "test"
+                remoteSKI: _remoteSki
             );
 
-            _stateMachine.OnHeartbeatReceived();
-            _stateMachine.OnLimitWriteAccepted(request);
+            await NotifyHeartbeat();
+            await WriteLimit(request);
             Assert.Equal(LimitState.Limited, _stateMachine.CurrentState);
 
             // Act: Wait for duration to expire
@@ -55,23 +74,20 @@ namespace TestProject1
         public async Task LimitWithNoDuration_ShouldNotExpire()
         {
             // Arrange
-            _stateMachine = new LimitStateMachine(PowerDirection.Consumption, 1000);
-
             var request = new ActiveLimitWriteRequest(
                 PowerDirection.Consumption,
                 isActive: true,
                 value: 5000,
-                scale: 0,
                 duration: null, // No duration
                 remoteDeviceId: "test",
                 remoteSKI: "test"
             );
 
-            _stateMachine.OnHeartbeatReceived();
-            _stateMachine.OnLimitWriteAccepted(request);
+            await NotifyHeartbeat();
+            await WriteLimit(request);
 
             // Act: Wait some time
-            await Task.Delay(100);
+            await Task.Delay(200);
 
             // Assert: Should still be Limited
             Assert.Equal(LimitState.Limited, _stateMachine.CurrentState);
@@ -83,48 +99,43 @@ namespace TestProject1
         public async Task LimitWithInfiniteDuration_ShouldNotExpire()
         {
             // Arrange
-            _stateMachine = new LimitStateMachine(PowerDirection.Consumption, 1000);
-
             var request = new ActiveLimitWriteRequest(
                 PowerDirection.Consumption,
                 isActive: true,
                 value: 5000,
-                scale: 0,
                 duration: Timeout.InfiniteTimeSpan,
                 remoteDeviceId: "test",
                 remoteSKI: "test"
             );
 
-            _stateMachine.OnHeartbeatReceived();
-            _stateMachine.OnLimitWriteAccepted(request);
+            await NotifyHeartbeat();
+            await WriteLimit(request);
 
             // Act: Wait some time
-            await Task.Delay(100);
+            await Task.Delay(200);
 
             // Assert: Should still be Limited
             Assert.Equal(LimitState.Limited, _stateMachine.CurrentState);
         }
 
         [Fact]
-        public void EffectiveLimit_ExpiresAt_ShouldBeSetWhenDurationProvided()
+        public async Task EffectiveLimit_ExpiresAt_ShouldBeSetWhenDurationProvided()
         {
             // Arrange
-            _stateMachine = new LimitStateMachine(PowerDirection.Consumption, 1000);
             var duration = TimeSpan.FromHours(1);
 
             var request = new ActiveLimitWriteRequest(
                 PowerDirection.Consumption,
                 isActive: true,
                 value: 5000,
-                scale: 0,
                 duration: duration,
                 remoteDeviceId: "test",
                 remoteSKI: "test"
             );
 
             // Act
-            _stateMachine.OnHeartbeatReceived();
-            _stateMachine.OnLimitWriteAccepted(request);
+            await NotifyHeartbeat();
+            await WriteLimit(request);
 
             // Assert
             var limit = _stateMachine.GetEffectiveLimit();
@@ -134,24 +145,21 @@ namespace TestProject1
         }
 
         [Fact]
-        public void EffectiveLimit_ExpiresAt_ShouldBeNullWhenNoDuration()
+        public async Task EffectiveLimit_ExpiresAt_ShouldBeNullWhenNoDuration()
         {
             // Arrange
-            _stateMachine = new LimitStateMachine(PowerDirection.Consumption, 1000);
-
             var request = new ActiveLimitWriteRequest(
                 PowerDirection.Consumption,
                 isActive: true,
                 value: 5000,
-                scale: 0,
                 duration: null,
                 remoteDeviceId: "test",
                 remoteSKI: "test"
             );
 
             // Act
-            _stateMachine.OnHeartbeatReceived();
-            _stateMachine.OnLimitWriteAccepted(request);
+            await NotifyHeartbeat();
+            await WriteLimit(request);
 
             // Assert
             var limit = _stateMachine.GetEffectiveLimit();
@@ -162,31 +170,29 @@ namespace TestProject1
         public async Task NewLimitWrite_ShouldResetDurationTimer()
         {
             // Arrange
-            _stateMachine = new LimitStateMachine(PowerDirection.Consumption, 1000);
-
             var request1 = new ActiveLimitWriteRequest(
-                PowerDirection.Consumption, true, 5000, 0,
-                TimeSpan.FromMilliseconds(100), "test", "test");
+                PowerDirection.Consumption, true, 5000,
+                TimeSpan.FromMilliseconds(500), "test", "test");
 
-            _stateMachine.OnHeartbeatReceived();
-            _stateMachine.OnLimitWriteAccepted(request1);
+            await NotifyHeartbeat();
+            await WriteLimit(request1);
 
             // Act: After 50ms, send new limit with new duration
             await Task.Delay(50);
             var request2 = new ActiveLimitWriteRequest(
-                PowerDirection.Consumption, true, 3000, 0,
-                TimeSpan.FromMilliseconds(200), "test", "test");
-            _stateMachine.OnLimitWriteAccepted(request2);
+                PowerDirection.Consumption, true, 3000,
+                TimeSpan.FromMilliseconds(1500), "test", "test");
+            await WriteLimit(request2);
 
             // Wait past original timeout but before new timeout
-            await Task.Delay(100);
+            await Task.Delay(200);
 
             // Assert: Should still be Limited (timer was reset)
             Assert.Equal(LimitState.Limited, _stateMachine.CurrentState);
             Assert.Equal(3000, _stateMachine.GetEffectiveLimit().Value);
 
             // Wait for new duration to expire
-            await Task.Delay(150);
+            await Task.Delay(500);
             Assert.Equal(LimitState.UnlimitedControlled, _stateMachine.CurrentState);
         }
 
@@ -194,14 +200,31 @@ namespace TestProject1
         {
             public List<(LimitState old, LimitState @new, string reason)> StateChanges { get; } = new();
 
-            public void OnStateChanged(LimitState oldState, LimitState newState, string reason)
+            public Task OnStateChanged(LimitState oldState, LimitState newState, string reason)
             {
                 StateChanges.Add((oldState, newState, reason));
+                return Task.CompletedTask;
             }
 
-            public void OnEffectiveLimitChanged(EffectiveLimit newLimit) { }
-            public void OnFailsafeEntered(string reason) { }
-            public void OnFailsafeExited(string reason) { }
+            public Task OnEffectiveLimitChanged(EffectiveLimit newLimit)
+            {
+                return Task.CompletedTask;
+            }
+
+            public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync(ActiveLimitWriteRequest request)
+            {
+                return Task.FromResult(WriteApprovalResult.Accept());
+            }
+
+            public Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync(FailsafeLimitWriteRequest request)
+            {
+                return Task.FromResult(WriteApprovalResult.Accept());
+            }
+
+            public Task<WriteApprovalResult> ApproveFailsafeMinimumDurationWriteAsync(FailsafeDurationWriteRequest request)
+            {
+                return Task.FromResult(WriteApprovalResult.Accept());
+            }
         }
     }
 }

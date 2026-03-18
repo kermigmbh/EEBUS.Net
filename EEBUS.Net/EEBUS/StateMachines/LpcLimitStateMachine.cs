@@ -14,12 +14,14 @@ namespace EEBUS.StateMachines
         public LpcLimitStateMachine(LocalDevice localDevice) : base(PowerDirection.Consumption, localDevice)
         {
         }
+        public LpcLimitStateMachine(long limit) : base(PowerDirection.Consumption, limit)
+        {
+        }
 
         public override Task<WriteApprovalResult> ApproveActiveLimitWriteAsync(ActiveLimitWriteRequest request)
         {
-            long limitValue = CalculateScaledValue(request.Value, request.Scale);
             // Rule: Limit < 0W is always rejected [LPC-001]
-            if (limitValue < 0)
+            if (request.Value < 0)
             {
                 return Task.FromResult(WriteApprovalResult.Deny("Limit value must be positive [LPC-001]"));
             }

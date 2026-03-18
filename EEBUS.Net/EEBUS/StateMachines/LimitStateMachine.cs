@@ -41,16 +41,20 @@ namespace EEBUS.StateMachines
         private static readonly TimeSpan HeartbeatAcceptTimeout = TimeSpan.FromSeconds(60);
         private static readonly TimeSpan InitTimeout = TimeSpan.FromSeconds(120);
 
-        protected LimitStateMachine(PowerDirection direction, LocalDevice localDevice)
+        protected LimitStateMachine(PowerDirection direction, long failsafeLimit)
         {
             _direction = direction;
-            _failsafeLimit = localDevice.GetFailsafeLimit(direction);
+            _failsafeLimit = failsafeLimit;
             _initStartTime = DateTimeOffset.UtcNow;
 
             // Start init timeout timer (Transition 3: Init -> UnlimitedAutonomous after 120s without HB+Write)
             _initTimeoutTimer = new Timer(OnInitTimeout, null, InitTimeout, Timeout.InfiniteTimeSpan);
 
             Debug.WriteLine($"[LimitStateMachine:{_direction}] Initialized in Init state with failsafe limit {_failsafeLimit}W");
+        }
+
+        protected LimitStateMachine(PowerDirection direction, LocalDevice localDevice) : this(direction, localDevice.GetFailsafeLimit(direction))
+        {
         }
 
         /// <summary>
@@ -116,7 +120,7 @@ namespace EEBUS.StateMachines
         /// <summary>
         /// Update the failsafe limit value (from DeviceConfiguration write)
         /// </summary>
-        protected Task DataUpdateFailsafeActivePowerLimitAsync(long value)
+        public Task DataUpdateFailsafeActivePowerLimitAsync(long value)
         {
             Task task = Task.CompletedTask;
 
@@ -395,18 +399,6 @@ namespace EEBUS.StateMachines
             return task;
         }
 
-        /// <summary>
-        /// Calculate the actual limit value from scaled number
-        /// </summary>
-        protected static long CalculateScaledValue(long number, short scale)
-        {
-            if (scale == 0)
-                return number;
-            if (scale > 0)
-                return number * (long)Math.Pow(10, scale);
-            return number / (long)Math.Pow(10, -scale);
-        }
-
         #region Timer Management
 
         private void ResetHeartbeatTimer(TimeSpan timeout)
@@ -458,7 +450,6 @@ namespace EEBUS.StateMachines
 
             if (duration.HasValue && duration.Value != Timeout.InfiniteTimeSpan && duration.Value > TimeSpan.Zero)
             {
-                // _activeLimitExpiresAt = DateTimeOffset.UtcNow.Add(duration.Value);
                 _limitDurationTimer = new Timer(OnLimitDurationExpired, null, duration.Value, Timeout.InfiniteTimeSpan);
             }
         }

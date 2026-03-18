@@ -15,11 +15,14 @@ namespace EEBUS.StateMachines
         {
         }
 
+        public LppLimitStateMachine(long limit) : base(PowerDirection.Production, limit)
+        {
+        }
+
         public override Task<WriteApprovalResult> ApproveActiveLimitWriteAsync(ActiveLimitWriteRequest request)
         {
-            long limitValue = CalculateScaledValue(request.Value, request.Scale);
             // Rule: Limit > 0W is always rejected [LPP-001]
-            if (limitValue > 0)
+            if (request.Value > 0)
             {
                 return Task.FromResult(WriteApprovalResult.Deny("Limit value must be negative [LPP-001]"));
             }

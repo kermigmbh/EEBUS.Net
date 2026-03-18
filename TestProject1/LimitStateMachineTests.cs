@@ -1,3 +1,4 @@
+using EEBUS.Models;
 using EEBUS.StateMachines;
 using EEBUS.UseCases;
 
@@ -7,10 +8,12 @@ namespace TestProject1
     {
         private LimitStateMachine _stateMachine;
         private TestEventHandler _eventHandler;
+        private static string _remoteSki = "9EB90FCE71E9D0705102EA55555593F9DA95FB6F";
+        private static RemoteDevice _mockRemoteDevice = new RemoteDevice("", _remoteSki, "", "", (x, y) => { }, (x, y) => { });
 
         public LimitStateMachineTests()
         {
-            _stateMachine = new LimitStateMachine(PowerDirection.Consumption, 1000); // 1000W failsafe
+            _stateMachine = new LpcLimitStateMachine(1000); // 1000W failsafe
             _eventHandler = new TestEventHandler();
             _stateMachine.RegisterEventHandler(_eventHandler);
         }
@@ -19,6 +22,22 @@ namespace TestProject1
         {
             _stateMachine.Dispose();
         }
+
+        #region Helper Functions
+
+        private async Task NotifyHeartbeat()
+        {
+            await _stateMachine.DataUpdateHeartbeatAsync(0, _mockRemoteDevice, 0, _remoteSki);
+        }
+
+        private async Task WriteLimit(ActiveLimitWriteRequest request)
+        {
+            var result = await _stateMachine.ApproveActiveLimitWriteAsync(request);
+            Assert.True(result.Approved);
+            await _stateMachine.DataUpdateLimitAsync(1, request.IsLimitActive, request.Value, request.Duration ?? Timeout.InfiniteTimeSpan, _remoteSki);
+        }
+
+        #endregion
 
         #region Initial State Tests
 
@@ -50,52 +69,50 @@ namespace TestProject1
         #region Heartbeat Tests
 
         [Fact]
-        public void OnHeartbeatReceived_ShouldSetHasReceivedHeartbeat()
+        public async Task OnHeartbeatReceived_ShouldSetHasReceivedHeartbeat()
         {
-            _stateMachine.OnHeartbeatReceived();
+            await NotifyHeartbeat();
 
             Assert.True(_stateMachine.HasReceivedHeartbeat);
         }
 
         [Fact]
-        public void Transition1_Init_To_UnlimitedControlled_WithHeartbeatAndDeactivatedLimit()
+        public async Task Transition1_Init_To_UnlimitedControlled_WithHeartbeatAndDeactivatedLimit()
         {
             // Arrange: Create a deactivated limit request
             var request = new ActiveLimitWriteRequest(
                 PowerDirection.Consumption,
                 isActive: false,
                 value: 5000,
-                scale: 0,
                 duration: null,
                 remoteDeviceId: "test-device",
-                remoteSKI: "test-ski"
+                remoteSKI: _remoteSki
             );
 
             // Act: Receive heartbeat, then limit write
-            _stateMachine.OnHeartbeatReceived();
-            _stateMachine.OnLimitWriteAccepted(request);
+            await NotifyHeartbeat();
+            await WriteLimit(request);
 
             // Assert
             Assert.Equal(LimitState.UnlimitedControlled, _stateMachine.CurrentState);
         }
 
         [Fact]
-        public void Transition2_Init_To_Limited_WithHeartbeatAndActivatedLimit()
+        public async Task Transition2_Init_To_Limited_WithHeartbeatAndActivatedLimit()
         {
             // Arrange
             var request = new ActiveLimitWriteRequest(
                 PowerDirection.Consumption,
                 isActive: true,
                 value: 5000,
-                scale: 0,
                 duration: TimeSpan.FromMinutes(30),
                 remoteDeviceId: "test-device",
                 remoteSKI: "test-ski"
             );
 
             // Act
-            _stateMachine.OnHeartbeatReceived();
-            _stateMachine.OnLimitWriteAccepted(request);
+            await NotifyHeartbeat();
+            await WriteLimit(request);
 
             // Assert
             Assert.Equal(LimitState.Limited, _stateMachine.CurrentState);
@@ -110,19 +127,19 @@ namespace TestProject1
         #region Limited State Tests
 
         [Fact]
-        public void Transition4_UnlimitedControlled_To_Limited_OnActivatedLimit()
+        public async Task Transition4_UnlimitedControlled_To_Limited_OnActivatedLimit()
         {
             // Arrange: Get to UnlimitedControlled state first
             var deactivatedRequest = new ActiveLimitWriteRequest(
-                PowerDirection.Consumption, false, 0, 0, null, "test", "test");
-            _stateMachine.OnHeartbeatReceived();
-            _stateMachine.OnLimitWriteAccepted(deactivatedRequest);
+                PowerDirection.Consumption, false, 0, null, "test", "test");
+            await NotifyHeartbeat();
+            await WriteLimit(deactivatedRequest);
             Assert.Equal(LimitState.UnlimitedControlled, _stateMachine.CurrentState);
 
             // Act: Send activated limit
             var activatedRequest = new ActiveLimitWriteRequest(
-                PowerDirection.Consumption, true, 3000, 0, TimeSpan.FromMinutes(10), "test", "test");
-            _stateMachine.OnLimitWriteAccepted(activatedRequest);
+                PowerDirection.Consumption, true, 3000, TimeSpan.FromMinutes(10), "test", "test");
+            await WriteLimit(activatedRequest);
 
             // Assert
             Assert.Equal(LimitState.Limited, _stateMachine.CurrentState);
@@ -130,19 +147,19 @@ namespace TestProject1
         }
 
         [Fact]
-        public void Transition6_Limited_To_UnlimitedControlled_OnDeactivatedLimit()
+        public async Task Transition6_Limited_To_UnlimitedControlled_OnDeactivatedLimit()
         {
             // Arrange: Get to Limited state
             var activatedRequest = new ActiveLimitWriteRequest(
-                PowerDirection.Consumption, true, 5000, 0, null, "test", "test");
-            _stateMachine.OnHeartbeatReceived();
-            _stateMachine.OnLimitWriteAccepted(activatedRequest);
+                PowerDirection.Consumption, true, 5000, null, "test", "test");
+            await NotifyHeartbeat();
+            await WriteLimit(activatedRequest);
             Assert.Equal(LimitState.Limited, _stateMachine.CurrentState);
 
             // Act: Deactivate limit
             var deactivatedRequest = new ActiveLimitWriteRequest(
-                PowerDirection.Consumption, false, 5000, 0, null, "test", "test");
-            _stateMachine.OnLimitWriteAccepted(deactivatedRequest);
+                PowerDirection.Consumption, false, 5000, null, "test", "test");
+            await WriteLimit(deactivatedRequest);
 
             // Assert
             Assert.Equal(LimitState.UnlimitedControlled, _stateMachine.CurrentState);
@@ -154,13 +171,13 @@ namespace TestProject1
         #region Effective Limit Tests
 
         [Fact]
-        public void GetEffectiveLimit_InUnlimitedControlled_ShouldReturnUnlimited()
+        public async Task GetEffectiveLimit_InUnlimitedControlled_ShouldReturnUnlimited()
         {
             // Arrange: Get to UnlimitedControlled state
             var request = new ActiveLimitWriteRequest(
-                PowerDirection.Consumption, false, 0, 0, null, "test", "test");
-            _stateMachine.OnHeartbeatReceived();
-            _stateMachine.OnLimitWriteAccepted(request);
+                PowerDirection.Consumption, false, 0, null, "test", "test");
+            await NotifyHeartbeat();
+            await WriteLimit(request);
 
             // Act
             var limit = _stateMachine.GetEffectiveLimit();
@@ -172,13 +189,13 @@ namespace TestProject1
         }
 
         [Fact]
-        public void GetEffectiveLimit_InLimited_ShouldReturnActiveLimit()
+        public async Task GetEffectiveLimit_InLimited_ShouldReturnActiveLimit()
         {
             // Arrange: Get to Limited state with 7500W limit
             var request = new ActiveLimitWriteRequest(
-                PowerDirection.Consumption, true, 7500, 0, null, "test", "test");
-            _stateMachine.OnHeartbeatReceived();
-            _stateMachine.OnLimitWriteAccepted(request);
+                PowerDirection.Consumption, true, 7500, null, "test", "test");
+            await NotifyHeartbeat();
+            await WriteLimit(request);
 
             // Act
             var limit = _stateMachine.GetEffectiveLimit();
@@ -191,13 +208,13 @@ namespace TestProject1
         }
 
         [Fact]
-        public void GetEffectiveLimit_WithScale_ShouldCalculateCorrectValue()
+        public async Task GetEffectiveLimit_WithScale_ShouldCalculateCorrectValue()
         {
             // Arrange: 5 * 10^3 = 5000W
             var request = new ActiveLimitWriteRequest(
-                PowerDirection.Consumption, true, 5, 3, null, "test", "test");
-            _stateMachine.OnHeartbeatReceived();
-            _stateMachine.OnLimitWriteAccepted(request);
+                PowerDirection.Consumption, true, 5000, null, "test", "test");
+            await NotifyHeartbeat();
+            await WriteLimit(request);
 
             // Act
             var limit = _stateMachine.GetEffectiveLimit();
@@ -211,46 +228,49 @@ namespace TestProject1
         #region Auto-Reject Tests
 
         [Fact]
-        public void EvaluateLimitWrite_NegativeValue_ShouldReject()
+        public async Task EvaluateLimitWrite_NegativeValue_ShouldReject()
         {
             // Arrange
             var request = new ActiveLimitWriteRequest(
-                PowerDirection.Consumption, true, -1000, 0, null, "test", "test");
+                PowerDirection.Consumption, true, -1000, null, "test", "test");
 
             // Act
-            var result = _stateMachine.EvaluateLimitWrite(request);
+            await NotifyHeartbeat();
+            var result = await _stateMachine.ApproveActiveLimitWriteAsync(request);
 
             // Assert
-            Assert.False(result.Allowed);
-            Assert.Contains("negative", result.RejectionReason, StringComparison.OrdinalIgnoreCase);
+            Assert.False(result.Approved);
+            Assert.Contains("positive", result.Description, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
-        public void EvaluateLimitWrite_ValidValue_ShouldAllow()
+        public async Task EvaluateLimitWrite_ValidValue_ShouldAllow()
         {
             // Arrange
             var request = new ActiveLimitWriteRequest(
-                PowerDirection.Consumption, true, 5000, 0, null, "test", "test");
+                PowerDirection.Consumption, true, 5000, null, "test", "test");
 
             // Act
-            var result = _stateMachine.EvaluateLimitWrite(request);
+            await NotifyHeartbeat();
+            var result = await _stateMachine.ApproveActiveLimitWriteAsync(request);
 
             // Assert
-            Assert.True(result.Allowed);
+            Assert.True(result.Approved);
         }
 
         [Fact]
-        public void EvaluateLimitWrite_ZeroValue_ShouldAllow()
+        public async Task EvaluateLimitWrite_ZeroValue_ShouldAllow()
         {
             // Arrange
             var request = new ActiveLimitWriteRequest(
-                PowerDirection.Consumption, true, 0, 0, null, "test", "test");
+                PowerDirection.Consumption, true, 0, null, "test", "test");
 
             // Act
-            var result = _stateMachine.EvaluateLimitWrite(request);
+            await NotifyHeartbeat();
+            var result = await _stateMachine.ApproveActiveLimitWriteAsync(request);
 
             // Assert
-            Assert.True(result.Allowed);
+            Assert.True(result.Approved);
         }
 
         #endregion
@@ -258,10 +278,10 @@ namespace TestProject1
         #region Failsafe Configuration Tests
 
         [Fact]
-        public void SetFailsafeLimit_ShouldUpdateEffectiveLimit_WhenInInitState()
+        public async Task SetFailsafeLimit_ShouldUpdateEffectiveLimit_WhenInInitState()
         {
             // Act
-            _stateMachine.SetFailsafeLimit(2000);
+            await _stateMachine.DataUpdateFailsafeActivePowerLimitAsync(2000);
 
             // Assert
             var limit = _stateMachine.GetEffectiveLimit();
@@ -272,7 +292,7 @@ namespace TestProject1
         public void SetFailsafeDuration_ShouldUpdateDuration()
         {
             // Act
-            _stateMachine.SetFailsafeDuration(TimeSpan.FromHours(4));
+            _stateMachine.DataUpdateFailsafeDurationMinimumAsync(0, TimeSpan.FromHours(4), _remoteSki);
 
             // Assert
             Assert.Equal(TimeSpan.FromHours(4), _stateMachine.FailsafeDuration);
@@ -283,50 +303,50 @@ namespace TestProject1
         #region Event Handler Tests
 
         [Fact]
-        public void StateChange_ShouldFireOnStateChangedEvent()
+        public async Task StateChange_ShouldFireOnStateChangedEvent()
         {
             // Arrange
             var request = new ActiveLimitWriteRequest(
-                PowerDirection.Consumption, true, 5000, 0, null, "test", "test");
+                PowerDirection.Consumption, true, 5000, null, "test", "test");
 
             // Act
-            _stateMachine.OnHeartbeatReceived();
-            _stateMachine.OnLimitWriteAccepted(request);
+            await NotifyHeartbeat();
+            await WriteLimit(request);
 
             // Assert
             Assert.True(_eventHandler.StateChangedCalled);
-            Assert.Equal(LimitState.Init, _eventHandler.LastOldState);
+            Assert.Equal(LimitState.InitPlusHeartbeat, _eventHandler.LastOldState);
             Assert.Equal(LimitState.Limited, _eventHandler.LastNewState);
         }
 
         [Fact]
-        public void StateChange_ShouldFireOnEffectiveLimitChangedEvent()
+        public async Task StateChange_ShouldFireOnEffectiveLimitChangedEvent()
         {
             // Arrange
             var request = new ActiveLimitWriteRequest(
-                PowerDirection.Consumption, true, 5000, 0, null, "test", "test");
+                PowerDirection.Consumption, true, 5000, null, "test", "test");
 
             // Act
-            _stateMachine.OnHeartbeatReceived();
-            _stateMachine.OnLimitWriteAccepted(request);
+            await NotifyHeartbeat();
+            await WriteLimit(request);
 
             // Assert
             Assert.True(_eventHandler.EffectiveLimitChangedCalled);
             Assert.NotNull(_eventHandler.LastEffectiveLimit);
-            Assert.Equal(5000, _eventHandler.LastEffectiveLimit!.Value);
+            Assert.Equal(5000, _eventHandler.LastEffectiveLimit.Value);
         }
 
         [Fact]
-        public void UnregisterEventHandler_ShouldStopReceivingEvents()
+        public async Task UnregisterEventHandler_ShouldStopReceivingEvents()
         {
             // Arrange
             _stateMachine.UnregisterEventHandler(_eventHandler);
             var request = new ActiveLimitWriteRequest(
-                PowerDirection.Consumption, true, 5000, 0, null, "test", "test");
+                PowerDirection.Consumption, true, 5000, null, "test", "test");
 
             // Act
-            _stateMachine.OnHeartbeatReceived();
-            _stateMachine.OnLimitWriteAccepted(request);
+            await NotifyHeartbeat();
+            await WriteLimit(request);
 
             // Assert
             Assert.False(_eventHandler.StateChangedCalled);
@@ -341,7 +361,7 @@ namespace TestProject1
         {
             Assert.Equal(PowerDirection.Consumption, _stateMachine.Direction);
 
-            using var productionMachine = new LimitStateMachine(PowerDirection.Production, 500);
+            using var productionMachine = new LppLimitStateMachine(500);
             Assert.Equal(PowerDirection.Production, productionMachine.Direction);
         }
 
@@ -350,19 +370,19 @@ namespace TestProject1
         #region Limit Update in Limited State
 
         [Fact]
-        public void LimitUpdate_InLimitedState_ShouldUpdateValue()
+        public async Task LimitUpdate_InLimitedState_ShouldUpdateValue()
         {
             // Arrange: Get to Limited state with 5000W
             var request1 = new ActiveLimitWriteRequest(
-                PowerDirection.Consumption, true, 5000, 0, null, "test", "test");
-            _stateMachine.OnHeartbeatReceived();
-            _stateMachine.OnLimitWriteAccepted(request1);
+                PowerDirection.Consumption, true, 5000, null, "test", "test");
+            await NotifyHeartbeat();
+            await WriteLimit(request1);
             Assert.Equal(5000, _stateMachine.GetEffectiveLimit().Value);
 
             // Act: Update to 3000W
             var request2 = new ActiveLimitWriteRequest(
-                PowerDirection.Consumption, true, 3000, 0, null, "test", "test");
-            _stateMachine.OnLimitWriteAccepted(request2);
+                PowerDirection.Consumption, true, 3000, null, "test", "test");
+            await WriteLimit(request2);
 
             // Assert
             Assert.Equal(LimitState.Limited, _stateMachine.CurrentState);
@@ -385,30 +405,38 @@ namespace TestProject1
             public EffectiveLimit? LastEffectiveLimit { get; private set; }
             public string? LastReason { get; private set; }
 
-            public void OnStateChanged(LimitState oldState, LimitState newState, string reason)
+            public Task OnStateChanged(LimitState oldState, LimitState newState, string reason)
             {
                 StateChangedCalled = true;
                 LastOldState = oldState;
                 LastNewState = newState;
                 LastReason = reason;
+
+                return Task.CompletedTask;
             }
 
-            public void OnEffectiveLimitChanged(EffectiveLimit newLimit)
+            public Task OnEffectiveLimitChanged(EffectiveLimit newLimit)
             {
                 EffectiveLimitChangedCalled = true;
                 LastEffectiveLimit = newLimit;
+
+                return Task.CompletedTask;
             }
 
-            public void OnFailsafeEntered(string reason)
+            public Task OnFailsafeEntered(string reason)
             {
                 FailsafeEnteredCalled = true;
                 LastReason = reason;
+
+                return Task.CompletedTask;
             }
 
-            public void OnFailsafeExited(string reason)
+            public Task OnFailsafeExited(string reason)
             {
                 FailsafeExitedCalled = true;
                 LastReason = reason;
+
+                return Task.CompletedTask;
             }
 
             public void Reset()
@@ -421,6 +449,21 @@ namespace TestProject1
                 LastNewState = null;
                 LastEffectiveLimit = null;
                 LastReason = null;
+            }
+
+            public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync(ActiveLimitWriteRequest request)
+            {
+                return Task.FromResult(WriteApprovalResult.Accept());
+            }
+
+            public Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync(FailsafeLimitWriteRequest request)
+            {
+                return Task.FromResult(WriteApprovalResult.Accept());
+            }
+
+            public Task<WriteApprovalResult> ApproveFailsafeMinimumDurationWriteAsync(FailsafeDurationWriteRequest request)
+            {
+                return Task.FromResult(WriteApprovalResult.Accept());
             }
         }
 

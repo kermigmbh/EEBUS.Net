@@ -306,12 +306,4 @@ namespace EEBUS.SPINE.Commands
 
 		public string? duration { get; set; }
 	}
-
-	[System.SerializableAttribute()]
-	public class ScaledNumberType
-	{
-		public long? number { get; set; }
-
-		public short? scale { get; set; }
-	}
 }
