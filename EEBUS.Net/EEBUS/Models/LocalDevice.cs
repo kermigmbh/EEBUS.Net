@@ -5,12 +5,8 @@ using EEBUS.UseCases;
 
 namespace EEBUS.Models
 {
-	public class LocalDevice : Device, IDisposable
+	public class LocalDevice : Device
 	{
-		private LimitStateMachine? _consumptionStateMachine;
-		private LimitStateMachine? _productionStateMachine;
-		private readonly object _stateMachineLock = new();
-
 		public LocalDevice( byte[] ski, DeviceSettings settings )
 			: base( settings.Id, ski )
 		{
@@ -94,78 +90,9 @@ namespace EEBUS.Models
 		}
 
 		/// <summary>
-		/// Get the limit state machine for the specified power direction.
-		/// Creates the state machine on first access.
-		/// </summary>
-		/// <param name="direction">PowerDirection.Consumption for LPC, PowerDirection.Production for LPP</param>
-		/// <returns>The state machine for the given direction</returns>
-		public LimitStateMachine GetStateMachine(PowerDirection direction)
-		{
-			lock (_stateMachineLock)
-			{
-				if (direction == PowerDirection.Consumption)
-				{
-					if (_consumptionStateMachine == null)
-					{
-						var failsafeLimit = GetFailsafeLimit(direction);
-						_consumptionStateMachine = new LimitStateMachine(direction, failsafeLimit);
-					}
-					return _consumptionStateMachine;
-				}
-				else
-				{
-					if (_productionStateMachine == null)
-					{
-						var failsafeLimit = GetFailsafeLimit(direction);
-						_productionStateMachine = new LimitStateMachine(direction, failsafeLimit);
-					}
-					return _productionStateMachine;
-				}
-			}
-		}
-
-		/// <summary>
-		/// Get the limit state machine for the specified direction string ("consume" or "produce").
-		/// Creates the state machine on first access.
-		/// </summary>
-		public LimitStateMachine GetStateMachine(string limitDirection)
-		{
-			var direction = limitDirection == "consume" ? PowerDirection.Consumption : PowerDirection.Production;
-			return GetStateMachine(direction);
-		}
-
-		/// <summary>
-		/// Get the current effective limit for the specified power direction.
-		/// </summary>
-		public EffectiveLimit GetEffectiveLimit(PowerDirection direction)
-		{
-			return GetStateMachine(direction).GetEffectiveLimit();
-		}
-
-		/// <summary>
-		/// Get the current effective limit for the specified direction string.
-		/// </summary>
-		public EffectiveLimit GetEffectiveLimit(string limitDirection)
-		{
-			return GetStateMachine(limitDirection).GetEffectiveLimit();
-		}
-
-		/// <summary>
-		/// Notify all state machines that a heartbeat was received.
-		/// </summary>
-		public void OnHeartbeatReceived()
-		{
-			lock (_stateMachineLock)
-			{
-				_consumptionStateMachine?.OnHeartbeatReceived();
-				_productionStateMachine?.OnHeartbeatReceived();
-			}
-		}
-
-		/// <summary>
 		/// Get the failsafe limit value for a direction from KeyValues
 		/// </summary>
-		private long GetFailsafeLimit(PowerDirection direction)
+		public long GetFailsafeLimit(PowerDirection direction)
 		{
 			if (direction == PowerDirection.Consumption)
 			{
@@ -185,34 +112,5 @@ namespace EEBUS.Models
 			}
 			return 0;
 		}
-
-		#region IDisposable
-
-		private bool _disposed;
-
-		public void Dispose()
-		{
-			Dispose(true);
-			GC.SuppressFinalize(this);
-		}
-
-		protected virtual void Dispose(bool disposing)
-		{
-			if (_disposed)
-				return;
-
-			if (disposing)
-			{
-				lock (_stateMachineLock)
-				{
-					_consumptionStateMachine?.Dispose();
-					_productionStateMachine?.Dispose();
-				}
-			}
-
-			_disposed = true;
-		}
-
-		#endregion
 	}
 }

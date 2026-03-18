@@ -9,6 +9,7 @@ using EEBUS.Net.Events;
 using EEBUS.Net.Extensions;
 using EEBUS.SHIP.Messages;
 using EEBUS.SPINE.Commands;
+using EEBUS.StateMachines;
 using EEBUS.UseCases;
 using EEBUS.UseCases.ControllableSystem;
 using Makaretu.Dns;
@@ -95,15 +96,16 @@ namespace EEBUS.Net
             _devices.ServerStateChanged += OnServerStateChanged;
             _devices.ClientStateChanged += OnClientStateChanged;
 
-            lpcEventHandler = new LPCEventHandler(this);
-            lppEventHandler = new LPPEventHandler(this);
-            lpcOrLppEventHandler = new LPCorLPPEventHandler(this);
+            lpcEventHandler = new LpcLimitStateMachine(localDevice);
+            lpcEventHandler.RegisterEventHandler(new LPCEventHandler(this));
+            lppEventHandler = new LppLimitStateMachine(localDevice);
+            lppEventHandler.RegisterEventHandler(new LPPEventHandler(this));
+
             monitoringUseCasesEventHandler = new MonitoringUseCasesEventHandler(this);
             notifyEventHandler = new NotifyEventHandler(this);
             deviceConnectionStatusEventHandler = new DeviceConnectionStatusEventHandler(this);
             _devices.Local.AddUseCaseEvents(this.lpcEventHandler);
             _devices.Local.AddUseCaseEvents(this.lppEventHandler);
-            _devices.Local.AddUseCaseEvents(this.lpcOrLppEventHandler);
             _devices.Local.AddUseCaseEvents(this.notifyEventHandler);
             _devices.Local.AddUseCaseEvents(this.monitoringUseCasesEventHandler);
             _devices.Local.AddUseCaseEvents(this.deviceConnectionStatusEventHandler);
@@ -145,9 +147,8 @@ namespace EEBUS.Net
             return DeviceConnectionStatus.Unknown;
         }
 
-        private LPCEventHandler lpcEventHandler;
-        private LPPEventHandler lppEventHandler;
-        private LPCorLPPEventHandler lpcOrLppEventHandler;
+        private LpcLimitStateMachine lpcEventHandler;
+        private LppLimitStateMachine lppEventHandler;
         private MonitoringUseCasesEventHandler monitoringUseCasesEventHandler;
         private NotifyEventHandler notifyEventHandler;
         private DeviceConnectionStatusEventHandler deviceConnectionStatusEventHandler;
@@ -236,7 +237,7 @@ namespace EEBUS.Net
             }
         }
 
-        private class LPCEventHandler(EEBUSManager EEBusManager) : LPCEvents
+        private class LPCEventHandler(EEBUSManager EEBusManager) : ILimitStateMachineEvents
         {
             public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync(ActiveLimitWriteRequest request)
             {
@@ -250,7 +251,13 @@ namespace EEBUS.Net
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
-            public async Task DataUpdateLimitAsync(int counter, bool active, long limit, TimeSpan duration, string remoteSki)
+            public Task<WriteApprovalResult> ApproveFailsafeMinimumDurationWriteAsync(FailsafeDurationWriteRequest request)
+            {
+                Console.WriteLine($"Failsafe Duration Write Request: Duration={request.Duration}");
+                return Task.FromResult(WriteApprovalResult.Accept());
+            }
+
+            public async Task OnEffectiveLimitChanged(EffectiveLimit limit)
             {
                 //using var _ = Push(new LimitDataChanged(true, active, limit, duration));
                 Console.WriteLine("UpdateLimit");
@@ -265,26 +272,19 @@ namespace EEBUS.Net
                 {
                     var deviceData = new DeviceData
                     {
-                        SKI = remoteSki,
                         Lpc = new LpcLppData
                         {
-                            LimitActive = active,
-                            Limit = limit,
-                            LimitDuration = (int)duration.TotalSeconds
+                            LimitActive = limit.IsLimited,
+                            Limit = limit.Value,
+                            LimitDuration = (int?)((limit.ExpiresAt?.Subtract(DateTimeOffset.Now))?.Duration().TotalSeconds)
                         }
                     };
                     await changedCallback(deviceData);
                 }
             }
-
-            public async Task DataUpdateFailsafeConsumptionActivePowerLimitAsync(int counter, long limit, string remoteSki)
-            {
-                //using var _ = Push(new FailsafeLimitDataChanged(true, limit));
-
-            }
         }
 
-        private class LPPEventHandler(EEBUSManager EEBusManager) : LPPEvents
+        private class LPPEventHandler(EEBUSManager EEBusManager) : ILimitStateMachineEvents
         {
             public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync(ActiveLimitWriteRequest request)
             {
@@ -298,33 +298,15 @@ namespace EEBUS.Net
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
-            public async Task DataUpdateLimitAsync(int counter, bool active, long limit, TimeSpan duration, string remoteSki)
-            {
-                //using var _ = Push(new LimitDataChanged(false, active, limit, duration));
-            }
-
-            public async Task DataUpdateFailsafeProductionActivePowerLimitAsync(int counter, long limit, string remoteSki)
-            {
-                //using var _ = Push(new FailsafeLimitDataChanged(false, limit));
-            }
-        }
-
-        private class LPCorLPPEventHandler(EEBUSManager EEBusManager) : LPCorLPPEvents
-        {
-            public Task<WriteApprovalResult> ApproveFailsafeDurationWriteAsync(FailsafeDurationWriteRequest request)
+            public Task<WriteApprovalResult> ApproveFailsafeMinimumDurationWriteAsync(FailsafeDurationWriteRequest request)
             {
                 Console.WriteLine($"Failsafe Duration Write Request: Duration={request.Duration}");
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
-            public async Task DataUpdateFailsafeDurationMinimumAsync(int counter, TimeSpan duration, string remoteSki)
+            public async Task OnEffectiveLimitChanged(EffectiveLimit limit)
             {
-                //using var _ = Push(new FailsafeLimitDurationChanged(duration));
-            }
-
-            public async Task DataUpdateHeartbeatAsync(int counter, RemoteDevice device, uint timeout, string remoteSki)
-            {
-                //using var _ = Push(new HeartbeatReceived(device, timeout));
+                //using var _ = Push(new LimitDataChanged(false, active, limit, duration));
             }
         }
 
@@ -794,7 +776,6 @@ namespace EEBUS.Net
 
             _devices.Local.RemoveUseCaseEvents(this.lpcEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.lppEventHandler);
-            _devices.Local.RemoveUseCaseEvents(this.lpcOrLppEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.notifyEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.monitoringUseCasesEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.deviceConnectionStatusEventHandler);

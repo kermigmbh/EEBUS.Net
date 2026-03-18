@@ -174,7 +174,6 @@ namespace EEBUS.SPINE.Commands
                         connection.Remote?.DeviceId,
                         connection.Remote?.SKI?.ToString()
                     );
-
                     // User-Callback aufrufen
                     if (approvalResult.Approved)
                     {
@@ -240,7 +239,8 @@ namespace EEBUS.SPINE.Commands
                 if (didChange)
                 {
                     AddressType? featureAddress = device.GetFeatureAddress("LoadControl", true);
-                    if (featureAddress != null) {
+                    if (featureAddress != null)
+                    {
                         await SendNotifyAsync(device, featureAddress);
                     }
                 }

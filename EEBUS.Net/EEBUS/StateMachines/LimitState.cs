@@ -12,6 +12,12 @@ namespace EEBUS.StateMachines
         Init,
 
         /// <summary>
+        /// State after receiving a heartbeat in Init state.
+        /// Effective limit: Failsafe Limit
+        /// </summary>
+        InitPlusHeartbeat,
+
+        /// <summary>
         /// Not limited, but controlled by the Energy Guard.
         /// Heartbeat is active and no active limit is set.
         /// Effective limit: No limit (maximum power)
@@ -33,10 +39,24 @@ namespace EEBUS.StateMachines
         Failsafe,
 
         /// <summary>
+        /// Not controlled state due to heartbeat timeout.
+        /// State is reached from Failsafe when a heartbeat is received
+        /// Effective limit: Failsafe Limit
+        /// </summary>
+        FailsafePlusHeartbeat,
+
+        /// <summary>
         /// No external control - autonomous operation.
         /// Either no Energy Guard connected or failsafe duration has expired.
         /// Effective limit: No limit (maximum power)
         /// </summary>
-        UnlimitedAutonomous
+        UnlimitedAutonomous,
+
+        /// <summary>
+        /// No external control - autonomous operation.
+        /// State is reached from UnlimitedAutonomous when a heartbeat is received
+        /// Effective limit: No limit (maximum power)
+        /// </summary>
+        UnlimitedAutonomousPlusHeartbeat
     }
 }

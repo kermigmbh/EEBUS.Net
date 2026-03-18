@@ -58,8 +58,6 @@ namespace EEBUS.KeyValues
 		{
 			// Update both state machines with new failsafe duration
 			var duration = XmlConvert.ToTimeSpan(this.Duration);
-			connection.Local.GetStateMachine(PowerDirection.Consumption).SetFailsafeDuration(duration);
-			connection.Local.GetStateMachine(PowerDirection.Production).SetFailsafeDuration(duration);
 
 			List<LPCorLPPEvents> lpcOrLppEvents = connection.Local.GetUseCaseEvents<LPCorLPPEvents>();
 			foreach (var lpcOrLpp in lpcOrLppEvents)
