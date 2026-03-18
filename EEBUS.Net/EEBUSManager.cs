@@ -96,16 +96,16 @@ namespace EEBUS.Net
             _devices.ServerStateChanged += OnServerStateChanged;
             _devices.ClientStateChanged += OnClientStateChanged;
 
-            lpcEventHandler = new LpcLimitStateMachine(localDevice);
-            lpcEventHandler.RegisterEventHandler(new LPCEventHandler(this));
-            lppEventHandler = new LppLimitStateMachine(localDevice);
-            lppEventHandler.RegisterEventHandler(new LPPEventHandler(this));
+            lpcStateMachine = new LpcLimitStateMachine(localDevice);
+            lpcStateMachine.RegisterEventHandler(new LPCEventHandler(this));
+            lppStateMachine = new LppLimitStateMachine(localDevice);
+            lppStateMachine.RegisterEventHandler(new LPPEventHandler(this));
 
             monitoringUseCasesEventHandler = new MonitoringUseCasesEventHandler(this);
             notifyEventHandler = new NotifyEventHandler(this);
             deviceConnectionStatusEventHandler = new DeviceConnectionStatusEventHandler(this);
-            _devices.Local.AddUseCaseEvents(this.lpcEventHandler);
-            _devices.Local.AddUseCaseEvents(this.lppEventHandler);
+            _devices.Local.AddUseCaseEvents(this.lpcStateMachine);
+            _devices.Local.AddUseCaseEvents(this.lppStateMachine);
             _devices.Local.AddUseCaseEvents(this.notifyEventHandler);
             _devices.Local.AddUseCaseEvents(this.monitoringUseCasesEventHandler);
             _devices.Local.AddUseCaseEvents(this.deviceConnectionStatusEventHandler);
@@ -147,8 +147,8 @@ namespace EEBUS.Net
             return DeviceConnectionStatus.Unknown;
         }
 
-        private LpcLimitStateMachine lpcEventHandler;
-        private LppLimitStateMachine lppEventHandler;
+        private LpcLimitStateMachine lpcStateMachine;
+        private LppLimitStateMachine lppStateMachine;
         private MonitoringUseCasesEventHandler monitoringUseCasesEventHandler;
         private NotifyEventHandler notifyEventHandler;
         private DeviceConnectionStatusEventHandler deviceConnectionStatusEventHandler;
@@ -257,6 +257,21 @@ namespace EEBUS.Net
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
+            public async Task OnStateChanged(LimitState oldState, LimitState newState, string reason)
+            {
+                Console.WriteLine($"OnStateChanged {oldState} -> {newState} ({reason})");
+            }
+
+            public async Task OnFailsafeEntered(string reason)
+            {
+                Console.WriteLine($"Entered Failsafe");
+            }
+
+            public async Task OnFailsafeExited(string reason)
+            {
+                Console.WriteLine($"Left Failsafe");
+            }
+
             public async Task OnEffectiveLimitChanged(EffectiveLimit limit)
             {
                 //using var _ = Push(new LimitDataChanged(true, active, limit, duration));
@@ -327,7 +342,7 @@ namespace EEBUS.Net
             TimeSpan lppDuration = new();
             long lppFailsafeLimit = 0;
 
-            TimeSpan failsafeDuration = new();
+            TimeSpan failsafeMinimumDuration = new();
 
             foreach (LoadControlLimitDataStructure data in local.GetDataStructures<LoadControlLimitDataStructure>())
             {
@@ -355,7 +370,7 @@ namespace EEBUS.Net
 
             FailsafeDurationMinimumKeyValue? failsafeDurationKeyValue = local.GetKeyValue<FailsafeDurationMinimumKeyValue>();
             if (null != failsafeDurationKeyValue)
-                failsafeDuration = XmlConvert.ToTimeSpan(failsafeDurationKeyValue.Duration);
+                failsafeMinimumDuration = XmlConvert.ToTimeSpan(failsafeDurationKeyValue.Duration);
 
             var payload = new
             {
@@ -363,6 +378,7 @@ namespace EEBUS.Net
                 ski = local.SKI.ToReadable(),
                 shipId = local.ShipID,
 
+                lpc = lpcStateMachine.GetEffectiveLimit(),
                 lpcActive = lpcActive,
                 lpcLimit = lpcLimit,
                 lpcDuration = lpcDuration,
@@ -370,15 +386,13 @@ namespace EEBUS.Net
 
                 //heartbeatTimeout = 
 
-
+                lpp = lppStateMachine.GetEffectiveLimit(),
                 lppActive = lppActive,
                 lppLimit = lppLimit,
                 lppDuration = lppDuration,
                 lppFailsafeLimit = lppFailsafeLimit,
 
-                failsafeDuration = failsafeDuration
-
-
+                failsafeMinimumDuration = failsafeMinimumDuration
             };
 
 
@@ -774,8 +788,8 @@ namespace EEBUS.Net
             _devices.ServerStateChanged -= OnServerStateChanged;
             _devices.ClientStateChanged -= OnClientStateChanged;
 
-            _devices.Local.RemoveUseCaseEvents(this.lpcEventHandler);
-            _devices.Local.RemoveUseCaseEvents(this.lppEventHandler);
+            _devices.Local.RemoveUseCaseEvents(this.lpcStateMachine);
+            _devices.Local.RemoveUseCaseEvents(this.lppStateMachine);
             _devices.Local.RemoveUseCaseEvents(this.notifyEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.monitoringUseCasesEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.deviceConnectionStatusEventHandler);
