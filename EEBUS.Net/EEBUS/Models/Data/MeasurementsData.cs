@@ -6,13 +6,13 @@ namespace EEBUS.Net.EEBUS.Models.Data
 {
     public class MeasurementsData
     {
-        public long? AcPowerTotal { get; set; }
-        public long? GridFeedIn { get; set; }
-        public long? GridConsumption { get; set; }
+        public float? AcPowerTotal { get; set; }
+        public float? GridFeedIn { get; set; }
+        public float? GridConsumption { get; set; }
         public AcPhaseData? AcPower { get; set; }
-        public long? AcEnergyConsumed { get; set; }
+        public float? AcEnergyConsumed { get; set; }
         public AcPhaseData? AcCurrent { get; set; }
         public AcPhaseData? AcVoltage { get; set; }
-        public long? AcFrequency { get; set; }
+        public float? AcFrequency { get; set; }
     }
 }

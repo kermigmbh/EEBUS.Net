@@ -30,11 +30,11 @@ namespace EEBUS.Net.Extensions
                 PhaseC = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType?.scopeType == "acPower" && data.electricalConnectionParameterDescriptionData?.acMeasuredPhases == "c")?.MeasuredValue
             };
 
-            long? acPowerTotal = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType?.scopeType == "acPowerTotal")?.MeasuredValue;
-            long? gridFeedIn = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType?.scopeType == "gridFeedIn")?.MeasuredValue;
-            long? gridConsumption = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType?.scopeType == "gridConsumption")?.MeasuredValue;
-            long? acFrequency = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType?.scopeType == "acFrequency")?.MeasuredValue;
-            long? acEnergyConsumed = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType?.scopeType == "acEnergyConsumed")?.MeasuredValue;
+            float? acPowerTotal = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType?.scopeType == "acPowerTotal")?.MeasuredValue;
+            float? gridFeedIn = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType?.scopeType == "gridFeedIn")?.MeasuredValue;
+            float? gridConsumption = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType?.scopeType == "gridConsumption")?.MeasuredValue;
+            float? acFrequency = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType?.scopeType == "acFrequency")?.MeasuredValue;
+            float? acEnergyConsumed = measurementData.FirstOrDefault(data => data.measurementDescriptionDataType?.scopeType == "acEnergyConsumed")?.MeasuredValue;
 
             return new MeasurementsData
             {

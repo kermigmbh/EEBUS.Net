@@ -6,8 +6,8 @@ namespace EEBUS.Net.EEBUS.Models.Data
 {
     public class AcPhaseData
     {
-        public long? PhaseA {  get; set; }
-        public long? PhaseB {  get; set; }
-        public long? PhaseC {  get; set; }
+        public float? PhaseA {  get; set; }
+        public float? PhaseB {  get; set; }
+        public float? PhaseC {  get; set; }
     }
 }
