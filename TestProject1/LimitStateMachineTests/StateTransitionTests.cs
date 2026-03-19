@@ -15,6 +15,7 @@ namespace TestProject1.LimitStateMachineTests
         {
         }
 
+        #region Real State Transitions
         [Fact]
         public async Task Transition1_Init_To_UnlimitedControlled_WithHeartbeatAndDeactivatedLimit()
         {
@@ -338,6 +339,59 @@ namespace TestProject1.LimitStateMachineTests
             // Assert
             Assert.Equal(LimitState.Limited, _stateMachine.CurrentState);
             Assert.True(_stateMachine.GetEffectiveLimit().IsLimited);
+        }
+        #endregion Real State Transitions
+
+        [Fact]
+        public async Task Transition_ShouldEnterUnlimitedControlledWhenProcessingTakesLongerThanLimitDuration()
+        {
+            TimeSpan limitDuration = TimeSpan.FromSeconds(1);
+            // Arrange: Create an active limit request
+            var request = WriteRequest(
+                isActive: true,
+                value: 4140,
+                duration: limitDuration
+            );
+            // Arrange: add eventhandler that takes too long
+            _stateMachine.RegisterEventHandler(new SlowEventHandler(_timeProvider, limitDuration * 2));
+
+            // Act: Receive heartbeat, then limit write
+            await NotifyHeartbeat();
+            Assert.Equal(LimitState.InitPlusHeartbeat, _stateMachine.CurrentState);
+            await WriteLimit(request);
+
+            // Assert: State Machine jumps through Limited immediately into UnlimitedControlled
+            Assert.Equal(LimitState.UnlimitedControlled, _stateMachine.CurrentState);
+            Assert.Equal(LimitState.Limited, _eventHandler.LastOldState);
+            Assert.Equal(3U, _eventHandler.StateChangedEventCount);
+            Assert.False(_stateMachine.GetEffectiveLimit().IsLimited);
+        }
+
+        private class SlowEventHandler(FakeTimeProvider timeProvider, TimeSpan timeout) : ILimitStateMachineEvents
+        {
+            public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync(ActiveLimitWriteRequest request)
+            {
+                timeProvider.Advance(timeout);
+                return Task.FromResult(WriteApprovalResult.Accept());
+            }
+
+            public Task<WriteApprovalResult> ApproveFailsafeDurationMinimumWriteAsync(FailsafeDurationWriteRequest request)
+            {
+                timeProvider.Advance(timeout);
+                return Task.FromResult(WriteApprovalResult.Accept());
+            }
+
+            public Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync(FailsafeLimitWriteRequest request)
+            {
+                timeProvider.Advance(timeout);
+                return Task.FromResult(WriteApprovalResult.Accept());
+            }
+
+            public Task OnEffectiveLimitChanged(EffectiveLimit newLimit)
+            {
+                timeProvider.Advance(timeout);
+                return Task.FromResult(WriteApprovalResult.Accept());
+            }
         }
     }
 }
