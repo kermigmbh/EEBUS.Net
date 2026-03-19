@@ -449,9 +449,18 @@ namespace EEBUS.StateMachines
         {
             StopLimitDurationTimer();
 
-            if (duration.HasValue && duration.Value != Timeout.InfiniteTimeSpan && duration.Value > TimeSpan.Zero)
+            if (!duration.HasValue || duration.Value == Timeout.InfiniteTimeSpan)
+            {
+                return;
+            }
+
+            if (duration.Value > TimeSpan.Zero)
             {
                 _limitDurationTimer = new Timer(OnLimitDurationExpired, null, duration.Value, Timeout.InfiniteTimeSpan);
+            }
+            else
+            {
+                OnLimitDurationExpired(null);
             }
         }
 
