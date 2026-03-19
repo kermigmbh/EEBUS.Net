@@ -63,13 +63,18 @@ namespace EEBUS
             private bool heartbeatSubscribed = false;
             private DeviceDiagnosisHeartbeatData.Class heartbeatClass = new DeviceDiagnosisHeartbeatData.Class();
             // This method is called by the timer delegate.
-            public void Beat(object? connectionObj, AddressType source, AddressType destination)
+            public void Beat(object? connectionObj)
             {
                 Connection? connection = connectionObj as Connection;
                 if (connection == null) return;
 
                 if (connection.State == Connection.EState.Connected)
                 {
+                    AddressType? heartbeatSource = connection.Local?.GetHeartbeatAddress(true);
+                    AddressType? heartbeatDestination = connection.Remote?.GetHeartbeatAddress(false);
+
+                    if (heartbeatSource == null || heartbeatDestination == null) return;
+
                     if (!this.heartbeatSubscribed)
                     {
                         this.heartbeatSubscribed = true;
@@ -88,9 +93,11 @@ namespace EEBUS
                     else
                         Debug.WriteLine("--- Send heartbeat via client ---");
 
+                    
+
                     SpineDatagramPayload reply = new SpineDatagramPayload();
-                    reply.datagram.header.addressSource = source;
-                    reply.datagram.header.addressDestination = destination;
+                    reply.datagram.header.addressSource = heartbeatSource;
+                    reply.datagram.header.addressDestination = heartbeatSource;
                     reply.datagram.header.msgCounter = DataMessage.NextCount;
                     reply.datagram.header.cmdClassifier = "notify";
 
@@ -384,6 +391,44 @@ namespace EEBUS
             message.SetPayload(JsonSerializer.SerializeToNode(read) ?? throw new Exception("Failed to serialize heartbeat read message"));
 
             PushDataMessage(message);
+        }
+
+        public void ReadAndSubscribe()
+        {
+            if (this.Remote != null && this.Local != null)
+            {
+                foreach (Entity entity in this.Remote.Entities)
+                {
+                    foreach (Feature feature in entity.Features)
+                    {
+                        if (feature.Role != "server") continue;
+
+                        AddressType? featureSourceAddress = this.Local.GetFeatureAddress(feature.Type, false);    //client address
+                        AddressType? featureDestinationAddress = this.Remote.GetFeatureAddress(feature.Type, true);  //server address
+
+
+                        if (featureSourceAddress != null && featureDestinationAddress != null)
+                        {
+                            foreach (Function function in feature.Functions)
+                            {
+                                if (function.SupportedFunction.possibleOperations.read != null)
+                                {
+                                    //read
+                                    SpineCmdPayloadBase? payload = SpineCmdPayloadBase.GetClass(function.SupportedFunction.function)?.CreateRead(this);
+                                    DataMessage readMessage = DataMessage.CreateRead(featureSourceAddress, featureDestinationAddress, payload);
+                                    PushDataMessage(readMessage);
+                                }
+                            }
+
+                            //if (!BindingAndSubscriptionManager.HasSubscription(featureSourceAddress, featureDestinationAddress))
+                            //{
+                            //    DataMessage callMessage = DataMessage.CreateSubscription(featureSourceAddress, featureDestinationAddress, feature.Type, Local.DeviceId, Remote.DeviceId);
+                            //    PushDataMessage(callMessage);
+                            //}
+                        }
+                    }
+                }
+            }
         }
     }
 }

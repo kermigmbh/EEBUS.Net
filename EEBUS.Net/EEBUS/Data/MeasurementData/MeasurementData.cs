@@ -5,18 +5,18 @@ namespace EEBUS.MeasurementData
     public class MeasurementData
     {
         public uint measurementId { get; set; }
-        public ElectricalConnectionParameterDescriptionDataType electricalConnectionParameterDescriptionData { get; set; }
-        public MeasurementDataType measurementDataType { get; set; }
-        public MeasurementDescriptionDataType measurementDescriptionDataType { get; set; }
+        public ElectricalConnectionParameterDescriptionDataType? electricalConnectionParameterDescriptionData { get; set; }
+        public MeasurementDataType? measurementDataType { get; set; }
+        public MeasurementDescriptionDataType? measurementDescriptionDataType { get; set; }
 
         public long? MeasuredValue
         {
-            get => measurementDataType.value?.number;
+            get => measurementDataType?.value?.number;
         }
 
         public void UpdateValue(long? value)
         {
-            if (value != null)
+            if (value != null && measurementDataType != null)
             {
                 measurementDataType.value ??= new ScaledNumberType();
                 measurementDataType.value.number = value;

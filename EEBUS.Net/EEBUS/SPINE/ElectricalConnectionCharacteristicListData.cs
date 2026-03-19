@@ -17,6 +17,11 @@ namespace EEBUS.SPINE.Commands
 
 		public new class Class : SpineCmdPayload<CmdElectricalConnectionCharacteristicListDataType>.Class
 		{
+            public override SpineCmdPayloadBase? CreateRead(Connection connection)
+            {
+				return new ElectricalConnectionCharacteristicListData();
+            }
+
 			public override SpineCmdPayloadBase CreateNotify( Connection connection )
 			{
 				ElectricalConnectionCharacteristicListData payload = new ElectricalConnectionCharacteristicListData();
@@ -86,7 +91,7 @@ namespace EEBUS.SPINE.Commands
 	{
 		public string										  function									 { get; set; }
 		public FilterType[]									  filter									 { get; set; }
-		public ElectricalConnectionCharacteristicListDataType electricalConnectionCharacteristicListData { get; set; }
+		public ElectricalConnectionCharacteristicListDataType electricalConnectionCharacteristicListData { get; set; } = new();
 	}
 
 	//[System.SerializableAttribute()]
