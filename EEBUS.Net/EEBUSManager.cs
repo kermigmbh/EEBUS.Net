@@ -251,7 +251,7 @@ namespace EEBUS.Net
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
-            public Task<WriteApprovalResult> ApproveFailsafeMinimumDurationWriteAsync(FailsafeDurationWriteRequest request)
+            public Task<WriteApprovalResult> ApproveFailsafeDurationMinimumWriteAsync(FailsafeDurationWriteRequest request)
             {
                 Console.WriteLine($"Failsafe Duration Write Request: Duration={request.Duration}");
                 return Task.FromResult(WriteApprovalResult.Accept());
@@ -313,7 +313,7 @@ namespace EEBUS.Net
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
-            public Task<WriteApprovalResult> ApproveFailsafeMinimumDurationWriteAsync(FailsafeDurationWriteRequest request)
+            public Task<WriteApprovalResult> ApproveFailsafeDurationMinimumWriteAsync(FailsafeDurationWriteRequest request)
             {
                 Console.WriteLine($"Failsafe Duration Write Request: Duration={request.Duration}");
                 return Task.FromResult(WriteApprovalResult.Accept());
@@ -374,7 +374,7 @@ namespace EEBUS.Net
                 lppDuration = lppDuration,
                 lppFailsafeLimit = local.GetFailsafeLimit(PowerDirection.Production),
 
-                failsafeMinimumDuration = local.GetFailsafeDurationMinimum()
+                failsafeDurationMinimum = local.GetFailsafeDurationMinimum()
             };
 
 

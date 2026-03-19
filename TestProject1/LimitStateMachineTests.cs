@@ -461,7 +461,7 @@ namespace TestProject1
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
-            public Task<WriteApprovalResult> ApproveFailsafeMinimumDurationWriteAsync(FailsafeDurationWriteRequest request)
+            public Task<WriteApprovalResult> ApproveFailsafeDurationMinimumWriteAsync(FailsafeDurationWriteRequest request)
             {
                 return Task.FromResult(WriteApprovalResult.Accept());
             }

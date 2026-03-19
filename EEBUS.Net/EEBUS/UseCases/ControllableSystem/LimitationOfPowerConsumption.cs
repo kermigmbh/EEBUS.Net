@@ -45,7 +45,7 @@ namespace EEBUS.UseCases.ControllableSystem
                 long failsafeLimit = usecaseSettings.InitLimits.FailsafeLimit;
 
                 string xmlDuration = XmlConvert.ToString(usecaseSettings.InitLimits.Duration);
-                string xmlFailsafeDuration = XmlConvert.ToString(usecaseSettings.InitLimits.FailsafeMinimumDuration);
+                string xmlFailsafeDuration = XmlConvert.ToString(usecaseSettings.InitLimits.FailsafeDurationMinimum);
 
                 entity.Local.Add(new LoadControlLimitDataStructure("consume", limit, 0, xmlDuration, active));
                 entity.Local.Add(new ElectricalConnectionCharacteristicDataStructure("contractualConsumptionNominalMax", usecaseSettings.InitLimits.NominalMax, 0));

@@ -13,7 +13,7 @@ namespace EEBUS.StateMachines
 
 		Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync( FailsafeLimitWriteRequest request );
 
-		Task<WriteApprovalResult> ApproveFailsafeMinimumDurationWriteAsync( FailsafeDurationWriteRequest request );
+		Task<WriteApprovalResult> ApproveFailsafeDurationMinimumWriteAsync( FailsafeDurationWriteRequest request );
 
         /// <summary>
         /// Called when the state machine transitions to a new state

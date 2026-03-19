@@ -20,7 +20,7 @@ namespace EEBUS.StateMachines
         private LimitState _currentState = LimitState.Init;
         private Timer? _heartbeatTimeoutTimer;
         private Timer? _limitDurationTimer;
-        private Timer? _failsafeMinimumDurationTimer;
+        private Timer? _failsafeDurationMinimumTimer;
         private Timer? _initTimeoutTimer;
 
         // Limit values
@@ -34,7 +34,7 @@ namespace EEBUS.StateMachines
         private DateTimeOffset? _lastHeartbeatTime;
 
         // Failsafe duration (2-24h per spec, default 2h)
-        private TimeSpan _failsafeMinimumDuration;
+        private TimeSpan _failsafeDurationMinimum;
 
         // Timeout constants
         private static readonly TimeSpan HeartbeatStateTimeout = TimeSpan.FromSeconds(120);
@@ -45,7 +45,7 @@ namespace EEBUS.StateMachines
         {
             _direction = direction;
             _failsafeLimit = failsafeLimit;
-            _failsafeMinimumDuration = failsafeDurationMinimum;
+            _failsafeDurationMinimum = failsafeDurationMinimum;
             _initStartTime = DateTimeOffset.UtcNow;
 
             // Start init timeout timer (Transition 3: Init -> UnlimitedAutonomous after 120s without HB+Write)
@@ -92,7 +92,7 @@ namespace EEBUS.StateMachines
         /// </summary>
         public TimeSpan FailsafeDuration
         {
-            get { lock (_lock) return _failsafeMinimumDuration; }
+            get { lock (_lock) return _failsafeDurationMinimum; }
         }
 
         /// <summary>
@@ -149,7 +149,7 @@ namespace EEBUS.StateMachines
         {
             lock (_lock)
             {
-                _failsafeMinimumDuration = duration;
+                _failsafeDurationMinimum = duration;
                 Debug.WriteLine($"[LimitStateMachine:{_direction}] Failsafe duration updated to {duration}");
             }
 
@@ -308,7 +308,7 @@ namespace EEBUS.StateMachines
                 try
                 {
                     // query user handler to approve limit if all previous handlers accepted
-                    result = result.Approved ? await handler.ApproveFailsafeMinimumDurationWriteAsync(request) : result;
+                    result = result.Approved ? await handler.ApproveFailsafeDurationMinimumWriteAsync(request) : result;
                 }
                 catch (Exception ex)
                 {
@@ -461,16 +461,16 @@ namespace EEBUS.StateMachines
             _limitDurationTimer = null;
         }
 
-        private void StartFailsafeMinimumDurationTimer()
+        private void StartFailsafeDurationMinimumTimer()
         {
-            StopFailsafeMinimumDurationTimer();
-            _failsafeMinimumDurationTimer = new Timer(OnFailsafeDurationExpired, null, _failsafeMinimumDuration, Timeout.InfiniteTimeSpan);
+            StopFailsafeDurationMinimumTimer();
+            _failsafeDurationMinimumTimer = new Timer(OnFailsafeDurationExpired, null, _failsafeDurationMinimum, Timeout.InfiniteTimeSpan);
         }
 
-        private void StopFailsafeMinimumDurationTimer()
+        private void StopFailsafeDurationMinimumTimer()
         {
-            _failsafeMinimumDurationTimer?.Dispose();
-            _failsafeMinimumDurationTimer = null;
+            _failsafeDurationMinimumTimer?.Dispose();
+            _failsafeDurationMinimumTimer = null;
         }
 
         private async void OnHeartbeatTimeout(object? state)
@@ -651,8 +651,8 @@ namespace EEBUS.StateMachines
                     case (LimitState.UnlimitedControlled, LimitState.Failsafe):
                         StopLimitDurationTimer();
                         StopHeartbeatTimer();
-                        // start timer for leaving failsafe state after FailsafeMinimumDuration
-                        StartFailsafeMinimumDurationTimer();
+                        // start timer for leaving failsafe state after FailsafeDurationMinimum
+                        StartFailsafeDurationMinimumTimer();
                         break;
 
                     case (LimitState.Failsafe, LimitState.Failsafe):
@@ -673,7 +673,7 @@ namespace EEBUS.StateMachines
                     // Transition 8: Failsafe -> UnlimitedControlled
                     case (LimitState.FailsafePlusHeartbeat, LimitState.UnlimitedControlled):
                         StopInitTimeoutTimer();
-                        StopFailsafeMinimumDurationTimer();
+                        StopFailsafeDurationMinimumTimer();
                         // if we receive no heartbeats for HeartbeatTimeout, we leave this state
                         ResetHeartbeatTimer(_lastHeartbeatTime?.Add(HeartbeatStateTimeout));
                         break;
@@ -681,7 +681,7 @@ namespace EEBUS.StateMachines
                     // Transition 9: Failsafe -> Limited
                     case (LimitState.FailsafePlusHeartbeat, LimitState.Limited):
                         StopInitTimeoutTimer();
-                        StopFailsafeMinimumDurationTimer();
+                        StopFailsafeDurationMinimumTimer();
                         // maybe start timer to leave state after duration expires
                         StartLimitDurationTimer(newEffectiveLimit.ExpiresAt - DateTimeOffset.UtcNow);
                         // if we receive no heartbeats for HeartbeatTimeout, we leave this state
@@ -692,7 +692,7 @@ namespace EEBUS.StateMachines
                     case (LimitState.Failsafe, LimitState.UnlimitedAutonomous):
                     case (LimitState.FailsafePlusHeartbeat, LimitState.UnlimitedAutonomous):
                         StopInitTimeoutTimer();
-                        StopFailsafeMinimumDurationTimer();
+                        StopFailsafeDurationMinimumTimer();
                         StopHeartbeatTimer();
                         break;
 
@@ -832,7 +832,7 @@ namespace EEBUS.StateMachines
                 {
                     _heartbeatTimeoutTimer?.Dispose();
                     _limitDurationTimer?.Dispose();
-                    _failsafeMinimumDurationTimer?.Dispose();
+                    _failsafeDurationMinimumTimer?.Dispose();
                     _initTimeoutTimer?.Dispose();
                     _eventHandlers.Clear();
                 }

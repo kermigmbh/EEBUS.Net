@@ -29,7 +29,7 @@ namespace ConsoleDemo
                                     Limit = 0,
                                     Duration = Timeout.InfiniteTimeSpan,
                                     FailsafeLimit = 7200,
-                                    FailsafeMinimumDuration = TimeSpan.FromHours(2),
+                                    FailsafeDurationMinimum = TimeSpan.FromHours(2),
                                     NominalMax = 40000
                                 }
                             }

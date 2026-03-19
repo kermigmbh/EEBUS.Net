@@ -98,7 +98,7 @@ namespace EEBUS
         public long Limit { get; set; }
         public TimeSpan Duration { get; set; }
         public long FailsafeLimit { get; set; }
-        public TimeSpan FailsafeMinimumDuration { get; set; }
+        public TimeSpan FailsafeDurationMinimum { get; set; }
         public long NominalMax { get; set; }
     }
 
