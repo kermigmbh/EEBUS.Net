@@ -34,17 +34,18 @@ namespace EEBUS.StateMachines
         private DateTimeOffset? _lastHeartbeatTime;
 
         // Failsafe duration (2-24h per spec, default 2h)
-        private TimeSpan _failsafeMinimumDuration = TimeSpan.FromHours(2);
+        private TimeSpan _failsafeMinimumDuration;
 
         // Timeout constants
         private static readonly TimeSpan HeartbeatStateTimeout = TimeSpan.FromSeconds(120);
         private static readonly TimeSpan HeartbeatAcceptTimeout = TimeSpan.FromSeconds(60);
         private static readonly TimeSpan InitTimeout = TimeSpan.FromSeconds(120);
 
-        protected LimitStateMachine(PowerDirection direction, long failsafeLimit)
+        protected LimitStateMachine(PowerDirection direction, long failsafeLimit, TimeSpan failsafeDurationMinimum)
         {
             _direction = direction;
             _failsafeLimit = failsafeLimit;
+            _failsafeMinimumDuration = failsafeDurationMinimum;
             _initStartTime = DateTimeOffset.UtcNow;
 
             // Start init timeout timer (Transition 3: Init -> UnlimitedAutonomous after 120s without HB+Write)
@@ -53,7 +54,7 @@ namespace EEBUS.StateMachines
             Debug.WriteLine($"[LimitStateMachine:{_direction}] Initialized in Init state with failsafe limit {_failsafeLimit}W");
         }
 
-        protected LimitStateMachine(PowerDirection direction, LocalDevice localDevice) : this(direction, localDevice.GetFailsafeLimit(direction))
+        protected LimitStateMachine(PowerDirection direction, LocalDevice localDevice) : this(direction, localDevice.GetFailsafeLimit(direction), localDevice.GetFailsafeDurationMinimum())
         {
         }
 

@@ -335,14 +335,10 @@ namespace EEBUS.Net
             bool lpcActive = false;
             long lpcLimit = 0;
             TimeSpan lpcDuration = new();
-            long lpcFailsafeLimit = 0;
 
             bool lppActive = false;
             long lppLimit = 0;
             TimeSpan lppDuration = new();
-            long lppFailsafeLimit = 0;
-
-            TimeSpan failsafeMinimumDuration = new();
 
             foreach (LoadControlLimitDataStructure data in local.GetDataStructures<LoadControlLimitDataStructure>())
             {
@@ -360,18 +356,6 @@ namespace EEBUS.Net
                 }
             }
 
-            FailsafeConsumptionActivePowerLimitKeyValue? lpcFailsafeLimitKeyValue = local.GetKeyValue<FailsafeConsumptionActivePowerLimitKeyValue>();
-            if (null != lpcFailsafeLimitKeyValue)
-                lpcFailsafeLimit = lpcFailsafeLimitKeyValue.Value;
-
-            FailsafeProductionActivePowerLimitKeyValue? lppFailsafeLimitKeyValue = local.GetKeyValue<FailsafeProductionActivePowerLimitKeyValue>();
-            if (null != lppFailsafeLimitKeyValue)
-                lppFailsafeLimit = lppFailsafeLimitKeyValue.Value;
-
-            FailsafeDurationMinimumKeyValue? failsafeDurationKeyValue = local.GetKeyValue<FailsafeDurationMinimumKeyValue>();
-            if (null != failsafeDurationKeyValue)
-                failsafeMinimumDuration = XmlConvert.ToTimeSpan(failsafeDurationKeyValue.Duration);
-
             var payload = new
             {
                 name = local.Name,
@@ -382,17 +366,15 @@ namespace EEBUS.Net
                 lpcActive = lpcActive,
                 lpcLimit = lpcLimit,
                 lpcDuration = lpcDuration,
-                lpcFailsafeLimit = lpcFailsafeLimit,
-
-                //heartbeatTimeout = 
+                lpcFailsafeLimit = local.GetFailsafeLimit(PowerDirection.Consumption),
 
                 lpp = lppStateMachine.GetEffectiveLimit(),
                 lppActive = lppActive,
                 lppLimit = lppLimit,
                 lppDuration = lppDuration,
-                lppFailsafeLimit = lppFailsafeLimit,
+                lppFailsafeLimit = local.GetFailsafeLimit(PowerDirection.Production),
 
-                failsafeMinimumDuration = failsafeMinimumDuration
+                failsafeMinimumDuration = local.GetFailsafeDurationMinimum()
             };
 
 

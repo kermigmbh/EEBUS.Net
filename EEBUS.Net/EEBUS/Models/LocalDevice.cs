@@ -7,38 +7,38 @@ namespace EEBUS.Models
 {
 	public class LocalDevice : Device
 	{
-		public LocalDevice( byte[] ski, DeviceSettings settings )
-			: base( settings.Id, ski )
+		public LocalDevice(byte[] ski, DeviceSettings settings)
+			: base(settings.Id, ski)
 		{
-			this.Name			   = settings.Name;
-			this.Brand			   = settings.Brand;
-			this.Type			   = settings.Type;
-			this.Model			   = settings.Model;
-			this.Serial			   = settings.Serial;
+			this.Name = settings.Name;
+			this.Brand = settings.Brand;
+			this.Type = settings.Type;
+			this.Model = settings.Model;
+			this.Serial = settings.Serial;
 			this.NetworkFeatureSet = settings.NetworkFeatureSet;
 
 			int index = 0;
-			foreach ( EntitySettings entitySettings in settings.Entities )
+			foreach (EntitySettings entitySettings in settings.Entities)
 			{
-				this.Entities.Add( Entity.Create( index++, this, entitySettings ) );
+				this.Entities.Add(Entity.Create(index++, this, entitySettings));
 			}
 
 			this.settings = settings;
 		}
 
-		public string Brand				{ get; private set; }
+		public string Brand { get; private set; }
 
-		public string Type				{ get; private set; }
+		public string Type { get; private set; }
 
-		public string Model				{ get; private set; }
+		public string Model { get; private set; }
 
-		public string Serial			{ get; private set; }
+		public string Serial { get; private set; }
 
 		public string NetworkFeatureSet { get; private set; }
 
 
 		private readonly DeviceSettings settings;
-		
+
 		public string ShipID
 		{
 			get
@@ -55,8 +55,8 @@ namespace EEBUS.Models
 				DeviceInformationType info = new();
 
 				info.description.deviceAddress.device = this.DeviceId;
-				info.description.deviceType			  = this.Type;
-				info.description.networkFeatureSet	  = this.NetworkFeatureSet;
+				info.description.deviceType = this.Type;
+				info.description.networkFeatureSet = this.NetworkFeatureSet;
 
 				return info;
 			}
@@ -69,15 +69,15 @@ namespace EEBUS.Models
 				List<EntityInformationType> infos = new();
 
 				int index = 0;
-				foreach ( Entity entity in this.Entities )
+				foreach (Entity entity in this.Entities)
 				{
 					EntityInformationType info = new();
 
 					info.description.entityAddress.device = this.DeviceId;
 					info.description.entityAddress.entity = [index++];
-					info.description.entityType			  = entity.Type;
+					info.description.entityType = entity.Type;
 
-					infos.Add( info );
+					infos.Add(info);
 				}
 
 				return infos.ToArray();
@@ -96,21 +96,29 @@ namespace EEBUS.Models
 		{
 			if (direction == PowerDirection.Consumption)
 			{
-				var kv = this.KeyValues.FirstOrDefault(k => k.KeyName == "failsafeConsumptionActivePowerLimit");
-				if (kv != null && kv is FailsafeConsumptionActivePowerLimitKeyValue fsKv)
-				{
-					return fsKv.Value;
-				}
+				FailsafeConsumptionActivePowerLimitKeyValue? lpcFailsafeLimitKeyValue = GetKeyValue<FailsafeConsumptionActivePowerLimitKeyValue>();
+				if (null != lpcFailsafeLimitKeyValue)
+					return lpcFailsafeLimitKeyValue.Value;
 			}
 			else
 			{
-				var kv = this.KeyValues.FirstOrDefault(k => k.KeyName == "failsafeProductionActivePowerLimit");
-				if (kv != null && kv is FailsafeProductionActivePowerLimitKeyValue fsKv)
-				{
-					return fsKv.Value;
-				}
+				FailsafeProductionActivePowerLimitKeyValue? lppFailsafeLimitKeyValue = GetKeyValue<FailsafeProductionActivePowerLimitKeyValue>();
+				if (null != lppFailsafeLimitKeyValue)
+					return lppFailsafeLimitKeyValue.Value;
 			}
 			return 0;
+		}
+
+		/// <summary>
+		/// Get the minimum amount of time the system is required to stay in the failsafe state from KeyValues
+		/// </summary>
+		public TimeSpan GetFailsafeDurationMinimum()
+		{
+			FailsafeDurationMinimumKeyValue? failsafeDurationKeyValue = GetKeyValue<FailsafeDurationMinimumKeyValue>();
+			if (failsafeDurationKeyValue != null)
+				return System.Xml.XmlConvert.ToTimeSpan(failsafeDurationKeyValue.Duration);
+
+			return TimeSpan.FromHours(2);
 		}
 	}
 }

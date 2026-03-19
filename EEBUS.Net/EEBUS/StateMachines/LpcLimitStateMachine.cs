@@ -14,7 +14,12 @@ namespace EEBUS.StateMachines
         public LpcLimitStateMachine(LocalDevice localDevice) : base(PowerDirection.Consumption, localDevice)
         {
         }
-        public LpcLimitStateMachine(long limit) : base(PowerDirection.Consumption, limit)
+
+        public LpcLimitStateMachine(long limit, TimeSpan failsafeDurationMinimum) : base(PowerDirection.Consumption, limit, failsafeDurationMinimum)
+        {
+        }
+
+        public LpcLimitStateMachine(long limit) : base(PowerDirection.Consumption, limit, TimeSpan.FromHours(2))
         {
         }
 
