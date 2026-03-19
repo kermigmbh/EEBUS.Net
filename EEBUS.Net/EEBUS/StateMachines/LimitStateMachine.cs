@@ -19,10 +19,10 @@ namespace EEBUS.StateMachines
         private readonly List<ILimitStateMachineEvents> _eventHandlers = new();
 
         private LimitState _currentState = LimitState.Init;
-        private Timer? _heartbeatTimeoutTimer;
-        private Timer? _limitDurationTimer;
-        private Timer? _failsafeDurationMinimumTimer;
-        private Timer? _initTimeoutTimer;
+        private ITimer? _heartbeatTimeoutTimer;
+        private ITimer? _limitDurationTimer;
+        private ITimer? _failsafeDurationMinimumTimer;
+        private ITimer? _initTimeoutTimer;
 
         // Limit values
         private long _failsafeLimit;
@@ -52,7 +52,7 @@ namespace EEBUS.StateMachines
             _initStartTime = _timeProvider.GetUtcNow();
 
             // Start init timeout timer (Transition 3: Init -> UnlimitedAutonomous after 120s without HB+Write)
-            _initTimeoutTimer = new Timer(OnInitTimeout, null, InitTimeout, Timeout.InfiniteTimeSpan);
+            _initTimeoutTimer = _timeProvider.CreateTimer(OnInitTimeout, null, InitTimeout, Timeout.InfiniteTimeSpan);
 
             Debug.WriteLine($"[LimitStateMachine:{_direction}] Initialized in Init state with failsafe limit {_failsafeLimit}W");
         }
@@ -105,7 +105,7 @@ namespace EEBUS.StateMachines
         /// <summary>
         /// The currently configured failsafe duration
         /// </summary>
-        public TimeSpan FailsafeDuration
+        public TimeSpan FailsafeDurationMinimum
         {
             get { lock (_lock) return _failsafeDurationMinimum; }
         }
@@ -420,7 +420,7 @@ namespace EEBUS.StateMachines
         private void ResetHeartbeatTimer(TimeSpan timeout)
         {
             _heartbeatTimeoutTimer?.Dispose();
-            _heartbeatTimeoutTimer = new Timer(OnHeartbeatTimeout, null, timeout, Timeout.InfiniteTimeSpan);
+            _heartbeatTimeoutTimer = _timeProvider.CreateTimer(OnHeartbeatTimeout, null, timeout, Timeout.InfiniteTimeSpan);
         }
 
         private void ResetHeartbeatTimer(DateTimeOffset until)
@@ -471,7 +471,7 @@ namespace EEBUS.StateMachines
 
             if (duration.Value > TimeSpan.Zero)
             {
-                _limitDurationTimer = new Timer(OnLimitDurationExpired, null, duration.Value, Timeout.InfiniteTimeSpan);
+                _limitDurationTimer = _timeProvider.CreateTimer(OnLimitDurationExpired, null, duration.Value, Timeout.InfiniteTimeSpan);
             }
             else
             {
@@ -488,7 +488,7 @@ namespace EEBUS.StateMachines
         private void StartFailsafeDurationMinimumTimer()
         {
             StopFailsafeDurationMinimumTimer();
-            _failsafeDurationMinimumTimer = new Timer(OnFailsafeDurationExpired, null, _failsafeDurationMinimum, Timeout.InfiniteTimeSpan);
+            _failsafeDurationMinimumTimer = _timeProvider.CreateTimer(OnFailsafeDurationExpired, null, _failsafeDurationMinimum, Timeout.InfiniteTimeSpan);
         }
 
         private void StopFailsafeDurationMinimumTimer()
@@ -688,7 +688,7 @@ namespace EEBUS.StateMachines
                         break;
 
                     case (LimitState.Failsafe, LimitState.FailsafePlusHeartbeat):
-                        _initTimeoutTimer = new Timer(OnInitTimeout, null, InitTimeout, Timeout.InfiniteTimeSpan);
+                        _initTimeoutTimer = _timeProvider.CreateTimer(OnInitTimeout, null, InitTimeout, Timeout.InfiniteTimeSpan);
                         ResetHeartbeatTimer(_lastHeartbeatTime?.Add(HeartbeatAcceptTimeout));
                         break;
 
@@ -758,7 +758,9 @@ namespace EEBUS.StateMachines
                 {
                     try
                     {
-                        tasks.Add(handler.OnStateChanged(oldState, newState, reason));
+                        if (oldState != newState) {
+                            tasks.Add(handler.OnStateChanged(oldState, newState, reason));
+                        }
 
                         // Notify if effective limit changed
                         if (oldEffectiveLimit.IsLimited != newEffectiveLimit.IsLimited ||
@@ -770,11 +772,11 @@ namespace EEBUS.StateMachines
                         // Notify failsafe events
                         if (newState.IsFailsafe() && !oldState.IsFailsafe())
                         {
-                            handler.OnFailsafeEntered(reason);
+                            tasks.Add(handler.OnFailsafeEntered(reason));
                         }
                         else if (oldState.IsFailsafe() && !newState.IsFailsafe())
                         {
-                            handler.OnFailsafeExited(reason);
+                            tasks.Add(handler.OnFailsafeExited(reason));
                         }
                     }
                     catch (Exception ex)
