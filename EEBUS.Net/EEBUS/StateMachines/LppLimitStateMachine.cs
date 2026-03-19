@@ -18,7 +18,11 @@ namespace EEBUS.StateMachines
         public LppLimitStateMachine(long limit, TimeSpan failsafeDurationMinimum) : base(PowerDirection.Production, limit, failsafeDurationMinimum)
         {
         }
-        public LppLimitStateMachine(long limit) : base(PowerDirection.Production, limit, TimeSpan.FromHours(2))
+        public LppLimitStateMachine(long limit) : base(PowerDirection.Production, limit)
+        {
+        }
+
+        public LppLimitStateMachine(TimeProvider timeProvider, long limit) : base(timeProvider, PowerDirection.Production, limit)
         {
         }
 

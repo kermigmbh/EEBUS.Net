@@ -13,6 +13,7 @@ namespace EEBUS.StateMachines
     /// </summary>
     public abstract class LimitStateMachine : IDisposable
     {
+        private readonly TimeProvider _timeProvider;
         private readonly Lock _lock = new();
         private readonly PowerDirection _direction;
         private readonly List<ILimitStateMachineEvents> _eventHandlers = new();
@@ -37,21 +38,35 @@ namespace EEBUS.StateMachines
         private TimeSpan _failsafeDurationMinimum;
 
         // Timeout constants
-        private static readonly TimeSpan HeartbeatStateTimeout = TimeSpan.FromSeconds(120);
-        private static readonly TimeSpan HeartbeatAcceptTimeout = TimeSpan.FromSeconds(60);
-        private static readonly TimeSpan InitTimeout = TimeSpan.FromSeconds(120);
+        public static readonly TimeSpan DefaultFailsadeDurationMinimum = TimeSpan.FromHours(2);
+        public static readonly TimeSpan HeartbeatStateTimeout = TimeSpan.FromSeconds(120);
+        public static readonly TimeSpan HeartbeatAcceptTimeout = TimeSpan.FromSeconds(60);
+        public static readonly TimeSpan InitTimeout = TimeSpan.FromSeconds(120);
 
-        protected LimitStateMachine(PowerDirection direction, long failsafeLimit, TimeSpan failsafeDurationMinimum)
+        protected LimitStateMachine(TimeProvider timeProvider, PowerDirection direction, long failsafeLimit, TimeSpan failsafeDurationMinimum)
         {
+            _timeProvider = timeProvider;
             _direction = direction;
             _failsafeLimit = failsafeLimit;
             _failsafeDurationMinimum = failsafeDurationMinimum;
-            _initStartTime = DateTimeOffset.UtcNow;
+            _initStartTime = _timeProvider.GetUtcNow();
 
             // Start init timeout timer (Transition 3: Init -> UnlimitedAutonomous after 120s without HB+Write)
             _initTimeoutTimer = new Timer(OnInitTimeout, null, InitTimeout, Timeout.InfiniteTimeSpan);
 
             Debug.WriteLine($"[LimitStateMachine:{_direction}] Initialized in Init state with failsafe limit {_failsafeLimit}W");
+        }
+
+        protected LimitStateMachine(TimeProvider timeProvider, PowerDirection direction, long failsafeLimit) : this(timeProvider, direction, failsafeLimit, DefaultFailsadeDurationMinimum)
+        {
+        }
+
+        protected LimitStateMachine(PowerDirection direction, long failsafeLimit, TimeSpan failsafeDurationMinimum) : this(TimeProvider.System, direction, failsafeLimit, failsafeDurationMinimum)
+        {
+        }
+
+        protected LimitStateMachine(PowerDirection direction, long failsafeLimit) : this(TimeProvider.System, direction, failsafeLimit, DefaultFailsadeDurationMinimum)
+        {
         }
 
         protected LimitStateMachine(PowerDirection direction, LocalDevice localDevice) : this(direction, localDevice.GetFailsafeLimit(direction), localDevice.GetFailsafeDurationMinimum())
@@ -167,7 +182,7 @@ namespace EEBUS.StateMachines
             lock (_lock)
             {
                 _hasReceivedHeartbeat = true;
-                _lastHeartbeatTime = DateTimeOffset.UtcNow;
+                _lastHeartbeatTime = _timeProvider.GetUtcNow();
 
                 Debug.WriteLine($"[LimitStateMachine:{_direction}] Heartbeat received in state {_currentState}");
 
@@ -337,7 +352,7 @@ namespace EEBUS.StateMachines
                 DateTimeOffset? expiresAt = null;
                 if (duration != Timeout.InfiniteTimeSpan)
                 {
-                    expiresAt = DateTimeOffset.UtcNow.Add(duration);
+                    expiresAt = _timeProvider.GetUtcNow().Add(duration);
                 }
 
                 _activeLimit = limit;
@@ -410,14 +425,14 @@ namespace EEBUS.StateMachines
 
         private void ResetHeartbeatTimer(DateTimeOffset until)
         {
-            TimeSpan timeout = until.Subtract(DateTimeOffset.UtcNow);
+            TimeSpan timeout = until.Subtract(_timeProvider.GetUtcNow());
             if (timeout > TimeSpan.Zero)
             {
                 ResetHeartbeatTimer(timeout);
             }
             else
             {
-                throw new InvalidOperationException($"Illegal state transition, heartbeat expected at {until} but it is already {DateTimeOffset.UtcNow}");
+                throw new InvalidOperationException($"Illegal state transition, heartbeat expected at {until} but it is already {_timeProvider.GetUtcNow()}");
             }
         }
 
@@ -588,9 +603,6 @@ namespace EEBUS.StateMachines
             lock (_lock)
             {
                 var oldState = _currentState;
-                if (oldState == newState)
-                    return;
-
                 _currentState = newState;
 
                 Debug.WriteLine($"[LimitStateMachine:{_direction}] State transition: {oldState} -> {newState} ({reason})");
@@ -622,7 +634,7 @@ namespace EEBUS.StateMachines
                     case (LimitState.InitPlusHeartbeat, LimitState.Limited):
                         StopInitTimeoutTimer();
                         // maybe start timer to leave state after duration expires
-                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt - DateTimeOffset.UtcNow);
+                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt - _timeProvider.GetUtcNow());
                         // if we receive no heartbeats for HeartbeatTimeout, we leave this state
                         ResetHeartbeatTimer(_lastHeartbeatTime?.Add(HeartbeatStateTimeout));
                         break;
@@ -634,8 +646,14 @@ namespace EEBUS.StateMachines
                         StopHeartbeatTimer();
                         break;
 
-                    case (LimitState.UnlimitedControlled, LimitState.UnlimitedControlled):
                     case (LimitState.Limited, LimitState.Limited):
+                        // maybe start timer to leave state after duration expires
+                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt - _timeProvider.GetUtcNow());
+                        // if we receive no heartbeats for HeartbeatTimeout, we leave this state
+                        ResetHeartbeatTimer(_lastHeartbeatTime?.Add(HeartbeatStateTimeout));
+                        break;
+
+                    case (LimitState.UnlimitedControlled, LimitState.UnlimitedControlled):
                         // if we receive no heartbeats for HeartbeatTimeout, we leave this state
                         ResetHeartbeatTimer(_lastHeartbeatTime?.Add(HeartbeatStateTimeout));
                         break;
@@ -643,7 +661,7 @@ namespace EEBUS.StateMachines
                     // Transition 4
                     case (LimitState.UnlimitedControlled, LimitState.Limited):
                         // maybe start timer to leave state after duration expires
-                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt - DateTimeOffset.UtcNow);
+                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt - _timeProvider.GetUtcNow());
                         // if we receive no heartbeats for HeartbeatTimeout, we leave this state
                         ResetHeartbeatTimer(_lastHeartbeatTime?.Add(HeartbeatStateTimeout));
                         break;
@@ -692,7 +710,7 @@ namespace EEBUS.StateMachines
                         StopInitTimeoutTimer();
                         StopFailsafeDurationMinimumTimer();
                         // maybe start timer to leave state after duration expires
-                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt - DateTimeOffset.UtcNow);
+                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt - _timeProvider.GetUtcNow());
                         // if we receive no heartbeats for HeartbeatTimeout, we leave this state
                         ResetHeartbeatTimer(_lastHeartbeatTime?.Add(HeartbeatStateTimeout));
                         break;
@@ -725,7 +743,7 @@ namespace EEBUS.StateMachines
                     // Transition 12: UnlimitedAutonomous -> Limited
                     case (LimitState.UnlimitedAutonomousPlusHeartbeat, LimitState.Limited):
                         // maybe start timer to leave state after duration expires
-                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt - DateTimeOffset.UtcNow);
+                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt - _timeProvider.GetUtcNow());
                         // if we receive no heartbeats for HeartbeatTimeout, we leave this state
                         ResetHeartbeatTimer(_lastHeartbeatTime?.Add(HeartbeatStateTimeout));
                         break;

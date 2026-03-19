@@ -1,6 +1,7 @@
 using EEBUS.Models;
 using EEBUS.StateMachines;
 using EEBUS.UseCases;
+using Microsoft.Extensions.Time.Testing;
 
 namespace TestProject1
 {
@@ -10,6 +11,7 @@ namespace TestProject1
     /// </summary>
     public class LimitStateMachineTimerTests : IDisposable
     {
+        private readonly FakeTimeProvider _timeProvider;
         private LimitStateMachine _stateMachine;
         private TestTimerEventHandler _eventHandler;
         private static string _remoteSki = "9EB90FCE71E9D0705102EA55555593F9DA95FB6F";
@@ -17,7 +19,12 @@ namespace TestProject1
 
         public LimitStateMachineTimerTests()
         {
-            _stateMachine = new LpcLimitStateMachine(1000);
+            _timeProvider = new()
+            {
+                AutoAdvanceAmount = TimeSpan.FromMilliseconds(1)
+            };
+
+            _stateMachine = new LpcLimitStateMachine(_timeProvider, 1000);
             _eventHandler = new TestTimerEventHandler();
             _stateMachine.RegisterEventHandler(_eventHandler);
         }
@@ -41,6 +48,20 @@ namespace TestProject1
             await _stateMachine.DataUpdateLimitAsync(1, request.IsLimitActive, request.Value, request.Duration ?? Timeout.InfiniteTimeSpan, _remoteSki);
         }
 
+        private async Task AdvanceTimeMaintainingState(TimeSpan duration, LimitState expectedState)
+        {
+            var heartbeatInterval = LpcLimitStateMachine.HeartbeatAcceptTimeout.Divide(2);
+            int numHeartbeats = (int) duration.Divide(heartbeatInterval);
+
+            // Act: Advance Time
+            for (int i = 0; i < numHeartbeats; i++)
+            {
+                Assert.Equal(LimitState.Limited, _stateMachine.CurrentState);
+                _timeProvider.Advance(heartbeatInterval);
+                await NotifyHeartbeat();
+            }
+        }
+
         #endregion
 
         [Fact]
@@ -49,11 +70,12 @@ namespace TestProject1
             // Arrange: Create state machine and get to Limited state with short duration
             _stateMachine.RegisterEventHandler(_eventHandler);
 
+            TimeSpan limitDuration = TimeSpan.FromMinutes(15);
             var request = new ActiveLimitWriteRequest(
                 PowerDirection.Consumption,
                 isActive: true,
                 value: 5000,
-                duration: TimeSpan.FromMilliseconds(100), // Very short duration for testing
+                duration: limitDuration,
                 remoteDeviceId: "test",
                 remoteSKI: _remoteSki
             );
@@ -63,7 +85,7 @@ namespace TestProject1
             Assert.Equal(LimitState.Limited, _stateMachine.CurrentState);
 
             // Act: Wait for duration to expire
-            await Task.Delay(200);
+            await AdvanceTimeMaintainingState(limitDuration, LimitState.Limited);
 
             // Assert
             Assert.Equal(LimitState.UnlimitedControlled, _stateMachine.CurrentState);
@@ -87,7 +109,7 @@ namespace TestProject1
             await WriteLimit(request);
 
             // Act: Wait some time
-            await Task.Delay(200);
+            await AdvanceTimeMaintainingState(TimeSpan.FromDays(2), LimitState.Limited);
 
             // Assert: Should still be Limited
             Assert.Equal(LimitState.Limited, _stateMachine.CurrentState);
@@ -112,7 +134,7 @@ namespace TestProject1
             await WriteLimit(request);
 
             // Act: Wait some time
-            await Task.Delay(200);
+            await AdvanceTimeMaintainingState(TimeSpan.FromDays(2), LimitState.Limited);
 
             // Assert: Should still be Limited
             Assert.Equal(LimitState.Limited, _stateMachine.CurrentState);
@@ -140,8 +162,8 @@ namespace TestProject1
             // Assert
             var limit = _stateMachine.GetEffectiveLimit();
             Assert.NotNull(limit.ExpiresAt);
-            Assert.True(limit.ExpiresAt > DateTimeOffset.UtcNow);
-            Assert.True(limit.ExpiresAt < DateTimeOffset.UtcNow.AddHours(2));
+            Assert.True(limit.ExpiresAt > _timeProvider.GetUtcNow());
+            Assert.True(limit.ExpiresAt < _timeProvider.GetUtcNow().AddHours(2));
         }
 
         [Fact]
@@ -170,29 +192,31 @@ namespace TestProject1
         public async Task NewLimitWrite_ShouldResetDurationTimer()
         {
             // Arrange
+            var limitDuration1 = TimeSpan.FromMinutes(5);
             var request1 = new ActiveLimitWriteRequest(
                 PowerDirection.Consumption, true, 5000,
-                TimeSpan.FromMilliseconds(500), "test", "test");
+                limitDuration1, "test", "test");
 
             await NotifyHeartbeat();
             await WriteLimit(request1);
 
-            // Act: After 50ms, send new limit with new duration
-            await Task.Delay(50);
+            // Act: After 2 minutes, send new limit with new duration
+            await AdvanceTimeMaintainingState(TimeSpan.FromMinutes(2), LimitState.Limited);
+            var limitDuration2 = TimeSpan.FromMinutes(15);
             var request2 = new ActiveLimitWriteRequest(
                 PowerDirection.Consumption, true, 3000,
-                TimeSpan.FromMilliseconds(1500), "test", "test");
+                limitDuration2, "test", "test");
             await WriteLimit(request2);
 
             // Wait past original timeout but before new timeout
-            await Task.Delay(200);
+            await AdvanceTimeMaintainingState(TimeSpan.FromMinutes(10), LimitState.Limited);
 
             // Assert: Should still be Limited (timer was reset)
             Assert.Equal(LimitState.Limited, _stateMachine.CurrentState);
             Assert.Equal(3000, _stateMachine.GetEffectiveLimit().Value);
 
             // Wait for new duration to expire
-            await Task.Delay(500);
+            await AdvanceTimeMaintainingState(TimeSpan.FromMinutes(5), LimitState.Limited);
             Assert.Equal(LimitState.UnlimitedControlled, _stateMachine.CurrentState);
         }
 

@@ -19,7 +19,11 @@ namespace EEBUS.StateMachines
         {
         }
 
-        public LpcLimitStateMachine(long limit) : base(PowerDirection.Consumption, limit, TimeSpan.FromHours(2))
+        public LpcLimitStateMachine(long limit) : base(PowerDirection.Consumption, limit)
+        {
+        }
+
+        public LpcLimitStateMachine(TimeProvider timeProvider, long limit) : base(timeProvider, PowerDirection.Consumption, limit)
         {
         }
 
