@@ -75,7 +75,7 @@ namespace EEBUS
             {
                 return false;
             }
-            Console.WriteLine(remoteEndpoint.ToString());
+           // Console.WriteLine(remoteEndpoint.ToString());
 
             byte[] hash = SHA1.Create().ComputeHash(cert.GetPublicKey() ?? []);
             var ski = new SKI(hash);

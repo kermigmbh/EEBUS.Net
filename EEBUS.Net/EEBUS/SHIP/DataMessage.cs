@@ -1,8 +1,9 @@
-﻿using System.Text.Json;
+﻿using EEBUS.Messages;
+using EEBUS.Models;
+using EEBUS.SPINE.Commands;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-
-using EEBUS.Messages;
 
 namespace EEBUS.SHIP.Messages
 {
@@ -28,7 +29,49 @@ namespace EEBUS.SHIP.Messages
 			this.data.payload			= payload;
 		}
 
-		public DataMessage( SpineDatagramPayload datagram )
+		private static DataMessage Create(AddressType source, AddressType destination, string cmdClassifier, SpineCmdPayloadBase? payload)
+		{
+            SpineDatagramPayload messagePayload = new SpineDatagramPayload();
+            messagePayload.datagram.header.addressSource = source;
+            messagePayload.datagram.header.addressDestination = destination;
+            messagePayload.datagram.header.msgCounter = DataMessage.NextCount;
+            messagePayload.datagram.header.cmdClassifier = cmdClassifier;
+
+            messagePayload.datagram.payload = payload?.ToJsonNode();
+            DataMessage message = new DataMessage();
+            message.SetPayload(JsonSerializer.SerializeToNode(messagePayload) ?? throw new Exception("Failed to serialize data message"));
+			return message;
+        }
+
+		public static DataMessage CreateRead(AddressType source, AddressType destination, SpineCmdPayloadBase? payload) => Create(source, destination, "read", payload);
+        public static DataMessage CreateSubscription(AddressType source, AddressType destination, string serverFeatureType, string clientDeviceId, string serverDeviceId)
+        {
+			//Fixed address for subscription
+            var messageSource = new AddressType()
+            {
+                device = clientDeviceId,
+                entity = [0],
+                feature = 0
+            };
+
+            //Fixed address for subscription
+            var messageDestination = new AddressType()
+            {
+                device = serverDeviceId,
+                entity = [0],
+                feature = 0
+            };
+
+            NodeManagementSubscriptionRequestCall callPayload = new NodeManagementSubscriptionRequestCall();
+            SubscriptionRequestType subscriptionRequest = callPayload.cmd[0].nodeManagementSubscriptionRequestCall.subscriptionRequest;
+            subscriptionRequest.clientAddress = source;
+            subscriptionRequest.serverAddress = destination;
+            subscriptionRequest.serverFeatureType = serverFeatureType;
+
+            return Create(messageSource, messageDestination, "call", callPayload);
+        }
+
+        public DataMessage( SpineDatagramPayload datagram )
 		{
 			this.data.payload = JsonSerializer.SerializeToNode( datagram );
 		}
@@ -74,7 +117,7 @@ namespace EEBUS.SHIP.Messages
 
 					await payload.EvaluateAsync( connection );
 
-					if ( cmdClassifier == "reply" || cmdClassifier == "notify" )
+					if ( cmdClassifier == "reply" || cmdClassifier == "notify" || cmdClassifier == "result")
 					{
 						return (connection.State, connection.SubState);
 					}

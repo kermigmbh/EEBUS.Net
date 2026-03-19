@@ -8,6 +8,7 @@ using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.Net.Events;
 using EEBUS.Net.Extensions;
 using EEBUS.SHIP.Messages;
+using EEBUS.SPINE.Commands;
 using EEBUS.UseCases;
 using EEBUS.UseCases.ControllableSystem;
 using Makaretu.Dns;
@@ -182,6 +183,11 @@ namespace EEBUS.Net
         {
             public async Task DeviceConnectionStatusUpdatedAsync(Connection connection)
             {
+                if (connection.ConnectionStatus == DeviceConnectionStatus.Connected)
+                {
+                    connection.ReadAndSubscribe();
+                }
+
                 if (EEBusManager.OnDeviceConnectionStatusChanged != null && connection.Remote != null)
                 {
                     await EEBusManager.OnDeviceConnectionStatusChanged(connection.Remote, connection.ConnectionStatus);
@@ -625,7 +631,7 @@ namespace EEBUS.Net
                         {
                             return false;
                         }
-                        Console.WriteLine(hostString.ToString());
+                        //Debug.WriteLine(hostString.ToString());
 
                         byte[] hash = SHA1.Create().ComputeHash(cert.GetPublicKey() ?? []);
                         var ski = new SKI(hash);
@@ -801,5 +807,19 @@ namespace EEBUS.Net
                 _serviceDiscovery?.Dispose();
             }
         }
+
+        //For debug only
+        //public void SendRead()
+        //{
+        //    var conn = Connections.First();
+        //    var source = conn.Local.GetFeatureAddress("Measurement", false);
+        //    var dest = conn.Remote?.GetFeatureAddress("Measurement", true);
+        //    if (source == null || dest == null) return;
+
+        //    //var message = DataMessage.CreateRead(source, dest, SpineCmdPayloadBase.GetClass("measurementDescriptionListData")?.CreateRead(conn));
+        //    var message = DataMessage.CreateSubscription(source, dest, "Measurement", conn.Local.DeviceId, conn.Remote?.DeviceId ?? string.Empty);
+        //    conn.PushDataMessage(message);
+        //}
+
     }
 }

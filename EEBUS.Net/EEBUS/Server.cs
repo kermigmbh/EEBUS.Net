@@ -41,8 +41,9 @@ namespace EEBUS
 
 		public async Task Do()
 		{
-			var heart = new HeartBeatTask();
-			using var beat = new System.Threading.Timer(heart.Beat, this, 4000, 4000);
+            
+            var heart = new HeartBeatTask();
+            Timer beat = new System.Threading.Timer(arg => heart.Beat(arg), this, 4000, 4000);
 
 			//var ecc        = new ElectricalConnectionCharacteristicTask();
 			//using var eccSend   = new System.Threading.Timer( ecc.SendData, this, 2000, Timeout.Infinite );
@@ -50,8 +51,8 @@ namespace EEBUS
 			//var md         = new MeasurementDataTask();
 			//using var mdSend   = new System.Threading.Timer( md.SendData, this, 3000, 3000 );
 
-		 
-			try
+
+            try
 			{
 				while (this.ws.State == WebSocketState.Open)
 				{
@@ -85,9 +86,12 @@ namespace EEBUS
 						this.Remote.SetServerState(this.state);
 
 					if (this.state == EState.Connected && this.state != oldState)
+					{
 						RequestRemoteDeviceConfiguration();
+                       // ReadAndSubscribe();
+                    }
 
-					if (this.state == EState.Stopped)
+                    if (this.state == EState.Stopped)
 						throw new Exception("Communication stopped!");
 				}
 			}
@@ -99,7 +103,7 @@ namespace EEBUS
 				Debug.WriteLine("Exception: " + ex.Message);
 			}
 
-			beat.Change(Timeout.Infinite, Timeout.Infinite);
+			beat?.Change(Timeout.Infinite, Timeout.Infinite);
 			//eccSend.Change( Timeout.Infinite, Timeout.Infinite );
 
 			await CloseAsync().ConfigureAwait(false);

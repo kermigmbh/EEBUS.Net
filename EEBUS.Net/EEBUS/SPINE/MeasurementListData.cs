@@ -19,6 +19,11 @@ namespace EEBUS.SPINE.Commands
 
 		public new class Class : SpineCmdPayload<CmdMeasurementListDataType>.Class
 		{
+            public override SpineCmdPayloadBase? CreateRead(Connection connection)
+            {
+				return new MeasurementListData();
+            }
+
             public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync(DatagramType datagram, HeaderType header, Connection connection)
             {
                 AddressType? address = connection.Local.GetFeatureAddress("Measurement", true);
@@ -120,7 +125,7 @@ namespace EEBUS.SPINE.Commands
 		public FilterType[]			   filter			   { get; set; }
 
 		[JsonPropertyName("measurementListData")]
-		public MeasurementListDataType measurementListData { get; set; }
+		public MeasurementListDataType measurementListData { get; set; } = new();
 	}
 
 	[System.SerializableAttribute()]

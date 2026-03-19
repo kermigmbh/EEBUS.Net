@@ -233,7 +233,7 @@ namespace EEBUS.Models
             };
         }
 
-        public AddressType GetHeartbeatAddress(bool server)
+        public AddressType? GetHeartbeatAddress(bool server)
         {
             string role = server ? "server" : "client";
 
@@ -244,7 +244,7 @@ namespace EEBUS.Models
                     return new AddressType() { device = this.DeviceId, entity = entity.Index, feature = feature.Index };
             }
 
-            throw new Exception("No heartbeat feature found for " + (server ? "server" : "client"));
+            return null;
         }
 
         public AddressType? GetFeatureAddress(string featureType, bool server)

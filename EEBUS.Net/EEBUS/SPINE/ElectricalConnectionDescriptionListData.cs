@@ -14,6 +14,11 @@ namespace EEBUS.SPINE.Commands
 
 		public new class Class : SpineCmdPayload<CmdElectricalConnectionDescriptionListDataType>.Class
 		{
+            public override SpineCmdPayloadBase? CreateRead(Connection connection)
+            {
+				return new ElectricalConnectionDescriptionListData();
+            }
+
 			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
 				if ( datagram.header.cmdClassifier == "read" )
@@ -45,7 +50,7 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class CmdElectricalConnectionDescriptionListDataType : CmdType
 	{
-		public ElectricalConnectionDescriptionListDataType electricalConnectionDescriptionListData { get; set; }
+		public ElectricalConnectionDescriptionListDataType electricalConnectionDescriptionListData { get; set; } = new();
 	}
 
 	[System.SerializableAttribute()]

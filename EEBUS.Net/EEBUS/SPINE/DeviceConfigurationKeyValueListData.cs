@@ -21,6 +21,12 @@ namespace EEBUS.SPINE.Commands
 
 		public new class Class : SpineCmdPayload<CmdDeviceConfigurationKeyValueListDataType>.Class
 		{
+
+            public override SpineCmdPayloadBase? CreateRead(Connection connection)
+            {
+				return new DeviceConfigurationKeyValueListData();
+            }
+
 			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
 				if ( datagram.header.cmdClassifier == "read" )

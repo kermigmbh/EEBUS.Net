@@ -1,12 +1,13 @@
-﻿using System.Net.WebSockets;
-
-using Microsoft.AspNetCore.Http;
-
-using EEBUS.Enums;
+﻿using EEBUS.Enums;
 using EEBUS.Messages;
 using EEBUS.Models;
 using EEBUS.SHIP.Messages;
+using EEBUS.SPINE.Commands;
+using Makaretu.Dns;
+using Microsoft.AspNetCore.Http;
 using System.Diagnostics;
+using System.Net.WebSockets;
+using System.Text.Json;
 
 namespace EEBUS
 {
@@ -41,16 +42,15 @@ namespace EEBUS
             InitMessage initMessage = new InitMessage();
             
             await initMessage.Send(this.ws).ConfigureAwait(false);
-            
 
             var heart = new HeartBeatTask();
-            var beat = new System.Threading.Timer(heart.Beat, this, 4000, 4000);
+            Timer beat = new System.Threading.Timer(arg => heart.Beat(arg), this, 4000, 4000);
             //var ecc = new ElectricalConnectionCharacteristicTask();
             //var eccSend = new System.Threading.Timer(ecc.SendData, this, 2000, Timeout.Infinite);
 
             //var md = new MeasurementDataTask();
             //var mdSend = new System.Threading.Timer(md.SendData, this, 3000, 3000);
-           
+
 
             try
             {
@@ -77,7 +77,10 @@ namespace EEBUS
                         this.Remote.SetClientState(this.state);
 
                     if (this.state == EState.Connected && this.state != oldState && !cancellationToken.IsCancellationRequested)
+                    {
                         RequestRemoteDeviceConfiguration();
+                       // ReadAndSubscribe();
+                    }
                 }
             }
             catch (Exception ex)
@@ -87,7 +90,7 @@ namespace EEBUS
             }
             finally
             {
-                beat.Change(Timeout.Infinite, Timeout.Infinite);
+                beat?.Change(Timeout.Infinite, Timeout.Infinite);
 
                 if (null != this.Remote)
                     this.Remote.SetClientState(EState.Stopped);
