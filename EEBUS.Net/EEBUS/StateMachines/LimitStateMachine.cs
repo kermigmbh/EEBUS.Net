@@ -741,11 +741,11 @@ namespace EEBUS.StateMachines
                         }
 
                         // Notify failsafe events
-                        if (newState == LimitState.Failsafe && oldState != LimitState.Failsafe)
+                        if (newState.IsFailsafe() && !oldState.IsFailsafe())
                         {
                             handler.OnFailsafeEntered(reason);
                         }
-                        else if (oldState == LimitState.Failsafe && newState != LimitState.Failsafe)
+                        else if (oldState.IsFailsafe() && !newState.IsFailsafe())
                         {
                             handler.OnFailsafeExited(reason);
                         }

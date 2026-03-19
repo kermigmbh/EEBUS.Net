@@ -59,4 +59,11 @@ namespace EEBUS.StateMachines
         /// </summary>
         UnlimitedAutonomousPlusHeartbeat
     }
+
+    public static class Extensions
+    {
+        private static readonly List<LimitState> failsafeStates = [LimitState.Failsafe, LimitState.FailsafePlusHeartbeat];
+
+        public static bool IsFailsafe(this LimitState state) => failsafeStates.Contains(state);
+    }
 }
