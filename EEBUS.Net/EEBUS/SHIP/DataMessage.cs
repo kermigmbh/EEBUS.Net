@@ -117,7 +117,7 @@ namespace EEBUS.SHIP.Messages
 
 					await payload.EvaluateAsync( connection );
 
-					if ( cmdClassifier == "reply" || cmdClassifier == "notify" )
+					if ( cmdClassifier == "reply" || cmdClassifier == "notify" || cmdClassifier == "result")
 					{
 						return (connection.State, connection.SubState);
 					}

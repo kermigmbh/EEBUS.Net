@@ -420,11 +420,11 @@ namespace EEBUS
                                 }
                             }
 
-                            //if (!BindingAndSubscriptionManager.HasSubscription(featureSourceAddress, featureDestinationAddress))
-                            //{
-                            //    DataMessage callMessage = DataMessage.CreateSubscription(featureSourceAddress, featureDestinationAddress, feature.Type, Local.DeviceId, Remote.DeviceId);
-                            //    PushDataMessage(callMessage);
-                            //}
+                            if (!BindingAndSubscriptionManager.HasSubscription(featureSourceAddress, featureDestinationAddress))
+                            {
+                                DataMessage callMessage = DataMessage.CreateSubscription(featureSourceAddress, featureDestinationAddress, feature.Type, Local.DeviceId, Remote.DeviceId);
+                                PushDataMessage(callMessage);
+                            }
                         }
                     }
                 }
