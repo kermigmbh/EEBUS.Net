@@ -367,6 +367,28 @@ namespace TestProject1.LimitStateMachineTests
             Assert.False(_stateMachine.GetEffectiveLimit().IsLimited);
         }
 
+        [Fact]
+        public async Task Transition_ShouldEnterUnlimitedControlledWhenLimitDurationIsZero()
+        {
+            // Arrange: Create an active limit request
+            var request = WriteRequest(
+                isActive: true,
+                value: 4140,
+                duration: TimeSpan.Zero
+            );
+
+            // Act: Receive heartbeat, then limit write
+            await NotifyHeartbeat();
+            Assert.Equal(LimitState.InitPlusHeartbeat, _stateMachine.CurrentState);
+            await WriteLimit(request);
+
+            // Assert: State Machine jumps through Limited immediately into UnlimitedControlled
+            Assert.Equal(LimitState.UnlimitedControlled, _stateMachine.CurrentState);
+            Assert.Equal(LimitState.Limited, _eventHandler.LastOldState);
+            Assert.Equal(3U, _eventHandler.StateChangedEventCount);
+            Assert.False(_stateMachine.GetEffectiveLimit().IsLimited);
+        }
+
         private class SlowEventHandler(FakeTimeProvider timeProvider, TimeSpan timeout) : ILimitStateMachineEvents
         {
             public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync(ActiveLimitWriteRequest request)

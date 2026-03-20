@@ -240,7 +240,7 @@ namespace EEBUS.StateMachines
 
             // accept write if no user callbacks configured
             var result = WriteApprovalResult.Accept();
-            foreach (var handler in _eventHandlers.ToList())
+            foreach (var handler in _eventHandlers)
             {
                 try
                 {
@@ -279,7 +279,7 @@ namespace EEBUS.StateMachines
 
             // accept write if no user callbacks configured
             var result = WriteApprovalResult.Accept();
-            foreach (var handler in _eventHandlers.ToList())
+            foreach (var handler in _eventHandlers)
             {
                 try
                 {
@@ -318,7 +318,7 @@ namespace EEBUS.StateMachines
 
             // accept write if no user callbacks configured
             var result = WriteApprovalResult.Accept();
-            foreach (var handler in _eventHandlers.ToList())
+            foreach (var handler in _eventHandlers)
             {
                 try
                 {
@@ -460,6 +460,22 @@ namespace EEBUS.StateMachines
             _initTimeoutTimer = null;
         }
 
+        private void StartLimitDurationTimer(DateTimeOffset? expiresAt)
+        {
+            if (!expiresAt.HasValue)
+            {
+                StartLimitDurationTimer((TimeSpan?) null);
+            }
+
+            var now = _timeProvider.GetUtcNow();
+            if (expiresAt < now)
+            {
+                StartLimitDurationTimer(TimeSpan.Zero);
+            }
+
+            StartLimitDurationTimer(expiresAt - now);
+        }
+
         private void StartLimitDurationTimer(TimeSpan? duration)
         {
             StopLimitDurationTimer();
@@ -469,14 +485,7 @@ namespace EEBUS.StateMachines
                 return;
             }
 
-            if (duration.Value > TimeSpan.Zero)
-            {
-                _limitDurationTimer = _timeProvider.CreateTimer(OnLimitDurationExpired, null, duration.Value, Timeout.InfiniteTimeSpan);
-            }
-            else
-            {
-                OnLimitDurationExpired(null);
-            }
+            _limitDurationTimer = _timeProvider.CreateTimer(OnLimitDurationExpired, null, duration.Value, Timeout.InfiniteTimeSpan);
         }
 
         private void StopLimitDurationTimer()
@@ -634,7 +643,7 @@ namespace EEBUS.StateMachines
                     case (LimitState.InitPlusHeartbeat, LimitState.Limited):
                         StopInitTimeoutTimer();
                         // maybe start timer to leave state after duration expires
-                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt - _timeProvider.GetUtcNow());
+                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt);
                         // if we receive no heartbeats for HeartbeatTimeout, we leave this state
                         ResetHeartbeatTimer(_lastHeartbeatTime?.Add(HeartbeatStateTimeout));
                         break;
@@ -648,7 +657,7 @@ namespace EEBUS.StateMachines
 
                     case (LimitState.Limited, LimitState.Limited):
                         // maybe start timer to leave state after duration expires
-                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt - _timeProvider.GetUtcNow());
+                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt);
                         // if we receive no heartbeats for HeartbeatTimeout, we leave this state
                         ResetHeartbeatTimer(_lastHeartbeatTime?.Add(HeartbeatStateTimeout));
                         break;
@@ -661,7 +670,7 @@ namespace EEBUS.StateMachines
                     // Transition 4
                     case (LimitState.UnlimitedControlled, LimitState.Limited):
                         // maybe start timer to leave state after duration expires
-                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt - _timeProvider.GetUtcNow());
+                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt);
                         // if we receive no heartbeats for HeartbeatTimeout, we leave this state
                         ResetHeartbeatTimer(_lastHeartbeatTime?.Add(HeartbeatStateTimeout));
                         break;
@@ -710,7 +719,7 @@ namespace EEBUS.StateMachines
                         StopInitTimeoutTimer();
                         StopFailsafeDurationMinimumTimer();
                         // maybe start timer to leave state after duration expires
-                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt - _timeProvider.GetUtcNow());
+                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt);
                         // if we receive no heartbeats for HeartbeatTimeout, we leave this state
                         ResetHeartbeatTimer(_lastHeartbeatTime?.Add(HeartbeatStateTimeout));
                         break;
@@ -743,7 +752,7 @@ namespace EEBUS.StateMachines
                     // Transition 12: UnlimitedAutonomous -> Limited
                     case (LimitState.UnlimitedAutonomousPlusHeartbeat, LimitState.Limited):
                         // maybe start timer to leave state after duration expires
-                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt - _timeProvider.GetUtcNow());
+                        StartLimitDurationTimer(newEffectiveLimit.ExpiresAt);
                         // if we receive no heartbeats for HeartbeatTimeout, we leave this state
                         ResetHeartbeatTimer(_lastHeartbeatTime?.Add(HeartbeatStateTimeout));
                         break;
@@ -754,7 +763,7 @@ namespace EEBUS.StateMachines
                 ;
 
                 // Notify handlers
-                foreach (var handler in _eventHandlers.ToList())
+                foreach (var handler in _eventHandlers)
                 {
                     try
                     {
@@ -825,7 +834,7 @@ namespace EEBUS.StateMachines
         private async Task NotifyEffectiveLimitChanged()
         {
             var effectiveLimit = GetEffectiveLimit();
-            foreach (var handler in _eventHandlers.ToList())
+            foreach (var handler in _eventHandlers)
             {
                 try
                 {
