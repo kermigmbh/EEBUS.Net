@@ -191,13 +191,13 @@ namespace EEBUS.StateMachines
                 switch (_currentState)
                 {
                     case LimitState.Init:
-                        task = TransitionTo(LimitState.InitPlusHeartbeat, reason);
+                        task = TransitionToAsync(LimitState.InitPlusHeartbeat, reason);
                         break;
                     case LimitState.Failsafe:
-                        task = TransitionTo(LimitState.FailsafePlusHeartbeat, reason);
+                        task = TransitionToAsync(LimitState.FailsafePlusHeartbeat, reason);
                         break;
                     case LimitState.UnlimitedAutonomous:
-                        task = TransitionTo(LimitState.UnlimitedAutonomousPlusHeartbeat, reason);
+                        task = TransitionToAsync(LimitState.UnlimitedAutonomousPlusHeartbeat, reason);
                         break;
                     case LimitState.InitPlusHeartbeat:
                     case LimitState.UnlimitedControlled:
@@ -205,7 +205,7 @@ namespace EEBUS.StateMachines
                     case LimitState.FailsafePlusHeartbeat:
                     case LimitState.UnlimitedAutonomousPlusHeartbeat:
                         // cycle in the same state to reset all necessary timers
-                        task = TransitionTo(_currentState, reason);
+                        task = TransitionToAsync(_currentState, reason);
                         break;
                 }
             }
@@ -364,46 +364,46 @@ namespace EEBUS.StateMachines
                 {
                     case (LimitState.InitPlusHeartbeat, true):
                         // Transition 2: Init -> Limited
-                        task = TransitionTo(LimitState.Limited, "Heartbeat + activated limit received");
+                        task = TransitionToAsync(LimitState.Limited, "Heartbeat + activated limit received");
                         break;
                     case (LimitState.InitPlusHeartbeat, false):
                         // Transition 1: Init -> UnlimitedControlled
-                        task = TransitionTo(LimitState.UnlimitedControlled, "Heartbeat + deactivated limit received");
+                        task = TransitionToAsync(LimitState.UnlimitedControlled, "Heartbeat + deactivated limit received");
                         break;
 
                     case (LimitState.Limited, true):
                         // Update limit value and restart duration timer
-                        task = TransitionTo(LimitState.Limited, "Limit updated");
+                        task = TransitionToAsync(LimitState.Limited, "Limit updated");
                         break;
                     case (LimitState.Limited, false):
                         // Transition 6: Limited -> UnlimitedControlled (deactivated limit)
-                        task = TransitionTo(LimitState.UnlimitedControlled, "Limit deactivated");
+                        task = TransitionToAsync(LimitState.UnlimitedControlled, "Limit deactivated");
                         break;
 
                     case (LimitState.UnlimitedControlled, true):
                         // Transition 4: UnlimitedControlled -> Limited
-                        task = TransitionTo(LimitState.Limited, "Limit updated");
+                        task = TransitionToAsync(LimitState.Limited, "Limit updated");
                         break;
                     case (LimitState.UnlimitedControlled, false):
-                        task = TransitionTo(LimitState.UnlimitedControlled, "Limit deactivated");
+                        task = TransitionToAsync(LimitState.UnlimitedControlled, "Limit deactivated");
                         break;
 
                     case (LimitState.FailsafePlusHeartbeat, true):
                         // Transition 9: Failsafe -> Limited
-                        task = TransitionTo(LimitState.Limited, "Heartbeat + activated limit received");
+                        task = TransitionToAsync(LimitState.Limited, "Heartbeat + activated limit received");
                         break;
                     case (LimitState.FailsafePlusHeartbeat, false):
                         // Transition 8: Failsafe -> UnlimitedControlled
-                        task = TransitionTo(LimitState.UnlimitedControlled, "Heartbeat + deactivated limit received");
+                        task = TransitionToAsync(LimitState.UnlimitedControlled, "Heartbeat + deactivated limit received");
                         break;
 
                     case (LimitState.UnlimitedAutonomousPlusHeartbeat, true):
                         // Transition 12: UnlimitedAutonomous -> Limited
-                        task = TransitionTo(LimitState.Limited, "Heartbeat + activated limit received");
+                        task = TransitionToAsync(LimitState.Limited, "Heartbeat + activated limit received");
                         break;
                     case (LimitState.UnlimitedAutonomousPlusHeartbeat, false):
                         // Transition 11: UnlimitedAutonomous -> UnlimitedControlled
-                        task = TransitionTo(LimitState.UnlimitedControlled, "Heartbeat + deactivated limit received");
+                        task = TransitionToAsync(LimitState.UnlimitedControlled, "Heartbeat + deactivated limit received");
                         break;
 
                     // other states should never receive limits
@@ -508,104 +508,134 @@ namespace EEBUS.StateMachines
 
         private async void OnHeartbeatTimeout(object? state)
         {
-            Task task = Task.CompletedTask;
 
-            lock (_lock)
+            try
             {
-                Debug.WriteLine($"[LimitStateMachine:{_direction}] Heartbeat timeout in state {_currentState}");
+                Task task = Task.CompletedTask;
 
-                switch (_currentState)
+                lock (_lock)
                 {
-                    case LimitState.InitPlusHeartbeat:
-                        task = TransitionTo(LimitState.Init, "Heartbeat timeout");
-                        break;
+                    Debug.WriteLine($"[LimitStateMachine:{_direction}] Heartbeat timeout in state {_currentState}");
 
-                    case LimitState.FailsafePlusHeartbeat:
-                        task = TransitionTo(LimitState.Failsafe, "Heartbeat timeout");
-                        break;
+                    switch (_currentState)
+                    {
+                        case LimitState.InitPlusHeartbeat:
+                            task = TransitionToAsync(LimitState.Init, "Heartbeat timeout");
+                            break;
 
-                    // Transitions 5 and 7: -> Failsafe
-                    case LimitState.Limited:
-                    case LimitState.UnlimitedControlled:
-                        task = TransitionTo(LimitState.Failsafe, "Heartbeat timeout");
-                        break;
+                        case LimitState.FailsafePlusHeartbeat:
+                            task = TransitionToAsync(LimitState.Failsafe, "Heartbeat timeout");
+                            break;
 
-                    case LimitState.UnlimitedAutonomousPlusHeartbeat:
-                        task = TransitionTo(LimitState.UnlimitedAutonomous, "Heartbeat timeout");
-                        break;
+                        // Transitions 5 and 7: -> Failsafe
+                        case LimitState.Limited:
+                        case LimitState.UnlimitedControlled:
+                            task = TransitionToAsync(LimitState.Failsafe, "Heartbeat timeout");
+                            break;
+
+                        case LimitState.UnlimitedAutonomousPlusHeartbeat:
+                            task = TransitionToAsync(LimitState.UnlimitedAutonomous, "Heartbeat timeout");
+                            break;
+                    }
                 }
-            }
 
-            await task;
-        }
+                await task;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[LimitStateMachine:{_direction}] Error in heartbeat timeout handler: {ex.ToString()}");
+            }
 
         private async void OnLimitDurationExpired(object? state)
         {
-            Task task = Task.CompletedTask;
-
-            lock (_lock)
+            try
             {
-                Debug.WriteLine($"[LimitStateMachine:{_direction}] Limit duration expired in state {_currentState}");
+                Task task = Task.CompletedTask;
 
-                // Transition 6: Limited -> UnlimitedControlled (duration expired)
-                if (_currentState == LimitState.Limited)
+                lock (_lock)
                 {
-                    task = TransitionTo(LimitState.UnlimitedControlled, "Limit duration expired");
-                }
-            }
+                    Debug.WriteLine($"[LimitStateMachine:{_direction}] Limit duration expired in state {_currentState}");
 
-            await task;
+                    // Transition 6: Limited -> UnlimitedControlled (duration expired)
+                    if (_currentState == LimitState.Limited)
+                    {
+                        task = TransitionToAsync(LimitState.UnlimitedControlled, "Limit duration expired");
+                    }
+                }
+
+                await task;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[LimitStateMachine:{_direction}] Error in limit duration expired handler: {ex.ToString()}");
+            }
         }
 
         private async void OnFailsafeDurationExpired(object? state)
         {
-            Task task = Task.CompletedTask;
-
-            lock (_lock)
+            try
             {
-                Debug.WriteLine($"[LimitStateMachine:{_direction}] Failsafe duration expired in state {_currentState}");
 
-                // Transition 10: Failsafe -> UnlimitedAutonomous (failsafe duration expired)
-                if (_currentState == LimitState.Failsafe || _currentState == LimitState.FailsafePlusHeartbeat)
+
+                Task task = Task.CompletedTask;
+
+                lock (_lock)
                 {
-                    task = TransitionTo(LimitState.UnlimitedAutonomous, "Failsafe duration expired");
+                    Debug.WriteLine($"[LimitStateMachine:{_direction}] Failsafe duration expired in state {_currentState}");
+
+                    // Transition 10: Failsafe -> UnlimitedAutonomous (failsafe duration expired)
+                    if (_currentState == LimitState.Failsafe || _currentState == LimitState.FailsafePlusHeartbeat)
+                    {
+                        task = TransitionToAsync(LimitState.UnlimitedAutonomous, "Failsafe duration expired");
+                    }
                 }
+                await task;
             }
-            await task;
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[LimitStateMachine:{_direction}] Error in failsafe duration expired handler: {ex.ToString()}");
+            }
         }
 
         private async void OnInitTimeout(object? state)
         {
-            Task task = Task.CompletedTask;
 
-            lock (_lock)
+            try
             {
-                Debug.WriteLine($"[LimitStateMachine:{_direction}] Init timeout in state {_currentState}");
+                Task task = Task.CompletedTask;
 
-                switch (_currentState)
+                lock (_lock)
                 {
-                    // Transition 3: Init -> UnlimitedAutonomous (no HB+write within 120s)
-                    case LimitState.Init:
-                    case LimitState.InitPlusHeartbeat:
-                        task = TransitionTo(LimitState.UnlimitedAutonomous, "No heartbeat and following write received within 120s after init");
-                        break;
+                    Debug.WriteLine($"[LimitStateMachine:{_direction}] Init timeout in state {_currentState}");
 
-                    // Heartbeat received in failsafe, but no following limit within 120s [LPC-921]
-                    case LimitState.Failsafe:
-                    case LimitState.FailsafePlusHeartbeat:
-                        task = TransitionTo(LimitState.UnlimitedAutonomous, "Heartbeat received, but no following write occurred within 120s in Failsafe state");
-                        break;
+                    switch (_currentState)
+                    {
+                        // Transition 3: Init -> UnlimitedAutonomous (no HB+write within 120s)
+                        case LimitState.Init:
+                        case LimitState.InitPlusHeartbeat:
+                            task = TransitionToAsync(LimitState.UnlimitedAutonomous, "No heartbeat and following write received within 120s after init");
+                            break;
+
+                        // Heartbeat received in failsafe, but no following limit within 120s [LPC-921]
+                        case LimitState.Failsafe:
+                        case LimitState.FailsafePlusHeartbeat:
+                            task = TransitionToAsync(LimitState.UnlimitedAutonomous, "Heartbeat received, but no following write occurred within 120s in Failsafe state");
+                            break;
+                    }
+
                 }
-
+                await task;
             }
-            await task;
-        }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[LimitStateMachine:{_direction}] Error in init timeout handler: {ex.ToString()}");
+            }
 
         #endregion
 
         #region State Transitions
 
-        private async Task TransitionTo(LimitState newState, string reason)
+        private async Task TransitionToAsync(LimitState newState, string reason)
         {
             List<Task> tasks = [];
 
@@ -790,7 +820,7 @@ namespace EEBUS.StateMachines
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[LimitStateMachine:{_direction}] Error in event handler: {ex.Message}");
+                        Console.WriteLine($"[LimitStateMachine:{_direction}] Error in event handler: {ex.ToString()}");
                     }
                 }
             }
