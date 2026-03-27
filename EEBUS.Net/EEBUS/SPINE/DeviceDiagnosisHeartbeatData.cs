@@ -63,9 +63,6 @@ namespace EEBUS.SPINE.Commands
 					var timespan = XmlConvert.ToTimeSpan(timeout);
                     remote.HeartbeatValidUntil = DateTime.UtcNow.Add(XmlConvert.ToTimeSpan(timeout));
 
-                    // Notify state machines about heartbeat
-                    connection.Local.OnHeartbeatReceived();
-
                     List<LPCorLPPEvents> lpcOrLppEvents = connection.Local.GetUseCaseEvents<LPCorLPPEvents>();
                     foreach (var lpcOrLpp in lpcOrLppEvents)
                     {

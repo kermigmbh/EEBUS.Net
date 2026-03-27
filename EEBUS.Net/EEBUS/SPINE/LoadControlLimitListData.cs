@@ -168,13 +168,11 @@ namespace EEBUS.SPINE.Commands
                     var request = new ActiveLimitWriteRequest(
                         direction,
                         loadControlLimitData.isLimitActive ?? false,
-                        loadControlLimitData.value?.number ?? 0,
-                        loadControlLimitData.value?.scale ?? 0,
+                        loadControlLimitData.value?.ToLong() ?? 0,
                         duration,
                         connection.Remote?.DeviceId,
                         connection.Remote?.SKI?.ToString()
                     );
-
                     // User-Callback aufrufen
                     if (approvalResult.Approved)
                     {
@@ -240,7 +238,8 @@ namespace EEBUS.SPINE.Commands
                 if (didChange)
                 {
                     AddressType? featureAddress = device.GetFeatureAddress("LoadControl", true);
-                    if (featureAddress != null) {
+                    if (featureAddress != null)
+                    {
                         await SendNotifyAsync(device, featureAddress);
                     }
                 }

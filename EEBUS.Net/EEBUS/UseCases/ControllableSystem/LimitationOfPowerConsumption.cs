@@ -40,21 +40,12 @@ namespace EEBUS.UseCases.ControllableSystem
 
             if (usecaseSettings.InitLimits != null)
             {
-                bool active = false;
-                long limit = 0;
-                uint duration = 0;
-                long failsafeLimit = 4200;
-                uint failsafeDuration = 7200;
+                bool active = usecaseSettings.InitLimits.Active;
+                long limit = usecaseSettings.InitLimits.Limit;
+                long failsafeLimit = usecaseSettings.InitLimits.FailsafeLimit;
 
-
-                active = usecaseSettings.InitLimits.Active;
-                limit = usecaseSettings.InitLimits.Limit;
-                duration = usecaseSettings.InitLimits.Duration;
-                failsafeLimit = usecaseSettings.InitLimits.FailsafeLimit;
-                failsafeDuration = usecaseSettings.InitLimits.FailsafeDuration;
-
-                string xmlDuration = XmlConvert.ToString(TimeSpan.FromSeconds(duration));
-                string xmlFailsafeDuration = XmlConvert.ToString(TimeSpan.FromSeconds(failsafeDuration));
+                string xmlDuration = XmlConvert.ToString(usecaseSettings.InitLimits.Duration);
+                string xmlFailsafeDuration = XmlConvert.ToString(usecaseSettings.InitLimits.FailsafeDurationMinimum);
 
                 entity.Local.Add(new LoadControlLimitDataStructure("consume", limit, 0, xmlDuration, active));
                 entity.Local.Add(new ElectricalConnectionCharacteristicDataStructure("contractualConsumptionNominalMax", usecaseSettings.InitLimits.NominalMax, 0));

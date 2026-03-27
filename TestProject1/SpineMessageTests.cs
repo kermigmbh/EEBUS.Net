@@ -83,7 +83,7 @@ namespace TestProject1
                                 InitLimits = new LimitSettings {
                                     Active = false,
                                     Limit = 4300,
-                                    Duration = 7200,
+                                    Duration = TimeSpan.FromSeconds(7200),
                                     FailsafeLimit = 7200,
                                     NominalMax = 40000
                                 }
@@ -94,7 +94,7 @@ namespace TestProject1
                                 InitLimits = new LimitSettings {
                                     Active = false,
                                     Limit = 4300,
-                                    Duration = 7200,
+                                    Duration = TimeSpan.FromSeconds(7200),
                                     FailsafeLimit = 7200,
                                     NominalMax = 40000
                                 }

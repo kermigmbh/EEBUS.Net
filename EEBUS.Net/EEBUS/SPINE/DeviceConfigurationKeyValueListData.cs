@@ -16,7 +16,7 @@ namespace EEBUS.SPINE.Commands
 	{
 		static DeviceConfigurationKeyValueListData()
 		{
-			Register( "deviceConfigurationKeyValueListData", new Class() );
+			Register("deviceConfigurationKeyValueListData", new Class());
 		}
 
 		public new class Class : SpineCmdPayload<CmdDeviceConfigurationKeyValueListDataType>.Class
@@ -27,26 +27,26 @@ namespace EEBUS.SPINE.Commands
 				return new DeviceConfigurationKeyValueListData();
             }
 
-			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
+			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync(DatagramType datagram, HeaderType header, Connection connection)
 			{
-				if ( datagram.header.cmdClassifier == "read" )
+				if (datagram.header.cmdClassifier == "read")
 				{
 					DeviceConfigurationKeyValueListData payload = new DeviceConfigurationKeyValueListData();
 					DeviceConfigurationKeyValueListDataType data = payload.cmd[0].deviceConfigurationKeyValueListData;
 
 					List<DeviceConfigurationKeyValueDataType> datas = new();
-					foreach ( var keyValue in connection.Local.KeyValues )
-						datas.Add( keyValue.Data );
+					foreach (var keyValue in connection.Local.KeyValues)
+						datas.Add(keyValue.Data);
 
 					data.deviceConfigurationKeyValueData = datas.ToArray();
 
 					return payload;
 				}
-				else if ( datagram.header.cmdClassifier == "write" )
+				else if (datagram.header.cmdClassifier == "write")
 				{
 					// ApprovalResult was set in Evaluate (which runs before CreateAnswer)
 					var approvalResult = datagram.ApprovalResult ?? WriteApprovalResult.Accept();
-					return ResultData.FromApprovalResult( approvalResult );
+					return ResultData.FromApprovalResult(approvalResult);
 				}
 				else
 				{
@@ -54,85 +54,85 @@ namespace EEBUS.SPINE.Commands
 				}
 			}
 
-			private async Task<WriteApprovalResult> GetApprovalForKeyValueAsync( Connection connection, KeyValue keyValue, ValueType value )
+			private async Task<WriteApprovalResult> GetApprovalForKeyValueAsync(Connection connection, KeyValue keyValue, ValueType value)
 			{
 				string? remoteDeviceId = connection.Remote?.DeviceId;
 				string? remoteSki = connection.Remote?.SKI?.ToString();
 
-				switch ( keyValue.KeyName )
+				switch (keyValue.KeyName)
 				{
 					case "failsafeConsumptionActivePowerLimit":
-					{
-						var request = new FailsafeLimitWriteRequest(
-							PowerDirection.Consumption,
-							value.scaledNumber?.number ?? 0,
-							value.scaledNumber?.scale ?? 0,
-							remoteDeviceId,
-							remoteSki
-						);
-
-						var handlers = connection.Local.GetUseCaseEvents<LPCEvents>();
-						if ( handlers.Count == 0 )
-							return WriteApprovalResult.Accept( "No handlers - auto-approved" );
-
-						foreach ( var handler in handlers )
 						{
-							var result = await handler.ApproveFailsafeLimitWriteAsync( request );
-							if ( !result.Approved )
-								return result;
+							var request = new FailsafeLimitWriteRequest(
+								PowerDirection.Consumption,
+								value.scaledNumber?.number ?? 0,
+								value.scaledNumber?.scale ?? 0,
+								remoteDeviceId,
+								remoteSki
+							);
+
+							var handlers = connection.Local.GetUseCaseEvents<LPCEvents>();
+							if (handlers.Count == 0)
+								return WriteApprovalResult.Accept("No handlers - auto-approved");
+
+							foreach (var handler in handlers)
+							{
+								var result = await handler.ApproveFailsafeLimitWriteAsync(request);
+								if (!result.Approved)
+									return result;
+							}
+							return WriteApprovalResult.Accept();
 						}
-						return WriteApprovalResult.Accept();
-					}
 
 					case "failsafeProductionActivePowerLimit":
-					{
-						var request = new FailsafeLimitWriteRequest(
-							PowerDirection.Production,
-							value.scaledNumber?.number ?? 0,
-							value.scaledNumber?.scale ?? 0,
-							remoteDeviceId,
-							remoteSki
-						);
-
-						var handlers = connection.Local.GetUseCaseEvents<LPPEvents>();
-						if ( handlers.Count == 0 )
-							return WriteApprovalResult.Accept( "No handlers - auto-approved" );
-
-						foreach ( var handler in handlers )
 						{
-							var result = await handler.ApproveFailsafeLimitWriteAsync( request );
-							if ( !result.Approved )
-								return result;
+							var request = new FailsafeLimitWriteRequest(
+								PowerDirection.Production,
+								value.scaledNumber?.number ?? 0,
+								value.scaledNumber?.scale ?? 0,
+								remoteDeviceId,
+								remoteSki
+							);
+
+							var handlers = connection.Local.GetUseCaseEvents<LPPEvents>();
+							if (handlers.Count == 0)
+								return WriteApprovalResult.Accept("No handlers - auto-approved");
+
+							foreach (var handler in handlers)
+							{
+								var result = await handler.ApproveFailsafeLimitWriteAsync(request);
+								if (!result.Approved)
+									return result;
+							}
+							return WriteApprovalResult.Accept();
 						}
-						return WriteApprovalResult.Accept();
-					}
 
 					case "failsafeDurationMinimum":
-					{
-						TimeSpan duration = TimeSpan.Zero;
-						if ( !string.IsNullOrEmpty( value.duration ) )
 						{
-							try { duration = XmlConvert.ToTimeSpan( value.duration ); }
-							catch { /* ignore */ }
+							TimeSpan duration = TimeSpan.Zero;
+							if (!string.IsNullOrEmpty(value.duration))
+							{
+								try { duration = XmlConvert.ToTimeSpan(value.duration); }
+								catch { /* ignore */ }
+							}
+
+							var request = new FailsafeDurationWriteRequest(duration, remoteDeviceId, remoteSki);
+
+							var handlers = connection.Local.GetUseCaseEvents<LPCorLPPEvents>();
+							var result = WriteApprovalResult.Accept("No handlers - auto-approved");
+							foreach (var handler in handlers)
+							{
+								result = await handler.ApproveFailsafeDurationMinimumWriteAsync(request);
+								// Logic is inverted for FailsafeDurationMinimum on purpose
+								// we must accept a FailsafeDurationMinimum write if either LPC or LPP accept it
+								if (result.Approved)
+									return result;
+							}
+							return result;
 						}
-
-						var request = new FailsafeDurationWriteRequest( duration, remoteDeviceId, remoteSki );
-
-						var handlers = connection.Local.GetUseCaseEvents<LPCorLPPEvents>();
-						if ( handlers.Count == 0 )
-							return WriteApprovalResult.Accept( "No handlers - auto-approved" );
-
-						foreach ( var handler in handlers )
-						{
-							var result = await handler.ApproveFailsafeDurationWriteAsync( request );
-							if ( !result.Approved )
-								return result;
-						}
-						return WriteApprovalResult.Accept();
-					}
 
 					default:
-						return WriteApprovalResult.Accept( "Unknown key - auto-approved" );
+						return WriteApprovalResult.Accept("Unknown key - auto-approved");
 				}
 			}
 
@@ -159,14 +159,14 @@ namespace EEBUS.SPINE.Commands
 					}
 
 					//foreach (var kvp in payload?.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData ?? []) {
-						//                   KeyValue? keyValue = connection.Local.KeyValues.FirstOrDefault(kv => kv.Data.keyId == kvp.keyId);
-						//                   if (null != keyValue)
-						//                   {
-						//                       keyValue.SetValue(kvp.value);
-						//                       await keyValue.SendEventAsync(connection);
-						//                   }
-						//               }
-						//               await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
+					//                   KeyValue? keyValue = connection.Local.KeyValues.FirstOrDefault(kv => kv.Data.keyId == kvp.keyId);
+					//                   if (null != keyValue)
+					//                   {
+					//                       keyValue.SetValue(kvp.value);
+					//                       await keyValue.SendEventAsync(connection);
+					//                   }
+					//               }
+					//               await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
 
 					WriteApprovalResult approvalResult = await GetApprovalForKeyValueAsync(connection, keyValue, value);
 					datagram.ApprovalResult = approvalResult;
@@ -176,7 +176,7 @@ namespace EEBUS.SPINE.Commands
 						keyValue.SetValue(value);
 						await keyValue.SendEventAsync(connection);
 						await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
-						
+
 					}
 				}
 				else if (datagram.header.cmdClassifier == "reply" || datagram.header.cmdClassifier == "notify")
@@ -305,13 +305,5 @@ namespace EEBUS.SPINE.Commands
 		public ScaledNumberType? scaledNumber { get; set; }
 
 		public string? duration { get; set; }
-	}
-
-	[System.SerializableAttribute()]
-	public class ScaledNumberType
-	{
-		public long? number { get; set; }
-
-		public short? scale { get; set; }
 	}
 }

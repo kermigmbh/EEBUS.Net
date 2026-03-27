@@ -51,14 +51,12 @@ namespace EEBUS.UseCases
     {
         public bool IsLimitActive { get; set; }
         public long Value { get; set; }
-        public short Scale { get; set; }
         public TimeSpan? Duration { get; set; }
 
         public ActiveLimitWriteRequest(
             PowerDirection direction,
             bool isActive,
             long value,
-            short scale,
             TimeSpan? duration,
             string remoteDeviceId,
             string remoteSKI)
@@ -66,7 +64,6 @@ namespace EEBUS.UseCases
             Direction = direction;
             IsLimitActive = isActive;
             Value = value;
-            Scale = scale;
             Duration = duration;
             RemoteDeviceId = remoteDeviceId;
             RemoteSKI = remoteSKI;
