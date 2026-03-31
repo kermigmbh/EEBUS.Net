@@ -102,6 +102,34 @@ namespace EEBUS.SPINE.Commands
             //	}
             //}
 
+            public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync(DatagramType datagram, HeaderType header, Connection connection)
+            {
+                if (datagram.header.cmdClassifier == "read")
+                {
+                    AddressType? address = connection.Local.GetFeatureAddress("Measurement", true);
+                    if (address == null) return null;
+
+                    Entity? entity = connection.Local.Entities.FirstOrDefault(e => e.Index.SequenceEqual(address.entity));
+                    MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == address.feature) as MeasurementServerFeature;
+                    if (measurementFeature == null) return null;
+
+                    MeasurementDescriptionListData measurementDescriptionListData = new();
+                    List<MeasurementDescriptionDataType> measurementData = new();
+                    foreach (var data in measurementFeature.measurementData)
+                    {
+                        if (data.measurementDescriptionDataType != null)
+                        {
+                            measurementData.Add(data.measurementDescriptionDataType);
+                        }
+                    }
+                    measurementDescriptionListData.cmd[0].measurementDescriptionListData.measurementDescriptionData = measurementData.ToArray();
+                    return measurementDescriptionListData;
+                } else
+                {
+                    return null;
+                }
+            }
+
             public override SpineCmdPayloadBase? CreateRead(Connection connection)
             {
                 return new MeasurementDescriptionListData();

@@ -30,11 +30,22 @@ namespace ConsoleDemo
                                     Duration = 7200,
                                     FailsafeLimit = 7200,
                                     NominalMax = 40000
-                                }
+                                },
+                            },
+                            new UseCaseSettings {
+                                Type = "monitoringOfGridConnectionPoint",
+                                Actor = "MonitoringAppliance"
+                            },
+                            new UseCaseSettings {
+                                Type = "monitoringOfPowerConsumption",
+                                Actor = "MonitoringAppliance"
+                            },
+                            new UseCaseSettings {
+                                Type = "monitoringOfPowerConsumption",
+                                Actor = "MonitoredUnit"
                             }
                             ]}
-                        ]
-
+                            ]
                 },
                 //Certificate = "XCenterEEBUS"
                 Certificate = "EEBUS.net"

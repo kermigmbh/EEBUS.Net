@@ -1,12 +1,14 @@
 ﻿using EEBUS;
 using EEBUS.Models;
 using EEBUS.Net;
+using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.Net.Events;
 using System.Diagnostics;
 using System.Net.Security;
 using System.Runtime.ConstrainedExecution;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
@@ -20,6 +22,7 @@ namespace ConsoleDemo
 
         public async Task RunAsync(Settings settings)
         {
+            
             var onNewConnectionValidation = (NewConnectionValidationEventArgs args) =>
             {
                 Debug.WriteLine("Ski: " + args.Ski);
@@ -53,6 +56,7 @@ namespace ConsoleDemo
             Console.WriteLine("Local SKI: " + ski + "\n");
             Console.WriteLine("Supported Commands:");
             Console.WriteLine("- remotes: prints all remote devices that were found through mdns");
+            Console.WriteLine("- remote <index>: prints all data of the remote device on index <index>");
             Console.WriteLine("- connect <index>: connects to the remote device with index <index>, starting at 0");
             Console.WriteLine("- read: prints out all properties of the local device");
 
@@ -71,10 +75,20 @@ namespace ConsoleDemo
                     case "remotes":
                         PrintRemotes();
                         break;
-                    case "connect":
+                    case "remote":
                         if (int.TryParse(tokens.ElementAtOrDefault(1), out int remoteIndex))
                         {
-                            bool connected = await ConnectAsync(remoteIndex);
+                            PrintRemoteData(remoteIndex);
+                        }
+                        else
+                        {
+                            Console.WriteLine("Invalid input!");
+                        }
+                        break;
+                    case "connect":
+                        if (int.TryParse(tokens.ElementAtOrDefault(1), out int connectIndex))
+                        {
+                            bool connected = await ConnectAsync(connectIndex);
                             if (connected)
                             {
                                 Console.WriteLine("Client connected!");
@@ -128,6 +142,19 @@ namespace ConsoleDemo
                 {
                     Console.WriteLine(remote?.ToString());
                 }
+            }
+        }
+
+        private void PrintRemoteData(int index)
+        {
+            IEnumerable<RemoteDeviceData>? remotes = _manager?.GetConnectedDevices();
+            RemoteDeviceData? match = remotes?.ElementAtOrDefault(index);
+            if (match == null) return;
+            DeviceData? remoteData = _manager?.GetRemoteData(match.Ski);
+
+            if (remoteData != null)
+            {
+                Console.WriteLine(JsonSerializer.Serialize<DeviceData>(remoteData));
             }
         }
 

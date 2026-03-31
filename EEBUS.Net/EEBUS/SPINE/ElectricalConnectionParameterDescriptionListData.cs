@@ -25,15 +25,36 @@ namespace EEBUS.SPINE.Commands
             {
                 if (datagram.header.cmdClassifier == "read")
                 {
-                    ElectricalConnectionParameterDescriptionListData payload = new ElectricalConnectionParameterDescriptionListData();
-                    payload.cmd = [new()];
-                    payload.cmd[0].electricalConnectionParameterDescriptionListData = new();
+                    //ElectricalConnectionParameterDescriptionListData payload = new ElectricalConnectionParameterDescriptionListData();
+                    //payload.cmd = [new()];
+                    //payload.cmd[0].electricalConnectionParameterDescriptionListData = new();
 
-                    List<ElectricalConnectionParameterDescriptionDataType> ecpdds = new();
-                    connection.Local.FillData<ElectricalConnectionParameterDescriptionDataType>(ecpdds, connection);
-                    payload.cmd[0].electricalConnectionParameterDescriptionListData.electricalConnectionParameterDescriptionData = ecpdds.ToArray();
+                    //List<ElectricalConnectionParameterDescriptionDataType> ecpdds = new();
+                    //connection.Local.FillData<ElectricalConnectionParameterDescriptionDataType>(ecpdds, connection);
+                    //payload.cmd[0].electricalConnectionParameterDescriptionListData.electricalConnectionParameterDescriptionData = ecpdds.ToArray();
 
-                    return payload;
+                    //return payload;
+                    AddressType? address = connection.Local.GetFeatureAddress("Measurement", true);
+                    if (address == null) return null;
+
+                    Entity? entity = connection.Local.Entities.FirstOrDefault(e => e.Index.SequenceEqual(address.entity));
+                    MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == address.feature) as MeasurementServerFeature;
+                    if (measurementFeature == null) return null;
+
+                    ElectricalConnectionParameterDescriptionListData electricalConnectionParameterDescriptionListData = new ElectricalConnectionParameterDescriptionListData();
+                    List<ElectricalConnectionParameterDescriptionDataType> descriptionData = new();
+                    foreach (var data in measurementFeature.measurementData)
+                    {
+                        if (data.electricalConnectionParameterDescriptionData != null)
+                        {
+                            descriptionData.Add(data.electricalConnectionParameterDescriptionData);
+                        }
+                    }
+                    electricalConnectionParameterDescriptionListData.cmd[0].electricalConnectionParameterDescriptionListData = new()
+                    {
+                        electricalConnectionParameterDescriptionData = descriptionData.ToArray()
+                    };
+                    return electricalConnectionParameterDescriptionListData;
                 }
                 else if (datagram.header.cmdClassifier == "write")
                 {
