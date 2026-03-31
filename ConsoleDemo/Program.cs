@@ -26,9 +26,10 @@ namespace ConsoleDemo
                                 Actor = "ControllableSystem",
                                 InitLimits = new LimitSettings {
                                     Active = false,
-                                    Limit = 4300,
-                                    Duration = 7200,
+                                    Limit = 0,
+                                    Duration = Timeout.InfiniteTimeSpan,
                                     FailsafeLimit = 7200,
+                                    FailsafeDurationMinimum = TimeSpan.FromHours(2),
                                     NominalMax = 40000
                                 },
                             },

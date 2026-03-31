@@ -99,7 +99,7 @@ namespace EEBUS.Controllers
 
 		private class LPCorLPPEventHandler : LPCorLPPEvents
 		{
-			public Task<WriteApprovalResult> ApproveFailsafeDurationWriteAsync( FailsafeDurationWriteRequest request )
+			public Task<WriteApprovalResult> ApproveFailsafeDurationMinimumWriteAsync( FailsafeDurationWriteRequest request )
 			{
 				Console.WriteLine( $"Failsafe Duration Write Request: Duration={request.Duration}" );
 				return Task.FromResult(WriteApprovalResult.Accept());

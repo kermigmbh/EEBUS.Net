@@ -34,7 +34,7 @@ namespace EEBUS.UseCases.ControllableSystem
 	public interface LPCorLPPEvents : UseCaseEvents
 	{
 		// Write Approval method
-		Task<WriteApprovalResult> ApproveFailsafeDurationWriteAsync( FailsafeDurationWriteRequest request );
+		Task<WriteApprovalResult> ApproveFailsafeDurationMinimumWriteAsync( FailsafeDurationWriteRequest request );
 
 		// Data update events
 		Task DataUpdateFailsafeDurationMinimumAsync( int counter, TimeSpan duration, string remoteSki );

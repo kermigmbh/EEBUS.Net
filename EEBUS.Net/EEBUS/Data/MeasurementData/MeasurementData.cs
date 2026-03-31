@@ -81,8 +81,7 @@ namespace EEBUS.MeasurementData
                  * 4. loop: 13 % 10 == 3 -> done, scaledNumber = 13 * 10 ^ 3 = 13000
                  */
 
-
-                measurementDataType.value ??= new ScaledNumberType();
+                measurementDataType.value ??= new Models.ScaledNumberType();
                 measurementDataType.value.number = number;
                 measurementDataType.value.scale = scale;
             }
