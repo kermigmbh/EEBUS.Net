@@ -545,6 +545,7 @@ namespace EEBUS.StateMachines
             {
                 Console.WriteLine($"[LimitStateMachine:{_direction}] Error in heartbeat timeout handler: {ex.ToString()}");
             }
+        }
 
         private async void OnLimitDurationExpired(object? state)
         {
@@ -630,6 +631,7 @@ namespace EEBUS.StateMachines
             {
                 Console.WriteLine($"[LimitStateMachine:{_direction}] Error in init timeout handler: {ex.ToString()}");
             }
+        }
 
         #endregion
 
