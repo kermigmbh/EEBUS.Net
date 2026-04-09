@@ -12,12 +12,16 @@ namespace TestProject1.LimitStateMachineTests
     public abstract class LpcTestRunner : IDisposable
     {
         protected static readonly string _remoteSki = "9EB90FCE71E9D0705102EA55555593F9DA95FB6F";
-        protected static readonly RemoteDevice _mockRemoteDevice = new("", _remoteSki, "", "", (x, y) => { }, (x, y) => { });
+
+        protected static readonly RemoteDevice _mockRemoteDevice =
+            new("", _remoteSki, "", "", (x, y) => { }, (x, y) => { });
+
         protected static readonly long DefaultFailsafeLimit = 6666;
         protected readonly FakeTimeProvider _timeProvider;
         protected readonly LimitStateMachine _stateMachine;
         protected readonly TestEventHandler _eventHandler;
         private int _counter = 1;
+
         protected int Counter
         {
             get => _counter++;
@@ -41,6 +45,7 @@ namespace TestProject1.LimitStateMachineTests
         }
 
         #region Helper Functions
+
         protected static ActiveLimitWriteRequest WriteRequest(bool isActive, long value, TimeSpan? duration)
         {
             return new ActiveLimitWriteRequest(
@@ -62,7 +67,10 @@ namespace TestProject1.LimitStateMachineTests
         {
             var result = await _stateMachine.ApproveActiveLimitWriteAsync(request);
             Assert.Equal(shouldApprove, result.Approved);
-            await _stateMachine.DataUpdateLimitAsync(Counter, request.IsLimitActive, request.Value, request.Duration ?? Timeout.InfiniteTimeSpan, _remoteSki);
+
+            if (result.Approved)
+                await _stateMachine.DataUpdateLimitAsync(Counter, request.IsLimitActive, request.Value,
+                    request.Duration ?? Timeout.InfiniteTimeSpan, _remoteSki);
         }
 
         protected async Task AdvanceTimeMaintainingState(TimeSpan duration, LimitState expectedState)
@@ -77,6 +85,27 @@ namespace TestProject1.LimitStateMachineTests
                 _timeProvider.Advance(heartbeatInterval);
                 await NotifyHeartbeat();
             }
+        }
+
+        protected void AdvanceTime(TimeSpan duration)
+        {
+            _timeProvider.Advance(duration);
+        }
+
+        protected async Task WriteLimitExpectingRejection(ActiveLimitWriteRequest request)
+        {
+            var result = await _stateMachine.ApproveActiveLimitWriteAsync(request);
+            Assert.False(result.Approved, "Expected limit to be rejected");
+        }
+
+        protected async Task WriteFailsafeLimit(long limit)
+        {
+            await _stateMachine.DataUpdateFailsafeActivePowerLimitAsync(limit);
+        }
+
+        protected async Task WriteFailsafeDuration(TimeSpan duration)
+        {
+            await _stateMachine.DataUpdateFailsafeDurationMinimumAsync(Counter, duration, _remoteSki);
         }
 
         #endregion
