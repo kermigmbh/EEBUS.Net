@@ -27,14 +27,15 @@ namespace EEBUS.StateMachines
         {
         }
 
-        public override Task<WriteApprovalResult> ApproveActiveLimitWriteAsync(ActiveLimitWriteRequest request)
+        public override async Task<WriteApprovalResult> ApproveActiveLimitWriteAsync(ActiveLimitWriteRequest request)
         {
             // Rule: Limit < 0W is always rejected [LPC-001]
             if (request.Value < 0)
             {
-                return Task.FromResult(WriteApprovalResult.Deny("Limit value must be positive [LPC-001]"));
+                await TransitionToAsync(LimitState.UnlimitedControlled, "Denied invalid value.");
+                return WriteApprovalResult.Deny("Limit value must be positive [LPC-001]");
             }
-            return base.ApproveActiveLimitWriteAsync(request);
+            return await base.ApproveActiveLimitWriteAsync(request);
         }
 
         public Task DataUpdateFailsafeConsumptionActivePowerLimitAsync(int counter, long limit, string remoteSki)
