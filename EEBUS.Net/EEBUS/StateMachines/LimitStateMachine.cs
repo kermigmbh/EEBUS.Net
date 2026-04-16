@@ -38,7 +38,7 @@ namespace EEBUS.StateMachines
         private TimeSpan _failsafeDurationMinimum;
 
         // Timeout constants
-        public static readonly TimeSpan DefaultFailsadeDurationMinimum = TimeSpan.FromHours(2);
+        public static readonly TimeSpan DefaultFailsafeDurationMinimum = TimeSpan.FromHours(2);
         public static readonly TimeSpan HeartbeatStateTimeout = TimeSpan.FromSeconds(120);
         public static readonly TimeSpan HeartbeatAcceptTimeout = TimeSpan.FromSeconds(60);
         public static readonly TimeSpan InitTimeout = TimeSpan.FromSeconds(120);
@@ -57,7 +57,7 @@ namespace EEBUS.StateMachines
             Debug.WriteLine($"[LimitStateMachine:{_direction}] Initialized in Init state with failsafe limit {_failsafeLimit}W");
         }
 
-        protected LimitStateMachine(TimeProvider timeProvider, PowerDirection direction, long failsafeLimit) : this(timeProvider, direction, failsafeLimit, DefaultFailsadeDurationMinimum)
+        protected LimitStateMachine(TimeProvider timeProvider, PowerDirection direction, long failsafeLimit) : this(timeProvider, direction, failsafeLimit, DefaultFailsafeDurationMinimum)
         {
         }
 
@@ -65,7 +65,7 @@ namespace EEBUS.StateMachines
         {
         }
 
-        protected LimitStateMachine(PowerDirection direction, long failsafeLimit) : this(TimeProvider.System, direction, failsafeLimit, DefaultFailsadeDurationMinimum)
+        protected LimitStateMachine(PowerDirection direction, long failsafeLimit) : this(TimeProvider.System, direction, failsafeLimit, DefaultFailsafeDurationMinimum)
         {
         }
 
