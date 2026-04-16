@@ -471,6 +471,7 @@ namespace EEBUS.StateMachines
             if (expiresAt < now)
             {
                 StartLimitDurationTimer(TimeSpan.Zero);
+                return;
             }
 
             StartLimitDurationTimer(expiresAt - now);
@@ -637,7 +638,7 @@ namespace EEBUS.StateMachines
 
         #region State Transitions
 
-        private async Task TransitionToAsync(LimitState newState, string reason)
+        protected async Task TransitionToAsync(LimitState newState, string reason)
         {
             List<Task> tasks = [];
 
@@ -650,6 +651,39 @@ namespace EEBUS.StateMachines
 
                 var oldEffectiveLimit = GetEffectiveLimitForState(oldState);
                 var newEffectiveLimit = GetEffectiveLimit();
+                
+                // Notify handlers
+                foreach (var handler in _eventHandlers)
+                {
+                    try
+                    {
+                        if (oldState != newState) {
+                            tasks.Add(handler.OnStateChanged(oldState, newState, reason));
+                        }
+
+                        // Notify if effective limit changed
+                        if (oldEffectiveLimit.IsLimited != newEffectiveLimit.IsLimited ||
+                            oldEffectiveLimit.Value != newEffectiveLimit.Value)
+                        {
+                            tasks.Add(handler.OnEffectiveLimitChanged(newEffectiveLimit));
+                        }
+
+                        // Notify failsafe events
+                        if (newState.IsFailsafe() && !oldState.IsFailsafe())
+                        {
+                            tasks.Add(handler.OnFailsafeEntered(reason));
+                        }
+                        else if (oldState.IsFailsafe() && !newState.IsFailsafe())
+                        {
+                            tasks.Add(handler.OnFailsafeExited(reason));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[LimitStateMachine:{_direction}] Error in event handler: {ex.ToString()}");
+                    }
+                }
+                
                 switch ((oldState, newState))
                 {
                     case (LimitState.Init, LimitState.Init):
@@ -791,40 +825,7 @@ namespace EEBUS.StateMachines
 
                     default:
                         throw new InvalidOperationException($"Illegal state transition: {oldState} -> {newState}");
-                }
-                ;
-
-                // Notify handlers
-                foreach (var handler in _eventHandlers)
-                {
-                    try
-                    {
-                        if (oldState != newState) {
-                            tasks.Add(handler.OnStateChanged(oldState, newState, reason));
-                        }
-
-                        // Notify if effective limit changed
-                        if (oldEffectiveLimit.IsLimited != newEffectiveLimit.IsLimited ||
-                            oldEffectiveLimit.Value != newEffectiveLimit.Value)
-                        {
-                            tasks.Add(handler.OnEffectiveLimitChanged(newEffectiveLimit));
-                        }
-
-                        // Notify failsafe events
-                        if (newState.IsFailsafe() && !oldState.IsFailsafe())
-                        {
-                            tasks.Add(handler.OnFailsafeEntered(reason));
-                        }
-                        else if (oldState.IsFailsafe() && !newState.IsFailsafe())
-                        {
-                            tasks.Add(handler.OnFailsafeExited(reason));
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[LimitStateMachine:{_direction}] Error in event handler: {ex.ToString()}");
-                    }
-                }
+                };
             }
 
             foreach (var task in tasks)
