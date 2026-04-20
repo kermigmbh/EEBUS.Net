@@ -47,7 +47,8 @@ namespace EEBUS
             WaitingForAccessMethods,
             Connected,
             Stopped,
-            ErrorOrTimeout
+            ErrorOrTimeout,
+            WaitingForCloseConfirm
         }
 
         public enum ESubState
@@ -171,12 +172,14 @@ namespace EEBUS
             _pendingRequests.AddOrUpdate(closeMessage.GetId(), tcs, (msgId, completionSource) => completionSource);
             //TODO: rework DataMessageQueue to be able to handle every kind of message, so we can also send the close message over the queue. Could include an option enum, e.g. insert at the start/end, delete queue before insert, etc.
             await closeMessage.Send(WebSocket);
+            this.state = EState.WaitingForCloseConfirm;
             ShipMessageBase? returnMessage = null;
             try
             {
                 returnMessage = await tcs.Task.WaitAsync(TimeSpan.FromMilliseconds(timeout));
             } catch(Exception) {  }
             //tcs.TrySetCanceled();
+            this.state = EState.Disconnected;
             _pendingRequests.TryRemove(closeMessage.GetId(), out _);
             return returnMessage as CloseMessage;
         }
