@@ -1,7 +1,6 @@
 ﻿using EEBUS.Messages;
 using EEBUS.Models;
 using EEBUS.Net;
-using EEBUS.Net.EEBUS.UseCases.GridConnectionPoint;
 using EEBUS.SHIP.Messages;
 using EEBUS.SPINE.Commands;
 using Microsoft.AspNetCore.Http;
@@ -9,7 +8,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 
 
 namespace EEBUS
@@ -22,7 +20,6 @@ namespace EEBUS
         protected ESubState subState;
         public DeviceConnectionStatus ConnectionStatus { get; internal set; } = DeviceConnectionStatus.Unknown;
         private ConcurrentDictionary<string, TaskCompletionSource<ShipMessageBase?>> _pendingRequests = new();
-       // private TaskCompletionSource<CloseMessage>? _pendingCloseMessageTcs;
 
         private const int DefaultCloseMessageTimeoutMs = 1000;
 
@@ -184,29 +181,8 @@ namespace EEBUS
             return returnMessage as CloseMessage;
         }
 
-        //public async Task<CloseMessage?> PushCloseMessageAsync(CloseMessage message)
-        //{
-        //    int timeout = (int?)message.connectionClose.FirstOrDefault()?.maxTime ?? DefaultCloseMessageTimeoutMs;
-        //    if (_pendingCloseMessageTcs == null)
-        //    {
-        //        _pendingCloseMessageTcs = new TaskCompletionSource<CloseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
-        //        await message.Send(WebSocket);
-        //        var returnMessage = await _pendingCloseMessageTcs.Task.WaitAsync(TimeSpan.FromMilliseconds(timeout));
-        //        _pendingCloseMessageTcs = null;
-        //        return returnMessage;
-        //    }
-        //    return null;
-        //}
-
         protected void ResolvePendingRequest(ShipMessageBase message)
         {
-            //if (response is CloseMessage closeMessage)
-            //{
-            //    if (closeMessage.connectionClose.FirstOrDefault()?.phase == ConnectionClosePhaseType.confirm)
-            //    {
-            //        _pendingCloseMessageTcs?.TrySetResult(closeMessage);
-            //    }
-            //}
             if (message.GetMessageDirection() != Net.EEBUS.Models.ShipMessageDirection.Response) return;
 
             string? referencedId = message.GetReferencedId();
@@ -223,10 +199,6 @@ namespace EEBUS
         {
             int totalCount = 0;
             WebSocketReceiveResult result;
-
-            //using CancellationTokenSource timeoutCts = new CancellationTokenSource(SHIPMessageTimeout.CMI_TIMEOUT);
-            //using CancellationTokenSource linkedTokenSource =
-            //    CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
 
             // Accumulate frames until EndOfMessage
             do
