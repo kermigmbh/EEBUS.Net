@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 
 using EEBUS.Enums;
+using EEBUS.Net.EEBUS.Models;
 
 namespace EEBUS.Messages
 {
@@ -21,6 +22,9 @@ namespace EEBUS.Messages
 		{
 			return null;
 		}
+
+		public virtual ShipMessageDirection GetMessageDirection() { return ShipMessageDirection.Unknown; }
+		public virtual string? GetReferencedId() { return null; }
 
 		public abstract ShipMessageBase FromJsonVirtual(ReadOnlySpan<byte> data/*, Connection connection */);
 

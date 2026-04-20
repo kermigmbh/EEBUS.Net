@@ -81,6 +81,8 @@ namespace EEBUS
                         RequestRemoteDeviceConfiguration();
                        // ReadAndSubscribe();
                     }
+
+                    ResolvePendingRequest(message);
                 }
             }
             catch (Exception ex)

@@ -15,6 +15,7 @@ namespace EEBUS
 	/// </summary>
 	public class Server : Connection
 	{
+
 		public Server( HostString host, WebSocket ws, Devices devices )
 			: base( host, ws, devices )
 		{
@@ -90,6 +91,8 @@ namespace EEBUS
 						RequestRemoteDeviceConfiguration();
                        // ReadAndSubscribe();
                     }
+
+					ResolvePendingRequest(message);
 
                     if (this.state == EState.Stopped)
 						throw new Exception("Communication stopped!");
