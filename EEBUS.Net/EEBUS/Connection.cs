@@ -21,8 +21,6 @@ namespace EEBUS
         public DeviceConnectionStatus ConnectionStatus { get; internal set; } = DeviceConnectionStatus.Unknown;
         private ConcurrentDictionary<string, TaskCompletionSource<ShipMessageBase?>> _pendingRequests = new();
 
-        private const int DefaultCloseMessageTimeoutMs = 1000;
-
         public HostString RemoteHost
         {
             get
@@ -163,7 +161,9 @@ namespace EEBUS
         /// <returns>The answer to <paramref name="closeMessage"/>, or null if no answer was sent within the specified maxTime</returns>
         public async Task<CloseMessage?> PushCloseMessageAsync(CloseMessage closeMessage)
         {
-            int timeout = (int?)closeMessage.connectionClose.FirstOrDefault()?.maxTime ?? DefaultCloseMessageTimeoutMs;
+            if (closeMessage.connectionClose.Count() == 0) return null;
+
+            uint timeout = closeMessage.connectionClose.First().maxTime;
 
             TaskCompletionSource<ShipMessageBase?> tcs = new TaskCompletionSource<ShipMessageBase?>(TaskCreationOptions.RunContinuationsAsynchronously);
             _pendingRequests.AddOrUpdate(closeMessage.GetId(), tcs, (msgId, completionSource) => completionSource);

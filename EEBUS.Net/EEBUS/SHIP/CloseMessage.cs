@@ -58,13 +58,13 @@ namespace EEBUS.SHIP.Messages
     {
         public ConnectionClosePhaseType phase { get; set; }
 
-        public uint maxTime { get; set; }
+        public uint maxTime { get; set; } = 1000;
 
-        public bool maxTimeSpecified { get; set; }
+        //public bool maxTimeSpecified { get; set; }
 
-        public ConnectionCloseReasonType reason { get; set; }
+        public ConnectionCloseReasonType? reason { get; set; }
 
-        public bool reasonSpecified { get; set; }
+        //public bool reasonSpecified { get; set; }
     }
 
     [JsonConverter(typeof(JsonStringEnumConverter))]
