@@ -24,15 +24,6 @@ namespace EEBUS.MeasurementData
             }
         }
 
-        //public void UpdateValue(long? value)
-        //{
-        //    if (value != null && measurementDataType != null)
-        //    {
-        //        measurementDataType.value ??= new ScaledNumberType();
-        //        measurementDataType.value.number = value;
-        //    }
-        //}
-
         public void UpdateValue(float? value)
         {
             if (value != null && measurementDataType != null)

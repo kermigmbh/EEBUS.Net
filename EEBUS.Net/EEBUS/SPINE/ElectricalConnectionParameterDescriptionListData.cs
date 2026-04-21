@@ -25,15 +25,6 @@ namespace EEBUS.SPINE.Commands
             {
                 if (datagram.header.cmdClassifier == "read")
                 {
-                    //ElectricalConnectionParameterDescriptionListData payload = new ElectricalConnectionParameterDescriptionListData();
-                    //payload.cmd = [new()];
-                    //payload.cmd[0].electricalConnectionParameterDescriptionListData = new();
-
-                    //List<ElectricalConnectionParameterDescriptionDataType> ecpdds = new();
-                    //connection.Local.FillData<ElectricalConnectionParameterDescriptionDataType>(ecpdds, connection);
-                    //payload.cmd[0].electricalConnectionParameterDescriptionListData.electricalConnectionParameterDescriptionData = ecpdds.ToArray();
-
-                    //return payload;
                     AddressType? address = connection.Local.GetFeatureAddress("Measurement", true);
                     if (address == null) return null;
 
@@ -117,6 +108,7 @@ namespace EEBUS.SPINE.Commands
     public class ElectricalConnectionParameterDescriptionDataType
     {
         public uint electricalConnectionId { get; set; }
+        public uint parameterId { get; set; }
         public uint measurementId { get; set; }
         public string voltageType { get; set; }
 
