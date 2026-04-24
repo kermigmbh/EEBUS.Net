@@ -678,7 +678,7 @@ namespace EEBUS.Net
             {
                 // send close message
                 CloseMessage closeMessage = new CloseMessage(ConnectionClosePhaseType.announce);
-                closeMessage.connectionClose.FirstOrDefault()?.reason = ConnectionCloseReasonType.removedConnection;
+                closeMessage.connectionClose.reason = ConnectionCloseReasonType.removedConnection;
                 //await closeMessage.Send(wsClient);
                 await client.PushCloseMessageAsync(closeMessage);
 

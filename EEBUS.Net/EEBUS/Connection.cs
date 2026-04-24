@@ -161,9 +161,7 @@ namespace EEBUS
         /// <returns>The answer to <paramref name="closeMessage"/>, or null if no answer was sent within the specified maxTime</returns>
         public async Task<CloseMessage?> PushCloseMessageAsync(CloseMessage closeMessage)
         {
-            if (closeMessage.connectionClose.Count() == 0) return null;
-
-            uint timeout = closeMessage.connectionClose.First().maxTime;
+            uint timeout = closeMessage.connectionClose.maxTime;
 
             TaskCompletionSource<ShipMessageBase?> tcs = new TaskCompletionSource<ShipMessageBase?>(TaskCreationOptions.RunContinuationsAsynchronously);
             _pendingRequests.AddOrUpdate(closeMessage.GetId(), tcs, (msgId, completionSource) => completionSource);
