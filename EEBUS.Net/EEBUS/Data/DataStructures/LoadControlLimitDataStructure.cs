@@ -54,7 +54,7 @@ namespace EEBUS.DataStructures
             //this.LimitChangable = data.isLimitChangeable ?? this.LimitChangable;	not changeable according to the LPC definition
             this.LimitActive = data.isLimitActive ?? this.LimitActive;
 
-			this.EndTime = data.timePeriod?.endTime;	//timePeriod is optional according to the LPC definition
+			this.EndTime = data.timePeriod?.endTime ?? this.EndTime;
 				
 			this.Number = data.value?.number ?? this.Number;
 			this.Scale = data.value?.scale ?? this.Scale;

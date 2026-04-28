@@ -1,18 +1,13 @@
-﻿using System.Diagnostics;
-using System.Net.WebSockets;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-
-using Microsoft.AspNetCore.Http;
-
-
-
-using EEBUS.Messages;
+﻿using EEBUS.Messages;
 using EEBUS.Models;
+using EEBUS.Net;
 using EEBUS.SHIP.Messages;
 using EEBUS.SPINE.Commands;
-using EEBUS.Net.EEBUS.UseCases.GridConnectionPoint;
-using EEBUS.Net;
+using Microsoft.AspNetCore.Http;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Net.WebSockets;
+using System.Text.Json;
 
 
 namespace EEBUS
@@ -24,6 +19,7 @@ namespace EEBUS
         protected EState state;
         protected ESubState subState;
         public DeviceConnectionStatus ConnectionStatus { get; internal set; } = DeviceConnectionStatus.Unknown;
+        private ConcurrentDictionary<string, TaskCompletionSource<ShipMessageBase?>> _pendingRequests = new();
 
         public HostString RemoteHost
         {
@@ -46,7 +42,8 @@ namespace EEBUS
             WaitingForAccessMethods,
             Connected,
             Stopped,
-            ErrorOrTimeout
+            ErrorOrTimeout,
+            WaitingForCloseConfirm
         }
 
         public enum ESubState
@@ -113,90 +110,6 @@ namespace EEBUS
             }
         }
 
-        protected class ElectricalConnectionCharacteristicTask
-        {
-            // This method is called by the timer delegate.
-            public void SendData(object connectionObj)
-            {
-                Connection connection = (Connection)connectionObj;
-
-                if (connection.State == Connection.EState.Connected)
-                {
-                    AddressType? source = connection.Local?.GetElectricalConnectionAddress(true);
-                    AddressType? destination = connection.Remote?.GetElectricalConnectionAddress(false);
-
-                    if (null != source && null != destination)
-                    {
-                        if (connection is Server)
-                            Debug.WriteLine("--- Send electrical connection characteristics via server ---");
-                        else
-                            Debug.WriteLine("--- Send electrical connection characteristics via client ---");
-
-                        SpineDatagramPayload reply = new SpineDatagramPayload();
-                        reply.datagram.header.addressSource = source;
-                        reply.datagram.header.addressDestination = destination;
-                        reply.datagram.header.msgCounter = DataMessage.NextCount;
-                        reply.datagram.header.cmdClassifier = "notify";
-
-                        var eccPayload = new ElectricalConnectionCharacteristicListData.Class().CreateNotify(connection);
-                        reply.datagram.payload = eccPayload?.ToJsonNode();// JsonSerializer.SerializeToNode(eccPayload);
-
-                        DataMessage eccMessage = new DataMessage();
-                        //eccMessage.SetPayload(JsonSerializer.SerializeToNode(reply));
-                        eccMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize electrical connection characteristics message"));
-
-                        connection.PushDataMessage(eccMessage);
-                    }
-                }
-            }
-        }
-
-        protected class MeasurementDataTask
-        {
-            // Dummy data for test purpose
-            MGCPOperationalData dummyData = new MGCPOperationalData();
-
-            // This method is called by the timer delegate.
-            public void SendData(object connectionObj)
-            {
-                Connection connection = (Connection)connectionObj;
-
-                if (connection.State == Connection.EState.Connected)
-                {
-                    AddressType? source = connection.Local.GetMeasurementDataAddress(true);
-                    AddressType? destination = connection.Remote?.GetMeasurementDataAddress(false);
-
-                    if (null != source && null != destination)
-                    {
-                        // Fill dummy data with random values						
-                        this.dummyData.FillRandom();
-                        List<MGCPOperationalData> dummyList = new();
-                        dummyList.Add(this.dummyData);
-                        connection.Local.FillData<MGCPOperationalData>(dummyList, connection);
-
-                        if (connection is Server)
-                            Debug.WriteLine("--- Send measurement data via server ---");
-                        else
-                            Debug.WriteLine("--- Send measurement data via client ---");
-
-                        SpineDatagramPayload reply = new SpineDatagramPayload();
-                        reply.datagram.header.addressSource = source;
-                        reply.datagram.header.addressDestination = destination;
-                        reply.datagram.header.msgCounter = DataMessage.NextCount;
-                        reply.datagram.header.cmdClassifier = "notify";
-
-                        var measurementPayload = new MeasurementListData.Class().CreateNotify(connection);
-                        reply.datagram.payload = measurementPayload?.ToJsonNode();//JsonSerializer.SerializeToNode(measurementPayload);
-
-                        DataMessage dataMessage = new DataMessage();
-                        dataMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize measurement data message"));
-
-                        connection.PushDataMessage(dataMessage);
-                    }
-                }
-            }
-        }
-
         public Connection(HostString host, WebSocket ws, Devices devices)
         {
             this.host = host;
@@ -241,16 +154,51 @@ namespace EEBUS
             this.WaitingMessages.Push(message);
         }
 
+        /// <summary>
+        /// Pushes a close message, signalling the end of communication
+        /// </summary>
+        /// <param name="closeMessage">The message to send</param>
+        /// <returns>The answer to <paramref name="closeMessage"/>, or null if no answer was sent within the specified maxTime</returns>
+        public async Task<CloseMessage?> PushCloseMessageAsync(CloseMessage closeMessage)
+        {
+            if (closeMessage.connectionClose.Count() == 0) return null;
+
+            uint timeout = closeMessage.connectionClose.First().maxTime;
+
+            TaskCompletionSource<ShipMessageBase?> tcs = new TaskCompletionSource<ShipMessageBase?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _pendingRequests.AddOrUpdate(closeMessage.GetId(), tcs, (msgId, completionSource) => completionSource);
+            //TODO: rework DataMessageQueue to be able to handle every kind of message, so we can also send the close message over the queue. Could include an option enum, e.g. insert at the start/end, delete queue before insert, etc.
+            await closeMessage.Send(WebSocket);
+            this.state = EState.WaitingForCloseConfirm;
+            ShipMessageBase? returnMessage = null;
+            try
+            {
+                returnMessage = await tcs.Task.WaitAsync(TimeSpan.FromMilliseconds(timeout));
+            } catch(Exception) {  }
+            //tcs.TrySetCanceled();
+            this.state = EState.Disconnected;
+            _pendingRequests.TryRemove(closeMessage.GetId(), out _);
+            return returnMessage as CloseMessage;
+        }
+
+        protected void ResolvePendingRequest(ShipMessageBase message)
+        {
+            if (message.GetMessageDirection() != Net.EEBUS.Models.ShipMessageDirection.Response) return;
+
+            string? referencedId = message.GetReferencedId();
+            if (string.IsNullOrEmpty(referencedId)) return;
+
+            if (_pendingRequests.TryGetValue(referencedId, out TaskCompletionSource<ShipMessageBase?>? tcs))
+            {
+                tcs?.TrySetResult(message);
+            }
+        }
 
         private byte[] _receiveBuffer = new byte[10240];
         protected async Task<ShipMessageBase> ReceiveAsync(CancellationToken cancellationToken)
         {
             int totalCount = 0;
             WebSocketReceiveResult result;
-
-            //using CancellationTokenSource timeoutCts = new CancellationTokenSource(SHIPMessageTimeout.CMI_TIMEOUT);
-            //using CancellationTokenSource linkedTokenSource =
-            //    CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
 
             // Accumulate frames until EndOfMessage
             do

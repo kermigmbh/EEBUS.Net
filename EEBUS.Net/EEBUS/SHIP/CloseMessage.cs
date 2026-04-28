@@ -1,62 +1,84 @@
 ﻿using System.Text.Json.Serialization;
 
 using EEBUS.Messages;
+using EEBUS.Net.EEBUS.Models;
 
 namespace EEBUS.SHIP.Messages
 {
-	public class CloseMessage : ShipEndMessage<CloseMessage>
-	{
-		static CloseMessage()
-		{
-			Register( new Class() );
-		}
+    public class CloseMessage : ShipEndMessage<CloseMessage>
+    {
+        static CloseMessage()
+        {
+            Register(new Class());
+        }
 
-		public CloseMessage()
-		{
-		}
+        public CloseMessage()
+        {
+        }
 
-		public CloseMessage( ConnectionClosePhaseType phase )
-		{
-			this.connectionClose[0].phase = phase;
-		}
+        public CloseMessage(ConnectionClosePhaseType phase)
+        {
+            this.connectionClose[0].phase = phase;
+        }
 
-		public new class Class : ShipEndMessage<CloseMessage>.Class
-		{
-			public override CloseMessage Create(ReadOnlySpan<byte> data/*, Connection connection*/ )
-			{
-				return template.FromJsonVirtual( data/*, connection*/ );
-			}
-		}
+        public new class Class : ShipEndMessage<CloseMessage>.Class
+        {
+            public override CloseMessage Create(ReadOnlySpan<byte> data/*, Connection connection*/ )
+            {
+                return template.FromJsonVirtual(data/*, connection*/ );
+            }
+        }
 
-		public ConnectionCloseType[] connectionClose { get; set; } = [new()];
-	}
+        public ConnectionCloseType[] connectionClose { get; set; } = [new()];
 
-	 
-	public class ConnectionCloseType
-	{
-		public ConnectionClosePhaseType	 phase			  { get; set; }
+        public override string GetId()
+        {
+            return "connectionClose";
+        }
 
-		public uint						 maxTime		  { get; set; }
+        public override string? GetReferencedId()
+        {
+            return GetId();
+        }
 
-		public bool						 maxTimeSpecified { get; set; }
+        public override ShipMessageDirection GetMessageDirection()
+        {
+            ConnectionClosePhaseType? phase = connectionClose.FirstOrDefault()?.phase;
+            return phase switch
+            {
+                ConnectionClosePhaseType.announce => ShipMessageDirection.Request,
+                ConnectionClosePhaseType.confirm => ShipMessageDirection.Response,
+                _ => ShipMessageDirection.Unknown
+            };
+        }
+    }
 
-		public ConnectionCloseReasonType reason			  { get; set; }
 
-		public bool						 reasonSpecified  { get; set; }
-	}
+    public class ConnectionCloseType
+    {
+        public ConnectionClosePhaseType phase { get; set; }
 
-	[JsonConverter(typeof(JsonStringEnumConverter))]
-	public enum ConnectionClosePhaseType
-	{
-		announce,
-		confirm,
-	}
+        public uint maxTime { get; set; } = 1000;
 
-	/// <remarks/>
-	[JsonConverter(typeof(JsonStringEnumConverter))]
-	public enum ConnectionCloseReasonType
-	{
-		unspecific,
-		removedConnection,
-	}
+        //public bool maxTimeSpecified { get; set; }
+
+        public ConnectionCloseReasonType? reason { get; set; }
+
+        //public bool reasonSpecified { get; set; }
+    }
+
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public enum ConnectionClosePhaseType
+    {
+        announce,
+        confirm,
+    }
+
+    /// <remarks/>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public enum ConnectionCloseReasonType
+    {
+        unspecific,
+        removedConnection,
+    }
 }

@@ -671,26 +671,28 @@ namespace EEBUS.Net
         public async Task DisconnectAsync(HostString host)
         {
             var wsClient = _connections.TryGetValue(host, out Connection? client) ? client?.WebSocket : null;
-            if (wsClient == null)
+            if (client == null || wsClient == null)
                 return;
 
             try
             {
                 // send close message
                 CloseMessage closeMessage = new CloseMessage(ConnectionClosePhaseType.announce);
-                await closeMessage.Send(wsClient);
+                closeMessage.connectionClose.FirstOrDefault()?.reason = ConnectionCloseReasonType.removedConnection;
+                //await closeMessage.Send(wsClient);
+                await client.PushCloseMessageAsync(closeMessage);
 
-                // wait for close response message from server
-                closeMessage = await CloseMessage.Receive(wsClient);
-                if (closeMessage == null)
-                {
-                    throw new Exception("Close message parsing failed!");
-                }
+                //// wait for close response message from server
+                //closeMessage = await CloseMessage.Receive(wsClient);
+                //if (closeMessage == null)
+                //{
+                //    throw new Exception("Close message parsing failed!");
+                //}
 
-                if (closeMessage.connectionClose[0].phase != ConnectionClosePhaseType.confirm)
-                {
-                    throw new Exception("Close confirmation message expected!");
-                }
+                //if (closeMessage.connectionClose[0].phase != ConnectionClosePhaseType.confirm)
+                //{
+                //    throw new Exception("Close confirmation message expected!");
+                //}
 
                 // now close websocket
                 await wsClient.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None).ConfigureAwait(false);
@@ -710,6 +712,12 @@ namespace EEBUS.Net
                     await removedClient.CloseAsync();
                 }
             }
+        }
+
+        public Task DisconnectAsync(string remoteSki)
+        {
+            var host = _connections.FirstOrDefault(c => c.Value.Remote?.SKI.ToString() == remoteSki).Key;
+            return DisconnectAsync(host);
         }
 
         public void Start()

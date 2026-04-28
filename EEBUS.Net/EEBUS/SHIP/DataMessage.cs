@@ -1,6 +1,7 @@
 ﻿using EEBUS.Messages;
 using EEBUS.Models;
 using EEBUS.SPINE.Commands;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
@@ -108,6 +109,12 @@ namespace EEBUS.SHIP.Messages
 
 		public override async Task<(Connection.EState, Connection.ESubState)> NextServerState( Connection connection )
 		{
+			if (connection.State == Connection.EState.WaitingForCloseConfirm)
+			{
+				Debug.WriteLine("Waiting for close confirm, skipping message evaluation");
+				return (Connection.EState.WaitingForCloseConfirm, Connection.ESubState.None);
+			}
+
 			if ( connection.State == Connection.EState.Connected )
 			{
 				if ( this.data.payload is JsonObject payloadObj && payloadObj.ContainsKey( "datagram" ) )
