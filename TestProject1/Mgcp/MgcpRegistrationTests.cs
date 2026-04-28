@@ -1,9 +1,9 @@
-using EEBUS;
-using EEBUS.Models;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using EEBUS;
+using EEBUS.Models;
 
-namespace TestProject1
+namespace TestProject1.Mgcp
 {
     /// <summary>
     /// Unit-Tests für die spezifikationskonforme Feature-Registrierung des

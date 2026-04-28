@@ -1,12 +1,11 @@
-using EEBUS;
-using EEBUS.Features;
-using EEBUS.Messages;
-using EEBUS.Models;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using EEBUS;
+using EEBUS.Features;
 using EEBUS.MeasurementData;
+using EEBUS.Models;
 
-namespace TestProject1
+namespace TestProject1.Mpc
 {
     /// <summary>
     /// Unit-Tests für die ID-Korrektheit der Messdaten im

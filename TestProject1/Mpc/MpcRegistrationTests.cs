@@ -1,10 +1,10 @@
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using EEBUS;
 using EEBUS.Messages;
 using EEBUS.Models;
-using System.Reflection;
-using System.Runtime.CompilerServices;
 
-namespace TestProject1
+namespace TestProject1.Mpc
 {
     /// <summary>
     /// Unit-Tests für die spezifikationskonforme Feature-Registrierung des
