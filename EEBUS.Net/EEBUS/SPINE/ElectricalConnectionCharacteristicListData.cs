@@ -3,6 +3,7 @@ using EEBUS.Models;
 using EEBUS.Net.EEBUS.Data.DataStructures;
 using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.Net.EEBUS.SPINE.Types;
+using System.Text.Json.Nodes;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -48,6 +49,15 @@ namespace EEBUS.SPINE.Commands
                 payload.cmd[0].electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData = structures.Select(structure => structure.Data).ToArray();
 
                 return payload;
+            }
+
+            public override JsonNode? CreateNotifyPayload(LocalDevice localDevice)
+            {
+                ElectricalConnectionCharacteristicListData payload = new ElectricalConnectionCharacteristicListData();
+                payload.cmd[0].electricalConnectionCharacteristicListData = new();
+                List<ElectricalConnectionCharacteristicDataStructure> structures = localDevice.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>();
+                payload.cmd[0].electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData = structures.Select(s => s.Data).ToArray();
+                return payload.ToJsonNode();
             }
 
             public override async Task WriteDataAsync(LocalDevice localDevice, DeviceData deviceData)
