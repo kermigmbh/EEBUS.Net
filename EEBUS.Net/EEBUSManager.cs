@@ -17,7 +17,9 @@ using Microsoft.AspNetCore.Http;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Net;
 using System.Net.Security;
+using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -81,17 +83,18 @@ namespace EEBUS.Net
 
             _devices = new Devices();
             _mDNSClient = new MDNSClient(serviceDiscovery);
+            _mDNSClient.InstanceDiscovered += MdnsInstanceDiscovered;
 
             _cert = CertificateGenerator.GenerateCert(settings.BasePath, settings.Certificate);
 
             byte[] hash = SHA1.Create().ComputeHash(_cert.GetPublicKey());
 
-            this._mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port, serviceDiscovery);
+            this._mDNSService = new MDNSService(serviceDiscovery, new EEBusServiceProfile(Dns.GetHostName(), settings.Device, new SKI(hash), "_ship._tcp"));
 
             LocalDevice localDevice = _devices.GetOrCreateLocal(hash, settings.Device);
 
-            _mDNSService.Run(localDevice, _cts.Token);
-            _mDNSClient.Run(_devices);
+            _mDNSService.Run(_cts.Token);
+            _mDNSClient.Run(["ship"]);
             _devices.RemoteDeviceFound += OnRemoteDeviceFound;
             _devices.ServerStateChanged += OnServerStateChanged;
             _devices.ClientStateChanged += OnClientStateChanged;
@@ -111,6 +114,53 @@ namespace EEBUS.Net
             _devices.Local.AddUseCaseEvents(this.deviceConnectionStatusEventHandler);
             _settings = settings;
             this._serviceDiscovery = serviceDiscovery;
+        }
+
+        private void MdnsInstanceDiscovered(object? sender, ServiceInstanceDiscoveryEventArgs ev)
+        {
+            IEnumerable<SRVRecord> servers = ev.Message.AdditionalRecords.OfType<SRVRecord>();
+            IEnumerable<AddressRecord> addresses = ev.Message.AdditionalRecords.OfType<AddressRecord>();
+            IEnumerable<string>? txtRecords = ev.Message.AdditionalRecords.OfType<TXTRecord>()?.SelectMany(s => s.Strings);
+
+            if (servers?.Count() > 0 && addresses?.Count() > 0 && txtRecords?.Count() > 0)
+            {
+                foreach (SRVRecord server in servers)
+                {
+                    IEnumerable<AddressRecord> serverAddresses = addresses.Where(w => w.Name == server.Target);
+                    if (serverAddresses?.Count() > 0)
+                    {
+                        foreach (AddressRecord serverAddress in serverAddresses)
+                        {
+                            // we only want IPv4 addresses
+                            if (serverAddress.Address.AddressFamily == AddressFamily.InterNetwork)
+                            {
+                                string id = string.Empty;
+                                string path = string.Empty;
+                                string ski = string.Empty;
+
+                                foreach (string textRecord in txtRecords)
+                                {
+                                    if (textRecord.StartsWith("id"))
+                                        id = textRecord.Substring(textRecord.IndexOf('=') + 1);
+
+                                    if (textRecord.StartsWith("path"))
+                                        path = textRecord.Substring(textRecord.IndexOf('=') + 1);
+
+                                    if (textRecord.StartsWith("ski"))
+                                        ski = textRecord.Substring(textRecord.IndexOf('=') + 1);
+
+                                }
+
+                                if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(path))
+                                {
+                                    string url = serverAddress.Address.ToString() + ":" + server.Port.ToString() + path;
+                                    RemoteDevice device = _devices.GetOrCreateRemote(id, ski, url, ev.ServiceInstanceName.ToString());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         private static Type[] GetTypesInNamespace(Assembly assembly, string nameSpace)

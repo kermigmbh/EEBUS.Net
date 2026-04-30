@@ -1,26 +1,22 @@
-﻿using System.Net;
-
+﻿using EEBUS.Models;
 using Makaretu.Dns;
+using System.Net;
 
 namespace EEBUS
 {
 	public class EEBusServiceProfile : ServiceProfile
 	{
-		public EEBusServiceProfile( string hostName, DomainName instanceName, DomainName serviceName, ushort port, IEnumerable<IPAddress>? addresses = null )
+		public EEBusServiceProfile( string hostName, DeviceSettings deviceSettings, SKI ski, DomainName serviceName, IEnumerable<IPAddress>? addresses = null )
 			: base()
 		{
-			InstanceName = instanceName;
+			InstanceName = deviceSettings.Id;	//settings.Device.Id
 			ServiceName  = serviceName;
 			DomainName fullyQualifiedName = FullyQualifiedName;
-			//DomainName domainName = new DomainName(ServiceName.ToString().Replace("._tcp", "").Replace("._udp", "")
-			//	.Trim(new char[1] { '_' })
-			//	.Replace("_", "-"));
-			//HostName = DomainName.Join(InstanceName, domainName, Domain);
-			HostName = hostName;
+			HostName = hostName;	//Dns.GetHostName()
 			Resources.Add( new SRVRecord
 			{
 				Name   = fullyQualifiedName,
-				Port   = port,
+				Port   = deviceSettings.Port,	//settings.Device.Port
 				Target = HostName
 			} );
 			Resources.Add( new TXTRecord
@@ -32,6 +28,16 @@ namespace EEBUS
 			{
 				Resources.Add( AddressRecord.Create( HostName, item ) );
 			}
-		}
+
+            AddProperty("name", deviceSettings.Name);
+            AddProperty("id", deviceSettings.Id);
+            AddProperty("path", "/ship/");
+            AddProperty("register", "true");
+            AddProperty("ski", ski.ToString());
+            AddProperty("brand", deviceSettings.Brand);
+            AddProperty("type", deviceSettings.Type);
+            AddProperty("model", deviceSettings.Model);
+            AddProperty("serial", deviceSettings.Serial);
+        }
 	}
 }

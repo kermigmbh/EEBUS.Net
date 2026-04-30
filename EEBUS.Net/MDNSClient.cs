@@ -1,47 +1,35 @@
-﻿using System.Net.Sockets;
-
-using Makaretu.Dns;
-
-using EEBUS.Models;
+﻿using Makaretu.Dns;
 using System.Diagnostics;
 
 namespace EEBUS
 {
-	public class MDNSClient( ServiceDiscovery sd)
-	{
-		private Devices devices;
-		private CancellationTokenSource? _cts;
+    public class MDNSClient(ServiceDiscovery sd)
+    {
+        private CancellationTokenSource? _cts;
+        public event EventHandler<ServiceInstanceDiscoveryEventArgs>? InstanceDiscovered;
+        private List<string>? _supportedProtocols { get; set; }
 
-        
 
-        public void Run( Devices devices)
-		{
-			_cts?.Cancel();
-			_cts = new CancellationTokenSource();
-            this.devices = devices;
-
+        public void Run(List<string>? supportedProtocols = null)
+        {
+            _cts?.Cancel();
+            _cts = new CancellationTokenSource();
+            _supportedProtocols = supportedProtocols;
             _ = Task.Run(() => RunInternalAsync(_cts.Token));
-		}
+        }
 
-		private async Task RunInternalAsync(CancellationToken cancellationToken)
-		{
+        private async Task RunInternalAsync(CancellationToken cancellationToken)
+        {
             Thread.CurrentThread.IsBackground = true;
-
-            //MulticastService mdns = new MulticastService();
-            //ServiceDiscovery sd = new ServiceDiscovery();
 
             sd.ServiceDiscovered += Sd_ServiceDiscovered;
             sd.ServiceInstanceDiscovered += Sd_ServiceInstanceDiscovered;
 
             try
             {
-                //mdns.Start();
-
                 while (!cancellationToken.IsCancellationRequested)
                 {
-					sd.QueryAllServices();
-                    //sd.QueryServiceInstances("_ship._tcp");
-                    devices.GarbageCollect();
+                    sd.QueryAllServices();
 
                     await Task.Delay(5000, cancellationToken).ConfigureAwait(false);
                 }
@@ -54,74 +42,29 @@ namespace EEBUS
             {
                 sd.ServiceDiscovered -= Sd_ServiceDiscovered;
                 sd.ServiceInstanceDiscovered -= Sd_ServiceInstanceDiscovered;
-                //sd.Dispose();
-                //mdns.Stop();
             }
         }
         private void Sd_ServiceDiscovered(object? sender, DomainName e)
         {
+            if (_supportedProtocols == null || _supportedProtocols.Any(sp => sp.StartsWith(e.ToString())))
+            {
+                sd.Mdns.SendQuery(e);
+            }
+        }
 
-			if (e?.ToString().StartsWith("_ship") == true)
-			{
-				sd.Mdns.SendQuery(e);
-			}
-        }	
-            
         public void Stop()
-		{
-			_cts?.Cancel(); 
-		}
+        {
+            _supportedProtocols = null;
+            _cts?.Cancel();
+        }
 
-		private void Sd_ServiceInstanceDiscovered(object? sender, ServiceInstanceDiscoveryEventArgs ev )
-		{
-			if ( ev.ServiceInstanceName.ToString().Contains( "._ship." ) )
-			{
-				Debug.WriteLine( $"EEBUS service instance '{ev.ServiceInstanceName}' discovered." );
-
-				IEnumerable<SRVRecord>     servers    = ev.Message.AdditionalRecords.OfType<SRVRecord>();
-				IEnumerable<AddressRecord> addresses  = ev.Message.AdditionalRecords.OfType<AddressRecord>();
-				IEnumerable<string>?        txtRecords = ev.Message.AdditionalRecords.OfType<TXTRecord>()?.SelectMany( s => s.Strings );
-
-				if ( servers?.Count() > 0 && addresses?.Count() > 0 && txtRecords?.Count() > 0 )
-				{
-					foreach ( SRVRecord server in servers )
-					{
-						IEnumerable<AddressRecord> serverAddresses = addresses.Where( w => w.Name == server.Target );
-						if ( serverAddresses?.Count() > 0 )
-						{
-							foreach ( AddressRecord serverAddress in serverAddresses )
-							{
-								// we only want IPv4 addresses
-								if ( serverAddress.Address.AddressFamily == AddressFamily.InterNetwork )
-								{
-									string id   = string.Empty;
-									string path = string.Empty;
-									string ski  = string.Empty;
-
-									foreach ( string textRecord in txtRecords )
-									{
-										if ( textRecord.StartsWith( "id" ) )
-											id = textRecord.Substring( textRecord.IndexOf( '=' ) + 1 );
-									
-										if ( textRecord.StartsWith( "path" ) )
-											path = textRecord.Substring( textRecord.IndexOf( '=' ) + 1 );
-
-										if ( textRecord.StartsWith( "ski" ) )
-											ski = textRecord.Substring( textRecord.IndexOf( '=' ) + 1 );
-
-									}
-
-									if ( ! string.IsNullOrEmpty( id ) && ! string.IsNullOrEmpty( path ) )
-									{
-										string url = serverAddress.Address.ToString() + ":" + server.Port.ToString() + path;
-										RemoteDevice device = this.devices.GetOrCreateRemote( id, ski, url, ev.ServiceInstanceName.ToString() );
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+        private void Sd_ServiceInstanceDiscovered(object? sender, ServiceInstanceDiscoveryEventArgs ev)
+        {
+            if (_supportedProtocols == null || _supportedProtocols.Any(sp => ev.ServiceInstanceName.ToString().Contains(sp)))
+            {
+                Debug.WriteLine($"Service instance '{ev.ServiceInstanceName}' discovered.");
+                InstanceDiscovered?.Invoke(this, ev);
+            }
+        }
+    }
 }

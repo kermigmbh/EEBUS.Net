@@ -1,104 +1,56 @@
-﻿using System.Net;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
-
-using Makaretu.Dns;
-
-using EEBUS.Models;
+﻿using Makaretu.Dns;
 
 namespace EEBUS
 {
-	public class MDNSService
-	{
-		public MDNSService( IOptions<Settings> options )
-		{
-			this.settings = options.Value;
+    public class MDNSService
+    {
+        private ServiceProfile _serviceProfile;
+        private readonly ServiceDiscovery _sd;
 
-			this.serviceProfile = new EEBusServiceProfile( Dns.GetHostName(), this.settings.Device.Id, "_ship._tcp", this.settings.Device.Port );
-		}
-
-		public MDNSService( IConfigurationSection settings )
-		{
-			this.settings = settings.Get<Settings>();
-			//this.settings.Device.Port = 7134;
-
-			this.serviceProfile = new EEBusServiceProfile( Dns.GetHostName(), this.settings.Device.Id, "_ship._tcp", this.settings.Device.Port );
-		}
-
-        public MDNSService(string deviceId, ushort devicePort, ServiceDiscovery sd )
+        public MDNSService(ServiceDiscovery sd, ServiceProfile serviceProfile)
         {
-             
-
-            this.serviceProfile = new EEBusServiceProfile(Dns.GetHostName(), deviceId, "_ship._tcp", devicePort);
+            this._serviceProfile = serviceProfile;
             this._sd = sd;
         }
 
-        private ServiceProfile    serviceProfile;
-		private X509Certificate2  cert;
-		private readonly Settings settings;
-        private readonly ServiceDiscovery _sd;
 
-        public void AddProperty( string key, string value )
-		{
-			this.serviceProfile.AddProperty( key, value );
-		}
+        public void AddProperty(string key, string value)
+        {
+            this._serviceProfile.AddProperty(key, value);
+        }
 
-		//public X509Certificate2 Cert
-		//{
-		//	get
-		//	{
-		//		return this.cert;
-		//	}
-		//}
+        public void Run(CancellationToken cancellationToken)
+        {
+            _ = Task.Run(async () =>
+            {
+                Thread.CurrentThread.IsBackground = true;
 
-		public void Run( LocalDevice localDevice, CancellationToken cancellationToken)
-		{
-			_ = Task.Run( async() =>
-			{
-				Thread.CurrentThread.IsBackground = true;
+                // configure our EEBUS mDNS properties
+                //AddProperty("name", localDevice.Name);
+                //AddProperty("id", localDevice.DeviceId);
+                //AddProperty("path", "/ship/");
+                //AddProperty("register", "true");
+                //AddProperty("ski", localDevice.SKI.ToString());
+                //AddProperty("brand", localDevice.Brand);
+                //AddProperty("type", localDevice.Type);
+                //AddProperty("model", localDevice.Model);
+                //AddProperty("serial", localDevice.Serial);
 
-				//MulticastService mdns = new MulticastService();
-				//_sd   = new ServiceDiscovery(  );
+                try
+                {
+                    _sd.Advertise(this._serviceProfile);
 
-				//cert = CertificateGenerator.GenerateCert( this.settings.Certificate );
-
-				//byte[] hash = SHA1.Create().ComputeHash( cert.GetPublicKey() );
-
-				//LocalDevice localDevice = devices.GetOrCreateLocal( hash, settings.Device );
-				 
-				// configure our EEBUS mDNS properties
-				AddProperty( "name",     localDevice.Name );
-				AddProperty( "id",       localDevice.DeviceId );
-				AddProperty( "path",     "/ship/" );
-				AddProperty( "register", "true" );
-				AddProperty( "ski",      localDevice.SKI.ToString() );
-				AddProperty( "brand",    localDevice.Brand );
-				AddProperty( "type",     localDevice.Type );
-				AddProperty( "model",    localDevice.Model );
-				AddProperty( "serial",   localDevice.Serial );
-
-				try
-				{
-					//mdns.Start();
-
-					_sd.Advertise( this.serviceProfile );
-
-					await Task.Delay( -1, cancellationToken ).ConfigureAwait( false );
-				}
-				catch ( Exception ex )
-				{
-					Console.WriteLine( ex.Message );
-				}
-				finally
-				{
-                    _sd.Unadvertise(this.serviceProfile);
-                    //sd.Dispose();
-                    //mdns.Stop();
+                    await Task.Delay(-1, cancellationToken).ConfigureAwait(false);
                 }
-			} );
-		}
-	}
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+                finally
+                {
+                    _sd.Unadvertise(this._serviceProfile);
+                }
+            });
+        }
+    }
 }
