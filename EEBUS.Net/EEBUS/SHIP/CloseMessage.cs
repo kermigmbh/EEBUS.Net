@@ -18,18 +18,18 @@ namespace EEBUS.SHIP.Messages
 
         public CloseMessage(ConnectionClosePhaseType phase)
         {
-            this.connectionClose[0].phase = phase;
+            this.connectionClose.phase = phase;
         }
 
         public new class Class : ShipEndMessage<CloseMessage>.Class
         {
-            public override CloseMessage Create(ReadOnlySpan<byte> data/*, Connection connection*/ )
+            public override CloseMessage Create(ReadOnlySpan<byte> data)
             {
-                return template.FromJsonVirtual(data/*, connection*/ );
+                return template.FromJsonVirtual(data);
             }
         }
 
-        public ConnectionCloseType[] connectionClose { get; set; } = [new()];
+        public ConnectionCloseType connectionClose { get; set; } = new();
 
         public override string GetId()
         {
@@ -43,8 +43,7 @@ namespace EEBUS.SHIP.Messages
 
         public override ShipMessageDirection GetMessageDirection()
         {
-            ConnectionClosePhaseType? phase = connectionClose.FirstOrDefault()?.phase;
-            return phase switch
+            return connectionClose.phase switch
             {
                 ConnectionClosePhaseType.announce => ShipMessageDirection.Request,
                 ConnectionClosePhaseType.confirm => ShipMessageDirection.Response,
@@ -60,11 +59,7 @@ namespace EEBUS.SHIP.Messages
 
         public uint maxTime { get; set; } = 1000;
 
-        //public bool maxTimeSpecified { get; set; }
-
         public ConnectionCloseReasonType? reason { get; set; }
-
-        //public bool reasonSpecified { get; set; }
     }
 
     [JsonConverter(typeof(JsonStringEnumConverter))]
