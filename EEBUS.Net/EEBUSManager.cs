@@ -557,10 +557,13 @@ namespace EEBUS.Net
             };
         }
 
-        public DeviceData GetRemoteData(string ski)
+        public DeviceData? GetRemoteData(string ski)
         {
             RemoteDevice? remote = _devices.Remote.FirstOrDefault(r => r.SKI.ToString() == ski);
-            if (remote == null) return new();
+            if (remote == null) return null;
+
+            var connection = Connections.FirstOrDefault(c => c.Remote != null && c.Remote.SKI.ToString() == ski);
+            if (connection == null) return null;    //remote does not have an active connection anymore
 
             MeasurementsData? measurements = null;
             AddressType? address = remote.GetFeatureAddress("Measurement", true);
