@@ -23,6 +23,7 @@ namespace EEBUS
 
 		public async Task Run()
 		{
+            Debug.WriteLine("Running new Client for device " + this.Remote?.Name);
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
             _ = Task.Run(() => RunInternalAsync(_cts.Token));

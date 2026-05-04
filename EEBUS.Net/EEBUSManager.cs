@@ -33,8 +33,11 @@ namespace EEBUS.Net
 {
     public class EEBUSManager : IDisposable
     {
-
+        private const int ReconnectLoopIntervalMs = 10000;
         private ConcurrentDictionary<HostString, Connection> _connections = new();
+        private List<string> _trustedSkis = new();
+        private object _lock = new object();
+
         private Devices _devices;
         private readonly MDNSClient _mDNSClient;
         private readonly MDNSService _mDNSService;
@@ -48,7 +51,7 @@ namespace EEBUS.Net
         public Func<DeviceData, Task>? OnDeviceDataChanged { get; set; }
         public Func<RemoteDevice, DeviceConnectionStatus, Task>? OnDeviceConnectionStatusChanged { get; set; }
 
-        private Func<NewConnectionValidationEventArgs, bool>? _onNewConnectionValidation = (NewConnectionValidationEventArgs args) => true;
+        //private Func<NewConnectionValidationEventArgs, bool>? _onNewConnectionValidation = (NewConnectionValidationEventArgs args) => true;
 
         private CancellationTokenSource _cts = new();
         private CancellationTokenSource _clientCts = new();
@@ -57,13 +60,14 @@ namespace EEBUS.Net
         public Devices Devices => _devices;
 
         internal List<Connection> Connections => _connections.Values.ToList();
+        internal LocalDevice Localdevice => _devices.Local;
 
-        public EEBUSManager(Settings settings, Func<NewConnectionValidationEventArgs, bool>? onNewConnectionValidation = null, ServiceDiscovery? serviceDiscovery = null)
+        public EEBUSManager(Settings settings/*, Func<NewConnectionValidationEventArgs, bool>? onNewConnectionValidation = null*/, ServiceDiscovery? serviceDiscovery = null)
         {
-            if (onNewConnectionValidation != null)
-            {
-                _onNewConnectionValidation = onNewConnectionValidation;
-            }
+            //if (onNewConnectionValidation != null)
+            //{
+            //    _onNewConnectionValidation = onNewConnectionValidation;
+            //}
             if (serviceDiscovery == null)
             {
                 _serviceDiscoveryNeedsDispose = true;
@@ -111,6 +115,43 @@ namespace EEBUS.Net
             _devices.Local.AddUseCaseEvents(this.deviceConnectionStatusEventHandler);
             _settings = settings;
             this._serviceDiscovery = serviceDiscovery;
+
+            _ = Task.Run(() => ReconnectLoopAsync(_cts.Token));
+        }
+
+        private async Task ReconnectLoopAsync(CancellationToken cancellationToken)
+        {
+            Thread.CurrentThread.IsBackground = true;
+            Debug.WriteLine("[EEBUS] Starting Reconnect Loop");
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                await Task.Delay(ReconnectLoopIntervalMs, cancellationToken);
+
+                try
+                {
+                    Debug.WriteLine("[EEBUS] Running Reconnect Loop. Current connections: " + _connections.Count);
+                    foreach (var device in _devices.Remote)
+                    {
+                        lock (_lock)
+                        {
+                            if (!_trustedSkis.Contains(device.SKI.ToString())) continue;
+                        }
+
+                        Connection? connection = Connections.FirstOrDefault(c => c.Remote != null && c.Remote.SKI == device.SKI);
+                        if (connection == null || connection.WebSocket.State != WebSocketState.Open && !cancellationToken.IsCancellationRequested)
+                        {
+                            Debug.WriteLine($"Device {device.Name} does not have an active connection anymore, reconnecting...");
+                            await ConnectAsync(device.SKI.ToString());
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    {
+                        Debug.WriteLine(ex);
+                    }
+                }
+            }
         }
 
         private static Type[] GetTypesInNamespace(Assembly assembly, string nameSpace)
@@ -118,6 +159,25 @@ namespace EEBUS.Net
             return assembly.GetTypes()
                             .Where(t => String.Equals(t.Namespace, nameSpace, StringComparison.Ordinal))
                             .ToArray();
+        }
+
+        public void AddTrustedSki(string ski)
+        {
+            lock (_lock)
+            {
+                if (!_trustedSkis.Contains(ski))
+                {
+                    _trustedSkis.Add(ski);
+                }
+            }
+        }
+
+        public void RemoveTrustedSki(string ski)
+        {
+            lock (_lock)
+            {
+                _trustedSkis.Remove(ski);
+            }
         }
 
         private void OnRemoteDeviceFound(RemoteDevice device)
@@ -186,6 +246,15 @@ namespace EEBUS.Net
             {
                 if (connection.ConnectionStatus == DeviceConnectionStatus.Connected)
                 {
+                    if (connection.Remote != null && EEBusManager.Localdevice.SKI > connection.Remote.SKI)  //device with bigger ski shall close old connections according to spec
+                    {
+                        var existing = EEBusManager.Connections.FirstOrDefault(c => c.Remote != null && c.Remote.SKI == connection.Remote.SKI);
+                        if (existing?.Remote != null)
+                        {
+                            Debug.WriteLine("Found double connection, closing old connection...");
+                            await EEBusManager.DisconnectAsync(existing.Remote.SKI.ToString());
+                        }
+                    }
                     connection.ReadAndSubscribe();
                 }
 
@@ -622,16 +691,20 @@ namespace EEBUS.Net
                         }
 
 
-                        return _onNewConnectionValidation?.Invoke(new NewConnectionValidationEventArgs()
+                        //return _onNewConnectionValidation?.Invoke(new NewConnectionValidationEventArgs()
+                        //{
+                        //    Certificate = new X509Certificate2(cert),
+                        //    RemoteEndpoint = hostString.ToString(),
+                        //    Ski = skiString
+
+                        //}) ?? false;
+                        bool isValid = false;
+                        lock (_lock)
                         {
-                            Certificate = new X509Certificate2(cert),
-                            RemoteEndpoint = hostString.ToString(),
-                            Ski = skiString
+                            isValid = _trustedSkis.Contains(skiString);
+                        }
 
-                        }) ?? false;
-
-
-
+                        return isValid;
                     };
                     wsClient.Options.ClientCertificates.Add(_cert);
                     await wsClient.ConnectAsync(uri, CancellationToken.None).ConfigureAwait(false);
@@ -733,13 +806,19 @@ namespace EEBUS.Net
                 }
 
 
-                return _onNewConnectionValidation?.Invoke(new NewConnectionValidationEventArgs()
-                {
-                    Certificate = args.Certificate,
-                    RemoteEndpoint = args.RemoteEndpoint,
-                    Ski = args.Ski
+                //return _onNewConnectionValidation?.Invoke(new NewConnectionValidationEventArgs()
+                //{
+                //    Certificate = args.Certificate,
+                //    RemoteEndpoint = args.RemoteEndpoint,
+                //    Ski = args.Ski
 
-                }) ?? false;
+                //}) ?? false;
+                bool isValid = false;
+                lock (_lock)
+                {
+                    isValid = _trustedSkis.Contains(args.Ski);
+                }
+                return isValid;
             };
             _shipListener.OnDeviceConnectionChanged = OnDeviceConnectionChangedAsync;
             _shipListener.StartAsync(_settings.Device.Port);
