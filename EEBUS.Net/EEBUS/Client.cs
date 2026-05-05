@@ -89,7 +89,8 @@ namespace EEBUS
             catch (Exception ex)
             {
                 // consider logging ex
-                Debug.WriteLine($"Client connection closed with error: {ex.ToString()}");  
+                Debug.WriteLine($"Client connection closed with error: {ex.ToString()}");
+                this.state = EState.ErrorOrTimeout;
             }
             finally
             {
