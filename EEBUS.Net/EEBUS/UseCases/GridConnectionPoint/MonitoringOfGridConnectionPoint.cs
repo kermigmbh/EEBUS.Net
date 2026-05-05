@@ -27,8 +27,9 @@ namespace EEBUS.UseCases.GridConnectionPoint
 			}
 
 			MeasurementServerFeature measurementServer = entity.GetOrAdd( Feature.Create( "Measurement", "server", entity ) ) as MeasurementServerFeature;
+            entity.GetOrAdd(Feature.Create("ElectricalConnection", "server", entity));
 
-			measurementServer.measurementData.Add( new()
+            measurementServer.measurementData.Add( new()
 			{
 				measurementId = 0,
 				electricalConnectionParameterDescriptionData = new()

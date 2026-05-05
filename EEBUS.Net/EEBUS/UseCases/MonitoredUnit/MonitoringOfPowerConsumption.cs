@@ -9,17 +9,18 @@ using EEBUS.SPINE.Commands;
 
 namespace EEBUS.UseCases.MonitoredUnit
 {
-	public class MonitoringOfPowerConsumption : UseCase
-	{
-		static MonitoringOfPowerConsumption()
-		{
-			Register( "monitoringOfPowerConsumption-MonitoredUnit", new Class() );
-		}
+    public class MonitoringOfPowerConsumption : UseCase
+    {
+        static MonitoringOfPowerConsumption()
+        {
+            Register("monitoringOfPowerConsumption-MonitoredUnit", new Class());
+        }
 
-		public MonitoringOfPowerConsumption( UseCaseSettings usecaseSettings, Entity entity )
-			: base( usecaseSettings, entity )
-		{
-			MeasurementServerFeature? measurementServer = entity.GetOrAdd( Feature.Create( "Measurement", "server", entity ) ) as MeasurementServerFeature;
+        public MonitoringOfPowerConsumption(UseCaseSettings usecaseSettings, Entity entity)
+            : base(usecaseSettings, entity)
+        {
+            MeasurementServerFeature? measurementServer = entity.GetOrAdd(Feature.Create("Measurement", "server", entity)) as MeasurementServerFeature;
+            entity.GetOrAdd(Feature.Create("ElectricalConnection", "server", entity));
 
             if (measurementServer != null)
             {
@@ -413,42 +414,42 @@ namespace EEBUS.UseCases.MonitoredUnit
 
         protected override List<Scenario> GetScenarios()
         {
-			return [
-				new Scenario(1, true, "Monitor power"),
-				new Scenario(2, true, "Monitor current"),
-				new Scenario(3, true, "Monitor energy"),
-				new Scenario(4, true, "Monitor voltage"),
-				new Scenario(5, true, "Monitor frequency"),
-			];
+            return [
+                new Scenario(1, true, "Monitor power"),
+                new Scenario(2, true, "Monitor current"),
+                new Scenario(3, true, "Monitor energy"),
+                new Scenario(4, true, "Monitor voltage"),
+                new Scenario(5, true, "Monitor frequency"),
+            ];
         }
 
-		public new class Class : UseCase.Class
-		{
-			public override UseCase Create( UseCaseSettings usecaseSettings, Entity entity )
-			{
-				return new MonitoringOfPowerConsumption( usecaseSettings, entity );
-			}
-		}
+        public new class Class : UseCase.Class
+        {
+            public override UseCase Create(UseCaseSettings usecaseSettings, Entity entity)
+            {
+                return new MonitoringOfPowerConsumption(usecaseSettings, entity);
+            }
+        }
 
-		public override string Actor { get { return "MonitoredUnit"; } }
+        public override string Actor { get { return "MonitoredUnit"; } }
 
-		public override UseCaseSupportType Information
-		{
-			get
-			{
-				List<uint> scenarios = new();
-				foreach ( var scenario in Scenarios )
-					scenarios.Add( scenario.Index );
+        public override UseCaseSupportType Information
+        {
+            get
+            {
+                List<uint> scenarios = new();
+                foreach (var scenario in Scenarios)
+                    scenarios.Add(scenario.Index);
 
-				UseCaseSupportType support = new();
-				support.useCaseName				   = "monitoringOfPowerConsumption";
-				support.useCaseVersion			   = "1.0.0";
-				support.useCaseAvailable		   = true;
-				support.scenarioSupport			   = scenarios.ToArray();
-				support.useCaseDocumentSubRevision = "release";
+                UseCaseSupportType support = new();
+                support.useCaseName = "monitoringOfPowerConsumption";
+                support.useCaseVersion = "1.0.0";
+                support.useCaseAvailable = true;
+                support.scenarioSupport = scenarios.ToArray();
+                support.useCaseDocumentSubRevision = "release";
 
-				return support;
-			}
-		}
-	}
+                return support;
+            }
+        }
+    }
 }

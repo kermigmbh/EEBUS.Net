@@ -20,8 +20,9 @@ namespace EEBUS.UseCases.MonitoringAppliance
 			: base( usecaseSettings, entity )
 		{
 			MeasurementClientFeature? measurementClient = entity.GetOrAdd( Feature.Create( "Measurement", "client", entity ) ) as MeasurementClientFeature;
+            entity.GetOrAdd(Feature.Create("ElectricalConnection", "client", entity));
 
-			if (measurementClient != null)
+            if (measurementClient != null)
 			{
 				measurementClient.measurementData.Add(new()
 				{
