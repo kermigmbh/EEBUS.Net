@@ -8,7 +8,6 @@ using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.Net.Events;
 using EEBUS.Net.Extensions;
 using EEBUS.SHIP.Messages;
-using EEBUS.SPINE.Commands;
 using EEBUS.StateMachines;
 using EEBUS.UseCases;
 using EEBUS.UseCases.ControllableSystem;
@@ -16,7 +15,6 @@ using Makaretu.Dns;
 using Microsoft.AspNetCore.Http;
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Diagnostics.Metrics;
 using System.Net.Security;
 using System.Net.WebSockets;
 using System.Reflection;
@@ -26,7 +24,6 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using System.Threading;
 using System.Xml;
 
 namespace EEBUS.Net
@@ -51,8 +48,6 @@ namespace EEBUS.Net
         public Func<DeviceData, Task>? OnDeviceDataChanged { get; set; }
         public Func<RemoteDevice, DeviceConnectionStatus, Task>? OnDeviceConnectionStatusChanged { get; set; }
 
-        //private Func<NewConnectionValidationEventArgs, bool>? _onNewConnectionValidation = (NewConnectionValidationEventArgs args) => true;
-
         private CancellationTokenSource _cts = new();
         private CancellationTokenSource _clientCts = new();
         private X509Certificate2 _cert;
@@ -62,12 +57,8 @@ namespace EEBUS.Net
         internal List<Connection> Connections => _connections.Values.ToList();
         internal LocalDevice Localdevice => _devices.Local;
 
-        public EEBUSManager(Settings settings/*, Func<NewConnectionValidationEventArgs, bool>? onNewConnectionValidation = null*/, ServiceDiscovery? serviceDiscovery = null)
+        public EEBUSManager(Settings settings, ServiceDiscovery? serviceDiscovery = null)
         {
-            //if (onNewConnectionValidation != null)
-            //{
-            //    _onNewConnectionValidation = onNewConnectionValidation;
-            //}
             if (serviceDiscovery == null)
             {
                 _serviceDiscoveryNeedsDispose = true;
@@ -276,8 +267,6 @@ namespace EEBUS.Net
                     await eebusManager.OnDeviceDataChanged(new DeviceData
                     {
                         SKI = ski,
-                        //Mgcp = mgcpData,
-                        //Mpc = mpcData
                         Measurements = measurements
                     });
                 }
@@ -343,13 +332,7 @@ namespace EEBUS.Net
 
             public async Task OnEffectiveLimitChanged(EffectiveLimit limit)
             {
-                //using var _ = Push(new LimitDataChanged(true, active, limit, duration));
                 Console.WriteLine("UpdateLimit");
-                //var changedCallback = EEBusManager.OnLimitDataChanged;
-                //if (changedCallback is not null)
-                //{
-                //    await changedCallback(new LimitDataChangedEventArgs() { IsLPC = true, IsActive = active, Limit = limit, Duration = duration });
-                //}
 
                 var changedCallback = EEBusManager.OnDeviceDataChanged;
                 if (changedCallback != null)
@@ -681,7 +664,6 @@ namespace EEBUS.Net
                         {
                             return false;
                         }
-                        //Debug.WriteLine(hostString.ToString());
 
                         byte[] hash = SHA1.Create().ComputeHash(cert.GetPublicKey() ?? []);
                         var ski = new SKI(hash);
@@ -693,14 +675,6 @@ namespace EEBUS.Net
                             return false;
                         }
 
-
-                        //return _onNewConnectionValidation?.Invoke(new NewConnectionValidationEventArgs()
-                        //{
-                        //    Certificate = new X509Certificate2(cert),
-                        //    RemoteEndpoint = hostString.ToString(),
-                        //    Ski = skiString
-
-                        //}) ?? false;
                         bool isValid = false;
                         lock (_lock)
                         {
@@ -755,20 +729,7 @@ namespace EEBUS.Net
                 // send close message
                 CloseMessage closeMessage = new CloseMessage(ConnectionClosePhaseType.announce);
                 closeMessage.connectionClose.reason = ConnectionCloseReasonType.removedConnection;
-                //await closeMessage.Send(wsClient);
                 await client.PushCloseMessageAsync(closeMessage);
-
-                //// wait for close response message from server
-                //closeMessage = await CloseMessage.Receive(wsClient);
-                //if (closeMessage == null)
-                //{
-                //    throw new Exception("Close message parsing failed!");
-                //}
-
-                //if (closeMessage.connectionClose[0].phase != ConnectionClosePhaseType.confirm)
-                //{
-                //    throw new Exception("Close confirmation message expected!");
-                //}
 
                 // now close websocket
                 await wsClient.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None).ConfigureAwait(false);
@@ -808,14 +769,6 @@ namespace EEBUS.Net
                     return false;
                 }
 
-
-                //return _onNewConnectionValidation?.Invoke(new NewConnectionValidationEventArgs()
-                //{
-                //    Certificate = args.Certificate,
-                //    RemoteEndpoint = args.RemoteEndpoint,
-                //    Ski = args.Ski
-
-                //}) ?? false;
                 bool isValid = false;
                 lock (_lock)
                 {
@@ -854,8 +807,6 @@ namespace EEBUS.Net
 
         public void Dispose()
         {
-            //_shipListener?.OnDeviceConnectionChanged -= _shipListener_OnDeviceConnectionChanged;
-
             _devices.RemoteDeviceFound -= OnRemoteDeviceFound;
             _devices.ServerStateChanged -= OnServerStateChanged;
             _devices.ClientStateChanged -= OnClientStateChanged;

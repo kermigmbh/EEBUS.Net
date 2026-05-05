@@ -37,7 +37,6 @@ namespace EEBUS
         }
 
         private ServiceProfile    serviceProfile;
-		private X509Certificate2  cert;
 		private readonly Settings settings;
         private readonly ServiceDiscovery _sd;
 
@@ -46,28 +45,11 @@ namespace EEBUS
 			this.serviceProfile.AddProperty( key, value );
 		}
 
-		//public X509Certificate2 Cert
-		//{
-		//	get
-		//	{
-		//		return this.cert;
-		//	}
-		//}
-
 		public void Run( LocalDevice localDevice, CancellationToken cancellationToken)
 		{
 			_ = Task.Run( async() =>
 			{
 				Thread.CurrentThread.IsBackground = true;
-
-				//MulticastService mdns = new MulticastService();
-				//_sd   = new ServiceDiscovery(  );
-
-				//cert = CertificateGenerator.GenerateCert( this.settings.Certificate );
-
-				//byte[] hash = SHA1.Create().ComputeHash( cert.GetPublicKey() );
-
-				//LocalDevice localDevice = devices.GetOrCreateLocal( hash, settings.Device );
 				 
 				// configure our EEBUS mDNS properties
 				AddProperty( "name",     localDevice.Name );
@@ -82,8 +64,6 @@ namespace EEBUS
 
 				try
 				{
-					//mdns.Start();
-
 					_sd.Advertise( this.serviceProfile );
 
 					await Task.Delay( -1, cancellationToken ).ConfigureAwait( false );
@@ -95,8 +75,6 @@ namespace EEBUS
 				finally
 				{
                     _sd.Unadvertise(this.serviceProfile);
-                    //sd.Dispose();
-                    //mdns.Stop();
                 }
 			} );
 		}
