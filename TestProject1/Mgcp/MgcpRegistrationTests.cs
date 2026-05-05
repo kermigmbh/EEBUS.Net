@@ -9,37 +9,14 @@ namespace TestProject1.Mgcp
     /// Unit-Tests für die spezifikationskonforme Feature-Registrierung des
     /// "Monitoring of Grid Connection Point" (MGCP) Use Cases.
     /// </summary>
-    public class MgcpRegistrationTests
+    public class MgcpRegistrationTests : EebusTests
     {
         private const string TestLocalSki  = "662728a479fa2fcf28e6d9e7855e996ab1d850a2";
         private const string TestRemoteSki = "c09ff4c4dc2916414714662366f968f4743af7b7";
 
-        public MgcpRegistrationTests()
-        {
-            foreach (string ns in new[]
-            {
-                "EEBUS.SHIP.Messages",
-                "EEBUS.SPINE.Commands",
-                "EEBUS.Entities",
-                "EEBUS.UseCases.GridConnectionPoint",
-                "EEBUS.UseCases.MonitoringAppliance",
-                "EEBUS.UseCases.ControllableSystem",
-                "EEBUS.Features",
-            })
-            {
-                foreach (Type type in GetTypesInNamespace(typeof(Settings).Assembly, ns))
-                    RuntimeHelpers.RunClassConstructor(type.TypeHandle);
-            }
-        }
-
         // ──────────────────────────────────────────────────────────────────────
         // Hilfsmethoden
         // ──────────────────────────────────────────────────────────────────────
-
-        private static Type[] GetTypesInNamespace(Assembly assembly, string nameSpace)
-            => assembly.GetTypes()
-                       .Where(t => string.Equals(t.Namespace, nameSpace, StringComparison.Ordinal))
-                       .ToArray();
 
         private byte[] GetSkiBytes(string ski)
             => Enumerable.Range(0, ski.Length / 2)

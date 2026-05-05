@@ -11,7 +11,7 @@ namespace TestProject1.Ship
     /// <summary>
     /// Tests für Reconnect-Verhalten und SKI-basierte Geräteerkennung.
     /// </summary>
-    public class ShipReconnectTests
+    public class ShipReconnectTests : EebusTests
     {
         private const string LocalSki  = "662728a479fa2fcf28e6d9e7855e996ab1d850a2";
         private const string RemoteSki = "c09ff4c4dc2916414714662366f968f4743af7b7";
@@ -48,28 +48,6 @@ namespace TestProject1.Ship
             
             public RemoteDevice? LookupById(string id) => GetRemote(id);
         }
-
-        // ── Konstruktor: Typregistrierung ─────────────────────────────────────
-
-        public ShipReconnectTests()
-        {
-            foreach (string ns in new[]
-            {
-                "EEBUS.SHIP.Messages",
-                "EEBUS.SPINE.Commands",
-                "EEBUS.Entities",
-                "EEBUS.Features",
-            })
-            {
-                foreach (Type t in GetTypesInNamespace(typeof(Settings).Assembly, ns))
-                    RuntimeHelpers.RunClassConstructor(t.TypeHandle);
-            }
-        }
-
-        private static Type[] GetTypesInNamespace(Assembly assembly, string nameSpace)
-            => assembly.GetTypes()
-                       .Where(t => string.Equals(t.Namespace, nameSpace, StringComparison.Ordinal))
-                       .ToArray();
 
         private static byte[] GetSkiBytes(string ski)
             => Enumerable.Range(0, ski.Length / 2)

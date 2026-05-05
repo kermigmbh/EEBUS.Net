@@ -12,7 +12,7 @@ namespace TestProject1.Ship
     /// <summary>
     /// Tests für die SHIP-Hello-Phase und das Timeout-Verhalten.
     /// </summary>
-    public class ShipHelloStateTests
+    public class ShipHelloStateTests : EebusTests
     {
         private sealed class TestClient : Client
         {
@@ -29,26 +29,6 @@ namespace TestProject1.Ship
 
             public FakeWebSocket FakeWs => (FakeWebSocket)WebSocket;
         }
-
-        public ShipHelloStateTests()
-        {
-            foreach (string ns in new[]
-            {
-                "EEBUS.SHIP.Messages",
-                "EEBUS.SPINE.Commands",
-                "EEBUS.Entities",
-                "EEBUS.Features",
-            })
-            {
-                foreach (Type t in GetTypesInNamespace(typeof(Settings).Assembly, ns))
-                    RuntimeHelpers.RunClassConstructor(t.TypeHandle);
-            }
-        }
-
-        private static Type[] GetTypesInNamespace(Assembly assembly, string nameSpace)
-            => assembly.GetTypes()
-                       .Where(t => string.Equals(t.Namespace, nameSpace, StringComparison.Ordinal))
-                       .ToArray();
 
         private static byte[] GetSkiBytes(string ski)
             => Enumerable.Range(0, ski.Length / 2)

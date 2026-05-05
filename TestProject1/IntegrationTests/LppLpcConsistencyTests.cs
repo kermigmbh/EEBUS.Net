@@ -4,7 +4,7 @@ using EEBUS.Net.EEBUS.Data.DataStructures;
 
 namespace TestProject1.IntegrationTests;
 
-public class LppLpcConsistencyTests
+public class LppLpcConsistencyTests : EebusTests
 {
     private const string TestLocalSki = "662728a479fa2fcf28e6d9e7855e996ab1d850a2";
     private const string TestRemoteSki = "c09ff4c4dc2916414714662366f968f4743af7b7";

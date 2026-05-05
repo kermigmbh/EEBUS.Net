@@ -10,7 +10,7 @@ namespace TestProject1.Ship
     /// <summary>
     /// Tests für die SHIP-Prolongation-Logik.
     /// </summary>
-    public class ShipProlongationTests
+    public class ShipProlongationTests : EebusTests
     {
         // ──────────────────────────────────────────────────────────────────────
         // TestClient – erlaubt manuelles Setzen von State/SubState
@@ -31,30 +31,8 @@ namespace TestProject1.Ship
         }
 
         // ──────────────────────────────────────────────────────────────────────
-        // Konstruktor / Setup
-        // ──────────────────────────────────────────────────────────────────────
-
-        public ShipProlongationTests()
-        {
-            foreach (string ns in new[]
-            {
-                "EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands",
-                "EEBUS.Entities",      "EEBUS.Features",
-            })
-            {
-                foreach (Type t in GetTypesInNamespace(typeof(Settings).Assembly, ns))
-                    RuntimeHelpers.RunClassConstructor(t.TypeHandle);
-            }
-        }
-
-        // ──────────────────────────────────────────────────────────────────────
         // Hilfsmethoden
         // ──────────────────────────────────────────────────────────────────────
-
-        private static Type[] GetTypesInNamespace(Assembly assembly, string ns)
-            => assembly.GetTypes()
-                       .Where(t => string.Equals(t.Namespace, ns, StringComparison.Ordinal))
-                       .ToArray();
 
         private static byte[] GetSkiBytes(string ski)
             => Enumerable.Range(0, ski.Length / 2)

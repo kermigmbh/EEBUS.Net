@@ -22,36 +22,14 @@ namespace TestProject1.IntegrationTests
     ///   2. LPP.characteristic.electricalConnectionId == MPC.acPowerTotal.electricalConnectionId
     ///   3. LPP.characteristic.parameterId verweist auf den acPowerTotal-Parameter in MPC
     /// </summary>
-    public class LppMpcConsistencyTests
+    public class LppMpcConsistencyTests : EebusTests
     {
         private const string TestLocalSki  = "662728a479fa2fcf28e6d9e7855e996ab1d850a2";
         private const string TestRemoteSki = "c09ff4c4dc2916414714662366f968f4743af7b7";
 
-        public LppMpcConsistencyTests()
-        {
-            foreach (string ns in new[]
-            {
-                "EEBUS.SHIP.Messages",
-                "EEBUS.SPINE.Commands",
-                "EEBUS.Entities",
-                "EEBUS.UseCases.MonitoredUnit",
-                "EEBUS.UseCases.ControllableSystem",
-                "EEBUS.Features",
-            })
-            {
-                foreach (Type type in GetTypesInNamespace(typeof(Settings).Assembly, ns))
-                    RuntimeHelpers.RunClassConstructor(type.TypeHandle);
-            }
-        }
-
         // ──────────────────────────────────────────────────────────────────────
         // Hilfsmethoden
         // ──────────────────────────────────────────────────────────────────────
-
-        private static Type[] GetTypesInNamespace(Assembly assembly, string nameSpace)
-            => assembly.GetTypes()
-                       .Where(t => string.Equals(t.Namespace, nameSpace, StringComparison.Ordinal))
-                       .ToArray();
 
         private byte[] GetSkiBytes(string ski)
             => Enumerable.Range(0, ski.Length / 2)

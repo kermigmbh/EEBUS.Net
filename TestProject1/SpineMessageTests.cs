@@ -14,29 +14,10 @@ using System.Text.Json.Nodes;
 
 namespace TestProject1
 {
-    public class SpineMessageTests
+    public class SpineMessageTests : EebusTests
     {
         private const string TestRemoteSki = "c09ff4c4dc2916414714662366f968f4743af7b7";
         private const string TestLocalSki = "662728a479fa2fcf28e6d9e7855e996ab1d850a2";
-
-        public SpineMessageTests()
-        {
-            foreach (string ns in new string[] {"EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands", "EEBUS.Entities",
-                                                 "EEBUS.UseCases.ControllableSystem", "EEBUS.UseCases.GridConnectionPoint",
-                                                 "EEBUS.Features" })
-            {
-                foreach (Type type in GetTypesInNamespace(typeof(Settings).Assembly, ns))
-                    RuntimeHelpers.RunClassConstructor(type.TypeHandle);
-            }
-        }
-
-        private static Type[] GetTypesInNamespace(Assembly assembly, string nameSpace)
-        {
-            return assembly.GetTypes()
-                            .Where(t => String.Equals(t.Namespace, nameSpace, StringComparison.Ordinal))
-                            .ToArray();
-        }
-
 
         [Fact]
         public async Task SendMessageTestAsync()
