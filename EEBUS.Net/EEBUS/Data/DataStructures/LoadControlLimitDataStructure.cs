@@ -60,6 +60,11 @@ namespace EEBUS.DataStructures
 			this.Scale = data.value?.scale ?? this.Scale;
 		}
 
+		public void ProcessDelete(LoadControlLimitDataType data)
+		{
+			this.EndTime = data.timePeriod?.endTime;	//Currently (05.05.2026) only the time period can be deleted
+		}
+
         public LoadControlLimitDescriptionDataType DescriptionData
 		{
 			get

@@ -126,8 +126,8 @@ namespace EEBUS.SPINE.Commands
                                     }
                                 }
 
-                                LoadControlLimitDataType? newData = JsonSerializer.Deserialize<LoadControlLimitDataType>(filterSelectorDataJson) ?? throw new Exception("Error parsing data structure");
-                                filterSelectorData?.Update(newData);
+                                LoadControlLimitDataType newData = JsonSerializer.Deserialize<LoadControlLimitDataType>(filterSelectorDataJson) ?? throw new Exception("Error parsing data structure");
+                                filterSelectorData?.ProcessDelete(newData);
                             }
                         }
                     }
