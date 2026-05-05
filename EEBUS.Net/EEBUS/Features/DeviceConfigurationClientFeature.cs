@@ -16,7 +16,7 @@ namespace EEBUS.Features
 		}
 
 		public DeviceConfigurationClientFeature( int index, Entity owner, FeatureInformationType featureInfo )
-			: base( index, "DeviceClassification", "client", owner, featureInfo )
+			: base( index, "DeviceConfiguration", "client", owner, featureInfo )
 		{
 		}
 
