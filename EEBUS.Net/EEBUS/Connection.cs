@@ -149,6 +149,12 @@ namespace EEBUS
             return this.devices.GetRemote(id);
         }
 
+        internal bool IsKnownRemote(string id)
+        {
+            var remote = this.devices.GetRemote(id);
+            return remote != null;
+        }
+
         public void PushDataMessage(DataMessage message)
         {
             this.WaitingMessages.Push(message);
