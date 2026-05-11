@@ -135,7 +135,11 @@ namespace TestProject1
             Assert.NotNull(dataStructure);
 
             // Act
-            await dataStructure.SendEventAsync(connection);
+            SpineCmdPayloadBase.Class? cmdClass = SpineCmdPayloadBase.GetClass("electricalConnectionCharacteristicListData");
+            Assert.NotNull(cmdClass);
+            AddressType? featureAddress = connection.Local.GetFeatureAddress("ElectricalConnection", true);
+            Assert.NotNull(featureAddress);
+            await cmdClass.SendNotifyAsync(connection.Local, featureAddress);
 
             // Assert
             Assert.NotNull(capturedPayload);
@@ -164,7 +168,11 @@ namespace TestProject1
             dataStructure.Number = 12345;
 
             // Act
-            await dataStructure.SendEventAsync(connection);
+            SpineCmdPayloadBase.Class? cmdClass = SpineCmdPayloadBase.GetClass("electricalConnectionCharacteristicListData");
+            Assert.NotNull(cmdClass);
+            AddressType? featureAddress = connection.Local.GetFeatureAddress("ElectricalConnection", true);
+            Assert.NotNull(featureAddress);
+            await cmdClass.SendNotifyAsync(connection.Local, featureAddress);
 
             // Assert - the updated value must appear in the payload
             Assert.NotNull(capturedPayload);
@@ -195,8 +203,15 @@ namespace TestProject1
             var dataStructure = new ElectricalConnectionCharacteristicDataStructure("contractualConsumptionNominalMax", 5000, 0);
             connectionWithoutFeature.Local.Add(dataStructure);
 
-            // Act & Assert - must not throw even when feature address cannot be resolved
-            await dataStructure.SendEventAsync(connectionWithoutFeature);
+            // The feature address cannot be resolved — no notify should be sent
+            AddressType? featureAddress = connectionWithoutFeature.Local.GetFeatureAddress("ElectricalConnection", true);
+            Assert.Null(featureAddress);
+
+            // Act & Assert - CreateNotifyPayload must not throw even without the server feature
+            SpineCmdPayloadBase.Class? cmdClass = SpineCmdPayloadBase.GetClass("electricalConnectionCharacteristicListData");
+            Assert.NotNull(cmdClass);
+            JsonNode? payload = cmdClass.CreateNotifyPayload(connectionWithoutFeature.Local);
+            Assert.NotNull(payload);
         }
 
         #endregion
