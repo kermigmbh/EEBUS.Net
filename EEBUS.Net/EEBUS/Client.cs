@@ -13,25 +13,20 @@ namespace EEBUS
 {
 	public class Client : Connection
 	{
-        private CancellationTokenSource? _cts;
-
-		public Client( HostString host, WebSocket ws, Devices devices, RemoteDevice remoteDevice )
+        public Client( HostString host, WebSocket ws, Devices devices, RemoteDevice remoteDevice )
 			: base( host, ws, devices )
 		{
 			this.Remote = remoteDevice;
 		}
 
-		public async Task Run()
+		public async Task Run(CancellationToken cancellationToken = default)
 		{
             Debug.WriteLine("Running new Client for device " + this.Remote?.Name);
-            _cts?.Cancel();
-            _cts = new CancellationTokenSource();
-            _ = Task.Run(() => RunInternalAsync(_cts.Token));
+            _ = Task.Run(() => RunInternalAsync(cancellationToken));
 		}
 
         public  override Task CloseAsync()
         {
-            _cts?.Cancel(); 
             return Task.CompletedTask;
         }
 

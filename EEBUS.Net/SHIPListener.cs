@@ -192,7 +192,7 @@ namespace EEBUS
                     {
                         await OnDeviceConnectionChanged(new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Connected });
                     }
-                    await server.Do().ConfigureAwait(false);
+                    await server.Do(_cts.Token).ConfigureAwait(false);
 
                 }
                 catch (Exception ex)

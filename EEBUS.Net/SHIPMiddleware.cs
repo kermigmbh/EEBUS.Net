@@ -52,7 +52,7 @@ namespace EEBUS
 				}
 
 				server = new Server( httpContext.Request.Host, socket, this.devices );
-				await server.Do().ConfigureAwait( false );
+				await server.Do(CancellationToken.None).ConfigureAwait( false );
 			}
 			catch ( Exception ex )
 			{

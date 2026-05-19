@@ -40,7 +40,7 @@ namespace EEBUS
 			}
 		}
 
-		public async Task Do()
+		public async Task Do(CancellationToken cancellationToken)
 		{
 			Debug.WriteLine("Starting Server for device " + this.Remote?.Name);
             var heart = new HeartBeatTask();
@@ -55,14 +55,9 @@ namespace EEBUS
 
             try
 			{
-				while (this.ws.State == WebSocketState.Open)
+				while (this.ws.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
 				{
-					 
-					using CancellationTokenSource cts = new CancellationTokenSource();
-					CancellationToken token = cts.Token;
-					var message = await ReceiveAsync(token);
-
-					
+					var message = await ReceiveAsync(cancellationToken);
 
 					(this.state, this.subState, string error) = message.ServerTest(this.state);
 

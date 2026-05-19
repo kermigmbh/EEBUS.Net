@@ -49,7 +49,6 @@ namespace EEBUS.Net
         public Func<RemoteDevice, DeviceConnectionStatus, Task>? OnDeviceConnectionStatusChanged { get; set; }
 
         private CancellationTokenSource _cts = new();
-        private CancellationTokenSource _clientCts = new();
         private X509Certificate2 _cert;
 
         public Devices Devices => _devices;
@@ -237,15 +236,15 @@ namespace EEBUS.Net
             {
                 if (connection.ConnectionStatus == DeviceConnectionStatus.Connected)
                 {
-                    if (connection.Remote != null && EEBusManager.Localdevice.SKI > connection.Remote.SKI)  //device with bigger ski shall close old connections according to spec
-                    {
-                        var existing = EEBusManager.Connections.FirstOrDefault(c => c.Remote != null && c.Remote.SKI == connection.Remote.SKI);
-                        if (existing?.Remote != null)
-                        {
-                            Debug.WriteLine("Found double connection, closing old connection...");
-                            await EEBusManager.DisconnectAsync(existing.Remote.SKI.ToString());
-                        }
-                    }
+                    //if (connection.Remote != null && EEBusManager.Localdevice.SKI > connection.Remote.SKI)  //device with bigger ski shall close old connections according to spec
+                    //{
+                    //    var existing = EEBusManager.Connections.FirstOrDefault(c => c.Remote != null && c.Remote.SKI == connection.Remote.SKI);
+                    //    if (existing?.Remote != null)
+                    //    {
+                    //        Debug.WriteLine("Found double connection, closing old connection...");
+                    //        await EEBusManager.DisconnectAsync(existing.Remote.SKI.ToString());
+                    //    }
+                    //}
                     connection.ReadAndSubscribe();
                 }
 
@@ -654,7 +653,9 @@ namespace EEBUS.Net
                 HostString hostString = new HostString(uri.Host, uri.Port);
 
                 ClientWebSocket? wsClient = null;
-                if (!_connections.TryGetValue(hostString, out Connection? existingClient))
+                //TODO: what if we have a server connection already with this ski which is on a different uri/port? We would still create a new client here!
+                Connection? existingClient = _connections.FirstOrDefault(c => c.Value.Remote != null && c.Value.Remote.SKI == Ski).Value;
+                if (/*!_connections.TryGetValue(hostString, out Connection? existingClient)*/existingClient == null)
                 {
                     wsClient = new ClientWebSocket();
                     wsClient.Options.AddSubProtocol("ship");
@@ -689,7 +690,7 @@ namespace EEBUS.Net
                     {
                         Client client = new Client(hostString, wsClient, _devices, device);
                         _connections[hostString] = client;
-                        await client.Run().ConfigureAwait(false);
+                        await client.Run(_cts.Token).ConfigureAwait(false);
                         return hostString.ToString();
                     }
                     else
@@ -742,12 +743,13 @@ namespace EEBUS.Net
             finally
             {
                 //We need to dispose the websocket in any case, e.g. it can be that we send a close message, but we do not receive one from the remote partner. In this case, we must close the connection
-                wsClient.Dispose();
-                wsClient = null;
                 if (_connections.TryRemove(host, out Connection? removedClient) && removedClient != null)
                 {
                     await removedClient.CloseAsync();
                 }
+                
+                wsClient.Dispose();
+                wsClient = null;
             }
         }
 
@@ -807,6 +809,7 @@ namespace EEBUS.Net
 
         public void Dispose()
         {
+            Stop();
             _devices.RemoteDeviceFound -= OnRemoteDeviceFound;
             _devices.ServerStateChanged -= OnServerStateChanged;
             _devices.ClientStateChanged -= OnClientStateChanged;
@@ -818,7 +821,9 @@ namespace EEBUS.Net
             _devices.Local.RemoveUseCaseEvents(this.deviceConnectionStatusEventHandler);
 
             _cts.Cancel();
-            _clientCts.Cancel();
+
+            lpcStateMachine.Dispose();
+            lppStateMachine.Dispose();
 
             if (_serviceDiscoveryNeedsDispose)
             {
