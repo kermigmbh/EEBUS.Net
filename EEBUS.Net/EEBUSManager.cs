@@ -681,7 +681,7 @@ namespace EEBUS.Net
                         {
                             isValid = _trustedSkis.Contains(skiString);
                         }
-
+                        Console.WriteLine("Client connection for ski " + skiString + " is valid: " +  isValid);
                         return isValid;
                     };
                     wsClient.Options.ClientCertificates.Add(_cert);
@@ -776,6 +776,7 @@ namespace EEBUS.Net
                 {
                     isValid = _trustedSkis.Contains(args.Ski);
                 }
+                Console.WriteLine("Server connection for ski " + args.Ski + " is valid: " + isValid);
                 return isValid;
             };
             _shipListener.OnDeviceConnectionChanged = OnDeviceConnectionChangedAsync;

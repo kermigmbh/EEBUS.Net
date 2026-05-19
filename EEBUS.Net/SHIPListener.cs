@@ -168,7 +168,11 @@ namespace EEBUS
                         return;
                     }
 
-                    server = Server.Get(httpContext.Request.Host);
+                    var cert = httpContext.Connection.ClientCertificate;
+                    byte[] hash = SHA1.Create().ComputeHash(cert?.GetPublicKey() ?? []);
+                    var ski = new SKI(hash);
+
+                    server = Server.Get(ski.ToString());
                     if (server != null)
                     {
                         Debug.WriteLine("Middleware Weiterleitung, Server vorhanden und stoppen");
@@ -187,7 +191,7 @@ namespace EEBUS
                         return;
                     }
 
-                    server = new Server(httpContext.Request.Host, socket, this.devices);
+                    server = new Server(ski.ToString(), httpContext.Request.Host, socket, this.devices);
                     if (OnDeviceConnectionChanged != null)
                     {
                         await OnDeviceConnectionChanged(new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Connected });
