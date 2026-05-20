@@ -1,4 +1,6 @@
-﻿namespace EEBUS.Models
+﻿using EEBUS.Net.EEBUS.Models.Data;
+
+namespace EEBUS.Models
 {
 	public delegate void StateChangedHandler( Connection.EState state, RemoteDevice device );
 	public delegate void RemoteDeviceFoundHandler( RemoteDevice device );
@@ -11,6 +13,7 @@
 
 		public LocalDevice		  Local  { get; private set; }
 		public List<RemoteDevice> Remote { get; set; } = [];
+		public List<PairedDevice> Paired { get; set; } = [];
 
 		private object mutex = new();
 
@@ -59,6 +62,26 @@
 				FireRemoteDeviceFound( remote );
 			remote.ReNewAge();
 			return remote;
+		}
+
+		public PairedDevice GetOrCreatePaired(string trustPar, string trustId, string alg, string digest)
+		{
+			PairedDevice? paired = null;
+			lock (this.mutex)
+			{
+				paired = Paired.FirstOrDefault(p => p.Alg == alg && p.Digest == digest);
+
+				if (paired == null)
+				{
+					paired = new PairedDevice(trustPar, trustId, alg, digest);
+					Paired.Add(paired);
+					if (Paired.Count > 10)	//According to spec, only keep the last 10 successful pairings
+					{
+						Paired.RemoveAt(0);
+					}
+				}
+			}
+			return paired;
 		}
 
 		public RemoteDevice? GetRemote( string id )

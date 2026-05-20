@@ -16,5 +16,6 @@ namespace EEBUS.Net.EEBUS.Models.Data
         public string SKI { get; set; } = string.Empty;
         //public string ShipId { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
+        public string ShipId { get; set; } = string.Empty;
     }
 }

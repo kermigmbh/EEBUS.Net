@@ -2,11 +2,14 @@
 using EEBUS.SPINE.Commands;
 using EEBUS.StateMachines;
 using EEBUS.UseCases;
+using System.Security.Cryptography;
 
 namespace EEBUS.Models
 {
 	public class LocalDevice : Device
 	{
+		private byte[]? _secret;
+
 		public LocalDevice(byte[] ski, DeviceSettings settings)
 			: base(settings.Id, ski)
 		{
@@ -44,7 +47,7 @@ namespace EEBUS.Models
 			get
 			{
 				return "SHIP;SKI:" + this.SKI.ToString() + ",ID:" + this.Name + ";BRAND:" + this.Brand
-					+ ";TYPE:" + this.Type + ";MODEL:" + this.Model + ";SERIAL:" + this.Serial + ";CAT:1;ENDSHIP;";
+					+ ";TYPE:" + this.Type + ";MODEL:" + this.Model + ";SERIAL:" + this.Serial + ";CAT:1;SPSEC:" + Convert.ToHexString(GetSecret()) + ";ENDSHIP;";
 			}
 		}
 
@@ -87,6 +90,15 @@ namespace EEBUS.Models
 		public DeviceSettings GetSettings()
 		{
 			return this.settings;
+		}
+
+		public byte[] GetSecret()
+		{
+			if (_secret == null)
+			{
+				_secret = RandomNumberGenerator.GetBytes(16);
+			}
+			return _secret;
 		}
 
 		/// <summary>

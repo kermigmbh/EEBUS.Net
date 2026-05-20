@@ -14,11 +14,13 @@ using EEBUS.UseCases.ControllableSystem;
 using Makaretu.Dns;
 using Microsoft.AspNetCore.Http;
 using System.Collections.Concurrent;
+using System.Data.SqlTypes;
 using System.Diagnostics;
 using System.Net.Security;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.ConstrainedExecution;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
@@ -535,7 +537,8 @@ namespace EEBUS.Net
                 },
                 Measurements = measurements,
                 FailSafeLimitDuration = (int)failsafeDuration.TotalSeconds,
-                UseCaseSupport = local.GetUseCaseSupport()
+                UseCaseSupport = local.GetUseCaseSupport(),
+                ShipId = local.ShipID
             };
         }
 
@@ -666,22 +669,35 @@ namespace EEBUS.Net
                             return false;
                         }
 
-                        byte[] hash = SHA1.Create().ComputeHash(cert.GetPublicKey() ?? []);
-                        var ski = new SKI(hash);
-                        var skiString = ski.ToString();
+                        var paired = _devices.Paired.FirstOrDefault(p => p.TrustId == device.Id);
 
-                        if (device.SKI.ToString() != skiString)
+                        if (paired != null) //device was added via ship pairing
                         {
-                            Console.WriteLine($"Certificate SKI {skiString} does not match device SKI {device.SKI.ToString()}");
-                            return false;
+                            byte[] fpHash = SHA256.HashData(cert.GetRawCertData());
+                            string fingerprint = Convert.ToHexString(fpHash);
+                            if (fingerprint != paired.TrustPar)
+                            {
+                                Console.WriteLine($"Certificate fingerprint for id {device.Id} does not match persisted trustPar");
+                                return false;
+                            }
+                        } else
+                        {
+                            byte[] hash = SHA1.Create().ComputeHash(cert.GetPublicKey() ?? []);
+                            var ski = new SKI(hash);
+                            var skiString = ski.ToString();
+
+                            if (device.SKI.ToString() != skiString)
+                            {
+                                Console.WriteLine($"Certificate SKI {skiString} does not match device SKI {device.SKI.ToString()}");
+                                return false;
+                            }
                         }
 
                         bool isValid = false;
                         lock (_lock)
                         {
-                            isValid = _trustedSkis.Contains(skiString);
+                            isValid = _trustedSkis.Contains(device.SKI.ToString());
                         }
-                        Console.WriteLine("Client connection for ski " + skiString + " is valid: " +  isValid);
                         return isValid;
                     };
                     wsClient.Options.ClientCertificates.Add(_cert);
@@ -771,12 +787,36 @@ namespace EEBUS.Net
                     return false;
                 }
 
+                var paired = _devices.Paired.FirstOrDefault(p => p.TrustId == device.Id);
+
+                if (paired != null) //device was added via ship pairing
+                {
+                    byte[] fpHash = SHA256.HashData(args.Certificate.GetRawCertData());
+                    string fingerprint = Convert.ToHexString(fpHash);
+                    if (fingerprint != paired.TrustPar)
+                    {
+                        Console.WriteLine($"Certificate fingerprint for id {device.Id} does not match persisted trustPar");
+                        return false;
+                    }
+                }
+                else
+                {
+                    byte[] hash = SHA1.Create().ComputeHash(args.Certificate.GetPublicKey() ?? []);
+                    var ski = new SKI(hash);
+                    var skiString = ski.ToString();
+
+                    if (device.SKI.ToString() != skiString)
+                    {
+                        Console.WriteLine($"Certificate SKI {skiString} does not match device SKI {device.SKI.ToString()}");
+                        return false;
+                    }
+                }
+
                 bool isValid = false;
                 lock (_lock)
                 {
                     isValid = _trustedSkis.Contains(args.Ski);
                 }
-                Console.WriteLine("Server connection for ski " + args.Ski + " is valid: " + isValid);
                 return isValid;
             };
             _shipListener.OnDeviceConnectionChanged = OnDeviceConnectionChangedAsync;
