@@ -233,7 +233,7 @@ namespace EEBUS
 
             string message = sb.ToString();
             byte[] messageBytes = Encoding.UTF8.GetBytes(message);
-            byte[] keyBytes = Encoding.UTF8.GetBytes(key);
+            byte[] keyBytes = Convert.FromHexString(key);
 
             using var hmac = new HMACSHA256(keyBytes);
             byte[] hash = hmac.ComputeHash(messageBytes);

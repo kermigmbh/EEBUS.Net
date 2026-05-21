@@ -21,6 +21,7 @@ namespace EEBUS
         public string Serial { get; set; }
         public string Host { get; set; }
         public ushort Port { get; set; }
+        public string Secret { get; set; }
         public string NetworkFeatureSet { get; set; }
 
         public EntitySettings[] Entities { get; set; } = [];

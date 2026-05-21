@@ -27,6 +27,11 @@ namespace EEBUS.Models
 			}
 
 			this.settings = settings;
+
+			if (!string.IsNullOrEmpty(settings.Secret) && settings.Secret.Length <= 32)
+			{
+				_secret = Convert.FromHexString(settings.Secret);
+			}
 		}
 
 		public string Brand { get; private set; }

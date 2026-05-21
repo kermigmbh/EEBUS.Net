@@ -16,8 +16,7 @@ namespace TestProject1
 {
     public class SpineMessageTests : EebusTests
     {
-        private const string TestRemoteSki = "c09ff4c4dc2916414714662366f968f4743af7b7";
-        private const string TestLocalSki = "662728a479fa2fcf28e6d9e7855e996ab1d850a2";
+        
 
         [Fact]
         public async Task SendMessageTestAsync()
@@ -33,19 +32,12 @@ namespace TestProject1
         private Connection GetMockConnection()
         {
             var devices = new Devices();
-            devices.GetOrCreateLocal(GetSkiBytes(TestLocalSki), GetDeviceSettings());
-            var remoteDevice = new RemoteDevice("TestRemote", TestRemoteSki, string.Empty, "TestRemote", default, default);
+            devices.GetOrCreateLocal(GetSkiBytes(DefaultLocalSki), GetDeviceSettings());
+            var remoteDevice = new RemoteDevice("TestRemote", DefaultRemoteSki, string.Empty, "TestRemote", default, default);
             devices.Remote.Add(remoteDevice);
             var client = new Client(default, default, devices, remoteDevice);
             SetDiscoveryData(remoteDevice, client);
             return client;
-        }
-
-        private byte[] GetSkiBytes(string ski)
-        {
-            return Enumerable.Range(0, ski.Length / 2)
-                                 .Select(x => Convert.ToByte(ski.Substring(x * 2, 2), 16))
-                                 .ToArray();
         }
 
         private DeviceSettings GetDeviceSettings()
@@ -176,7 +168,7 @@ namespace TestProject1
         {
             // Arrange - create a bare local device without any use cases that register ElectricalConnection-server
             var devices = new Devices();
-            devices.GetOrCreateLocal(GetSkiBytes(TestLocalSki), new DeviceSettings()
+            devices.GetOrCreateLocal(GetSkiBytes(DefaultLocalSki), new DeviceSettings()
             {
                 Name = "TestDevice",
                 Id = "TestDevice",
@@ -187,7 +179,7 @@ namespace TestProject1
                 Port = 7201,
                 Entities = [new EntitySettings { Type = "DeviceInformation" }]
             });
-            var remoteDevice = new RemoteDevice("TestRemote", TestRemoteSki, string.Empty, "TestRemote", default, default);
+            var remoteDevice = new RemoteDevice("TestRemote", DefaultRemoteSki, string.Empty, "TestRemote", default, default);
             devices.Remote.Add(remoteDevice);
             Connection connectionWithoutFeature = new Client(default, default, devices, remoteDevice);
 

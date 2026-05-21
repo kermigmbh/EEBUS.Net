@@ -36,7 +36,7 @@ namespace TestProject1.Ship
         private sealed class TestServer : Server
         {
             public TestServer(FakeWebSocket ws, Devices devices)
-                : base(default, ws, devices) { }
+                : base(string.Empty, default, ws, devices) { }
 
             public void SetState(
                 Connection.EState    s,
