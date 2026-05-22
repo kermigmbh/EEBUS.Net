@@ -30,7 +30,7 @@ namespace ConsoleDemo
                 return true;
             };
 
-            _manager = new EEBUSManager(settings, onNewConnectionValidation);
+            _manager = new EEBUSManager(settings);
 
             
 

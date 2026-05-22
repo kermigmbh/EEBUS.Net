@@ -203,7 +203,7 @@ public class DevicesController : ControllerBase, IDisposable
 				throw new Exception( "Close message parsing failed!" );
 			}
 
-			if ( closeMessage.connectionClose[0].phase != ConnectionClosePhaseType.confirm )
+			if ( closeMessage.connectionClose.phase != ConnectionClosePhaseType.confirm )
 			{
 				throw new Exception( "Close confirmation message expected!" );
 			}
