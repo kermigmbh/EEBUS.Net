@@ -96,7 +96,10 @@ namespace EEBUS
             catch (Exception ex)
             {
                 if (null != this.Remote)
+                {
                     this.Remote.SetServerState(EState.Stopped);
+                    this.Remote.LastDisconnectUtc = DateTime.UtcNow;
+                }
 
                 Debug.WriteLine("Exception: " + ex.Message);
             }

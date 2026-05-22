@@ -6,7 +6,8 @@ namespace EEBUS.Net.EEBUS.Models
 {
     public enum ShipTrustType
     {
-        Ski,
-        Pairing
+        None,
+        SkiVerification,
+        AddCu
     }
 }

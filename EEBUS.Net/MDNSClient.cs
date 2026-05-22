@@ -12,16 +12,20 @@ namespace EEBUS
 {
     public class MDNSClient
     {
-        private Devices devices;
+        private Devices? devices;
         private CancellationTokenSource? _cts;
         private readonly ServiceDiscovery _serviceDiscovery;
+        private Func<bool>? _allowShipPairingEvaluation;
+        private List<(string Alg, string Digest)> _previousPairings = [];
+        private object _lock = new object();
 
         private bool _serviceDiscoveryNeedsDispose = false;
 
-        public MDNSClient(ServiceDiscovery? serviceDiscovery = null)
+        public MDNSClient(ServiceDiscovery? serviceDiscovery = null, Func<bool>? allowShipPairingEvaluation = null)
         {
             _serviceDiscoveryNeedsDispose = serviceDiscovery == null;
             this._serviceDiscovery = serviceDiscovery ?? new ServiceDiscovery();
+            _allowShipPairingEvaluation = allowShipPairingEvaluation;
         }
 
         public void Run(Devices devices)
@@ -51,7 +55,7 @@ namespace EEBUS
                 {
                     _serviceDiscovery.QueryAllServices();
                     //sd.QueryServiceInstances("_ship._tcp");
-                    devices.GarbageCollect();
+                    devices?.GarbageCollect();
 
                     await Task.Delay(5000, cancellationToken).ConfigureAwait(false);
                 }
@@ -101,7 +105,7 @@ namespace EEBUS
                 ProcessShipRequest(ev.Message, instanceName);
 
             }
-            else if (instanceName.Contains("._shippairing."))
+            else if (instanceName.Contains("._shippairing.") && _allowShipPairingEvaluation?.Invoke() == true)
             {
                 Debug.WriteLine($"EEBUS service instance '{ev.ServiceInstanceName}' discovered.");
                 ProcessShipPairingRequest(ev.Message, instanceName);
@@ -133,20 +137,20 @@ namespace EEBUS
                                 foreach (string textRecord in txtRecords)
                                 {
                                     if (textRecord.StartsWith("id"))
-                                        id = textRecord.Substring(textRecord.IndexOf('=') + 1);
+                                        id = GetTxtRecordValue(textRecord);
 
                                     if (textRecord.StartsWith("path"))
-                                        path = textRecord.Substring(textRecord.IndexOf('=') + 1);
+                                        path = GetTxtRecordValue(textRecord);
 
                                     if (textRecord.StartsWith("ski"))
-                                        ski = textRecord.Substring(textRecord.IndexOf('=') + 1);
+                                        ski = GetTxtRecordValue(textRecord);
 
                                 }
 
                                 if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(path))
                                 {
                                     string url = serverAddress.Address.ToString() + ":" + server.Port.ToString() + path;
-                                    RemoteDevice device = this.devices.GetOrCreateRemote(id, ski, url, instanceName);
+                                    this.devices?.GetOrCreateRemote(id, ski, url, instanceName);
                                 }
                             }
                         }
@@ -161,8 +165,11 @@ namespace EEBUS
             IEnumerable<AddressRecord> addresses = mdnsMessage.AdditionalRecords.OfType<AddressRecord>();
             IEnumerable<string>? txtRecords = mdnsMessage.AdditionalRecords.OfType<TXTRecord>()?.SelectMany(s => s.Strings);
 
+
             if (servers?.Count() > 0 && addresses?.Count() > 0 && txtRecords?.Count() > 0)
             {
+                if (!ValidateShipPairingRecords(txtRecords)) return;
+
                 foreach (SRVRecord server in servers)
                 {
                     IEnumerable<AddressRecord> serverAddresses = addresses.Where(w => w.Name == server.Target);
@@ -182,30 +189,39 @@ namespace EEBUS
                                 foreach (string textRecord in txtRecords)
                                 {
                                     if (textRecord.StartsWith("trustId"))
-                                        trustId = textRecord.Substring(textRecord.IndexOf('=') + 1);
+                                        trustId = GetTxtRecordValue(textRecord);
 
                                     if (textRecord.StartsWith("trustPar"))
-                                        trustPar = textRecord.Substring(textRecord.IndexOf('=') + 1);
+                                        trustPar = GetTxtRecordValue(textRecord);
 
                                     if (textRecord.StartsWith("alg"))
-                                        alg = textRecord.Substring(textRecord.IndexOf('=') + 1);
+                                        alg = GetTxtRecordValue(textRecord);
 
                                     if (textRecord.StartsWith("digest"))
-                                        digest = textRecord.Substring(textRecord.IndexOf('=') + 1);
+                                        digest = GetTxtRecordValue(textRecord);
 
                                     if (textRecord.StartsWith("trustNonce"))
-                                        trustNonce = textRecord.Substring(textRecord.IndexOf('=') + 1);
+                                        trustNonce = GetTxtRecordValue(textRecord);
 
                                 }
 
-                                PairedDevice? existing = this.devices.Paired.FirstOrDefault(p => p.Alg == alg && p.Digest == digest);
-                                if (existing != null) return;   //device is already trusted
+                                bool alreadyPaired = false;
+                                lock (_lock)
+                                {
+                                    //PairedDevice? existing = this.devices?.Paired.FirstOrDefault(p => p.Alg == alg && p.Digest == digest);
+                                   alreadyPaired = _previousPairings.Any(p => p.Alg == alg && p.Digest == digest);
+                                }
+                                if (alreadyPaired) return;
 
                                 if (!ValidateDigest(alg, trustNonce, digest, txtRecords)) return;
 
                                 if (!string.IsNullOrEmpty(trustId) && !string.IsNullOrEmpty(trustPar) && !string.IsNullOrEmpty(alg) && !string.IsNullOrEmpty(digest))
                                 {
-                                    this.devices.GetOrCreatePaired(trustPar, trustId, alg, digest);
+                                    lock(_lock)
+                                    {
+                                        _previousPairings.Add((alg, digest));
+                                    }
+                                    this.devices?.GetOrCreatePaired(trustPar, trustId);
                                 }
                             }
                         }
@@ -214,9 +230,39 @@ namespace EEBUS
             }
         }
 
+        private bool ValidateShipPairingRecords(IEnumerable<string> txtRecords)
+        {
+            if (txtRecords.First() != "txtvers=1") return false;
+
+            string forId = GetTxtRecordValue("forId", txtRecords);
+            if (forId != devices?.Local.DeviceId) return false;
+
+            string trustCurve = GetTxtRecordValue("trustCurve", txtRecords);
+            if (trustCurve != "secp256r1") return false;
+
+            string type = GetTxtRecordValue("type", txtRecords);
+            if (type != "addCu") return false;
+
+            string alg = GetTxtRecordValue("alg", txtRecords);
+            if (alg != "hmachSha256") return false;
+
+            string parType = GetTxtRecordValue("parType", txtRecords);
+            if (parType != "fpSha256") return false;
+
+            //Check for duplicate keys
+            foreach (var record in txtRecords)
+            {
+                string key = GetTxtRecordKey(record);
+                var foundKeys = txtRecords.Where(r => GetTxtRecordKey(r) == key);
+                if (foundKeys.Count() > 1) return false;
+            }
+
+            return true;
+        }
+
         private bool ValidateDigest(string algorithm, string trustNonce, string digest, IEnumerable<string> txtRecords)
         {
-            string secret = Convert.ToHexString(devices.Local.GetSecret());
+            string secret = Convert.ToHexString(devices?.Local.GetSecret() ?? []);
             string key = secret + trustNonce;
 
             StringBuilder sb = new StringBuilder();
@@ -239,6 +285,30 @@ namespace EEBUS
             byte[] hash = hmac.ComputeHash(messageBytes);
             string calculatedDigest = Convert.ToHexString(hash);
             return calculatedDigest == digest;
+        }
+
+        private string GetTxtRecordValue(string txtRecord)
+        {
+            string[] kvp = txtRecord.Split("=");
+            if (kvp.Length < 2) return string.Empty;
+
+            return kvp[1];
+        }
+
+        private string GetTxtRecordKey(string txtRecord)
+        {
+            string[] kvp = txtRecord.Split("=");
+            if (kvp.Length < 1) return string.Empty;
+
+            return kvp[0];
+        }
+
+        private string GetTxtRecordValue(string key, IEnumerable<string> txtRecords)
+        {
+            string? txtRecord = txtRecords.FirstOrDefault(r => r.StartsWith(key));
+            if (string.IsNullOrEmpty(txtRecord)) return string.Empty;
+
+            return GetTxtRecordValue(txtRecord);
         }
     }
 }

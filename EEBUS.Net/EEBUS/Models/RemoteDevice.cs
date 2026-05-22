@@ -5,7 +5,7 @@ namespace EEBUS.Models
 {
     public class RemoteDevice : Device
     {
-        public RemoteDevice(string id, string ski, string url, string name, StateChangedHandler serverStateChanged, StateChangedHandler clientStateChanged, ShipTrustType trustType = ShipTrustType.Ski)
+        public RemoteDevice(string id, string ski, string url, string name, StateChangedHandler serverStateChanged, StateChangedHandler clientStateChanged)
             : base("?", ski)
         {
             this.Id = id;
@@ -14,7 +14,6 @@ namespace EEBUS.Models
 
             this.serverStateChanged = serverStateChanged;
             this.clientStateChanged = clientStateChanged;
-            TrustType = trustType;
         }
 
 
@@ -28,7 +27,7 @@ namespace EEBUS.Models
         public string Url { get; private set; }
         private DateTime Age = DateTime.UtcNow;
 
-        public ShipTrustType TrustType { get; private set; }
+        public DateTime LastDisconnectUtc { get; set; }
 
         public void SetServerState(Connection.EState state)
         {

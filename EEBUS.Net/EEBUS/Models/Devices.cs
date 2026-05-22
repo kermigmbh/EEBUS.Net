@@ -1,4 +1,5 @@
-﻿using EEBUS.Net.EEBUS.Models.Data;
+﻿using EEBUS.Net.EEBUS.Models;
+using EEBUS.Net.EEBUS.Models.Data;
 
 namespace EEBUS.Models
 {
@@ -64,22 +65,24 @@ namespace EEBUS.Models
             return remote;
         }
 
-        public PairedDevice GetOrCreatePaired(string trustPar, string trustId, string alg, string digest)
+        public PairedDevice GetOrCreatePaired(string trustPar, string trustId, ShipTrustType trustType = ShipTrustType.AddCu)
         {
             PairedDevice? paired = null;
             lock (this.mutex)
             {
-                paired = Paired.FirstOrDefault(p => p.TrustId == trustId);
-
-                if (paired != null && (paired.Alg != alg || paired.Digest != digest))
-                {
-                    Paired.Remove(paired);
-                    paired = null;
-                }
+                paired = Paired.FirstOrDefault(p => p.TrustId == trustId && p.TrustPar == trustPar);
 
                 if (paired == null)
                 {
-                    paired = new PairedDevice(trustPar, trustId, alg, digest);
+                    paired = new PairedDevice(trustPar, trustId, trustType);
+                    if (trustType == ShipTrustType.AddCu)   //We can only ever have one device at a time paired with addCu (according to spec), so we set all other ones to none and add the new one
+                    {
+                        IEnumerable<PairedDevice> pairedAddCu = Paired.Where(p => p.TrustType == ShipTrustType.AddCu);
+                        foreach (var item in pairedAddCu)
+                        {
+                            item.TrustType = ShipTrustType.None; 
+                        }
+                    }
                     Paired.Add(paired);
                 }
             }

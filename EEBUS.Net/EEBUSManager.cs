@@ -76,13 +76,12 @@ namespace EEBUS.Net
 
 
             _devices = new Devices();
-            _mDNSClient = new MDNSClient(serviceDiscovery);
 
             _cert = CertificateGenerator.GenerateCert(settings.BasePath, settings.Certificate);
-
             byte[] hash = SHA1.Create().ComputeHash(_cert.GetPublicKey());
 
-            this._mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port, serviceDiscovery);
+            _mDNSClient = new MDNSClient(serviceDiscovery, CanEvaluateShipPairingRequests);
+            _mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port, serviceDiscovery);
 
             LocalDevice localDevice = _devices.GetOrCreateLocal(hash, settings.Device);
 
@@ -130,10 +129,15 @@ namespace EEBUS.Net
                         }
 
                         Connection? connection = Connections.FirstOrDefault(c => c.Remote != null && c.Remote.SKI == device.SKI);
-                        if (connection == null || connection.WebSocket.State != WebSocketState.Open && !cancellationToken.IsCancellationRequested)
+                        if (connection == null && !cancellationToken.IsCancellationRequested)
                         {
                             Debug.WriteLine($"Device {device.Name} does not have an active connection anymore, reconnecting...");
-                            await ConnectAsync(device.SKI.ToString());
+                            try
+                            {
+                                await ConnectAsync(device.SKI.ToString());
+                            } catch (Exception)
+                            {
+                            }
                         }
                     }
                 }
@@ -144,6 +148,24 @@ namespace EEBUS.Net
                     }
                 }
             }
+        }
+
+        private bool CanEvaluateShipPairingRequests()
+        {
+            var pairedAddCu = _devices.Paired.FirstOrDefault(p => p.TrustType == EEBUS.Models.ShipTrustType.AddCu);
+            if (pairedAddCu == null) return true;  //no device yet paired via ship pairing, so we can accept new requests
+
+            var remote = Devices.Remote.First(r => r.Id == pairedAddCu.TrustId);   //the remote device corresponding to the paired device
+
+            bool isConnected = Connections.Any(c => c.Remote != null && c.Remote.Id == remote.Id);
+            if (isConnected) return false;  //do not process pairing requests when we are still connected to an addCu device
+
+            TimeSpan diff = DateTime.UtcNow - remote.LastDisconnectUtc;
+            //if (diff.TotalMinutes > 15)
+            //{
+            //    //addCuRemote.TrustType = EEBUS.Models.ShipTrustType.SkiVerification;
+            //}
+            return diff.TotalMinutes > 15;  //if the device was not connected for more than 15 minutes, we can accept new requests
         }
 
         private static Type[] GetTypesInNamespace(Assembly assembly, string nameSpace)
@@ -669,18 +691,16 @@ namespace EEBUS.Net
                             return false;
                         }
 
-                        var paired = _devices.Paired.FirstOrDefault(p => p.TrustId == device.Id);
-
-                        if (paired != null) //device was added via ship pairing
+                        //strict mode (only ship paired devices can communicate):
+                        if (_settings.UseStrictShipPairing)
                         {
-                            byte[] fpHash = SHA256.HashData(cert.GetRawCertData());
-                            string fingerprint = Convert.ToHexString(fpHash);
-                            if (fingerprint != paired.TrustPar)
-                            {
-                                Console.WriteLine($"Certificate fingerprint for id {device.Id} does not match persisted trustPar");
-                                return false;
-                            }
-                        } else
+                            bool isUntrusted = _devices.Paired.FirstOrDefault(p => p.TrustId == device.Id && p.TrustType == EEBUS.Models.ShipTrustType.None) != null;
+                            if (isUntrusted) return false;
+                        }
+
+                        var paired = _devices.Paired.FirstOrDefault(p => p.TrustId == device.Id && p.TrustType == EEBUS.Models.ShipTrustType.AddCu);
+
+                        if (paired == null) //device was never paired via ship pairing -> ski verification
                         {
                             byte[] hash = SHA1.Create().ComputeHash(cert.GetPublicKey() ?? []);
                             var ski = new SKI(hash);
@@ -689,6 +709,25 @@ namespace EEBUS.Net
                             if (device.SKI.ToString() != skiString)
                             {
                                 Console.WriteLine($"Certificate SKI {skiString} does not match device SKI {device.SKI.ToString()}");
+                                return false;
+                            }
+                        } else
+                        {
+                            /*
+                            TODO: we imagine the following scenario:
+                            1. devZ pairs via ship pairing
+                            2. devZ disconnects for more than 15 minutes
+                            3. a new devZ2 pairs via ship pairing
+                            4. devZ comes back online and attempts a connection
+                            Normally, this would not be possible because according to spec, devZ is not trusted anymore. However, with our system, if the device is still teached in, its also still trusted. We would need
+                            to automatically delete/disable/set offline the device. Also for the pairing, according to spec, after the device is paired its considered trusted, which would mean we would need to automatically teach it in
+                             */
+
+                            byte[] fpHash = SHA256.HashData(cert.GetRawCertData());
+                            string fingerprint = Convert.ToHexString(fpHash);
+                            if (fingerprint != paired.TrustPar)
+                            {
+                                Console.WriteLine($"Certificate fingerprint for id {device.Id} does not match persisted trustPar");
                                 return false;
                             }
                         }

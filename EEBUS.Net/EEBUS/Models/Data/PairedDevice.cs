@@ -8,15 +8,13 @@ namespace EEBUS.Net.EEBUS.Models.Data
     {
         public string TrustPar {  get; private set; }
         public string TrustId { get; private set; }
-        public string Alg {  get; private set; }
-        public string Digest { get; private set; }
+        public ShipTrustType TrustType { get; set; }
 
-        public PairedDevice(string trustPar, string trustId, string alg, string digest)
+        public PairedDevice(string trustPar, string trustId, ShipTrustType trustType = ShipTrustType.AddCu)
         {
             TrustPar = trustPar;
             TrustId = trustId;
-            Alg = alg;
-            Digest = digest;
+            TrustType = trustType;
         }
     }
 }

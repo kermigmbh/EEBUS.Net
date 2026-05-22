@@ -86,6 +86,7 @@ namespace EEBUS
                 // consider logging ex
                 Debug.WriteLine($"Client connection closed with error: {ex.ToString()}");
                 this.state = EState.ErrorOrTimeout;
+                this.Remote?.LastDisconnectUtc = DateTime.UtcNow;
             }
             finally
             {

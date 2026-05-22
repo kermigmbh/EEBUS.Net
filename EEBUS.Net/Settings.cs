@@ -9,6 +9,7 @@ namespace EEBUS
         public string Certificate { get; set; }
         public string BasePath { get; set; } = string.Empty;
         public DeviceSettings Device { get; set; }
+        public bool UseStrictShipPairing { get; set; } = false;
     }
 
     public class DeviceSettings
