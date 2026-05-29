@@ -155,7 +155,10 @@ namespace EEBUS.Net
             var pairedAddCu = _devices.Paired.FirstOrDefault(p => p.TrustType == EEBUS.Models.ShipTrustType.AddCu);
             if (pairedAddCu == null) return true;  //no device yet paired via ship pairing, so we can accept new requests
 
-            var remote = Devices.Remote.First(r => r.Id == pairedAddCu.TrustId);   //the remote device corresponding to the paired device
+            //var remote = Devices.Remote.First(r => r.Id == pairedAddCu.TrustId);   //the remote device corresponding to the paired device
+            //TODO: Check if this change is correct!
+            var remote = Devices.Remote.FirstOrDefault(r => r.Id == pairedAddCu.TrustId);   //the remote device corresponding to the paired device
+            if (remote == null) return false;
 
             bool isConnected = Connections.Any(c => c.Remote != null && c.Remote.Id == remote.Id);
             if (isConnected) return false;  //do not process pairing requests when we are still connected to an addCu device
@@ -191,6 +194,7 @@ namespace EEBUS.Net
             lock (_lock)
             {
                 _trustedSkis.Remove(ski);
+                //TODO: shouldn't we close the connection, too?
             }
         }
 
@@ -511,7 +515,7 @@ namespace EEBUS.Net
                 {
                     lpcContractualNominalMax = data.Number;
                 }
-                else if (data.CharacteristicType == "contractualConsumptionNominalMax")
+                else if (data.CharacteristicType == "contractualProductionNominalMax")
                 {
                     lppContractualNominalMax = data.Number;
                 }
@@ -672,106 +676,126 @@ namespace EEBUS.Net
             {
                 return null;
             }
+
+            Uri uri = new Uri("wss://" + device.Url);
+            HostString hostString = new HostString(uri.Host, uri.Port);
+
+            ClientWebSocket? wsClient = null;
             try
             {
-                Uri uri = new Uri("wss://" + device.Url);
-                HostString hostString = new HostString(uri.Host, uri.Port);
+                // Any existing connection for this SKI counts as a hit, regardless of
+                // host/port (covers the case where we already have a server-side
+                // connection on a different URI than the one mDNS now advertises).
+                Connection? existingClient = _connections.Values
+                    .FirstOrDefault(c => c.Remote != null && c.Remote.SKI == Ski);
 
-                ClientWebSocket? wsClient = null;
-                //TODO: what if we have a server connection already with this ski which is on a different uri/port? We would still create a new client here!
-                Connection? existingClient = _connections.FirstOrDefault(c => c.Value.Remote != null && c.Value.Remote.SKI == Ski).Value;
-                if (/*!_connections.TryGetValue(hostString, out Connection? existingClient)*/existingClient == null)
+                if (existingClient != null)
                 {
-                    wsClient = new ClientWebSocket();
-                    wsClient.Options.AddSubProtocol("ship");
-                    wsClient.Options.RemoteCertificateValidationCallback = (object sender, X509Certificate? cert, X509Chain? chain, SslPolicyErrors sslPolicyErrors) =>
+                    if (existingClient.WebSocket?.State == WebSocketState.Open)
                     {
-                        if (cert == null)
+                        return existingClient.RemoteHost.ToString();
+                    }
+
+                    // Stale connection - tear it down before opening a new one.
+                    await DisconnectAsync(existingClient.RemoteHost).ConfigureAwait(false);
+                }
+
+                wsClient = new ClientWebSocket();
+                wsClient.Options.AddSubProtocol("ship");
+                wsClient.Options.RemoteCertificateValidationCallback = (object sender, X509Certificate? cert, X509Chain? chain, SslPolicyErrors sslPolicyErrors) =>
+                {
+                    if (cert == null)
+                    {
+                        return false;
+                    }
+
+                    //strict mode (only ship paired devices can communicate):
+                    if (_settings.UseStrictShipPairing)
+                    {
+                        bool isUntrusted = _devices.Paired.FirstOrDefault(p => p.TrustId == device.Id && p.TrustType == EEBUS.Models.ShipTrustType.None) != null;
+                        if (isUntrusted) return false;
+                    }
+
+                    var paired = _devices.Paired.FirstOrDefault(p => p.TrustId == device.Id && p.TrustType == EEBUS.Models.ShipTrustType.AddCu);
+
+                    if (paired == null) //device was never paired via ship pairing -> ski verification
+                    {
+                        byte[] hash = SHA1.HashData(cert.GetPublicKey() ?? []);
+                        var certSki = new SKI(hash);
+                        var skiString = certSki.ToString();
+
+                        if (device.SKI.ToString() != skiString)
                         {
+                            Console.WriteLine($"Certificate SKI {skiString} does not match device SKI {device.SKI.ToString()}");
                             return false;
                         }
-
-                        //strict mode (only ship paired devices can communicate):
-                        if (_settings.UseStrictShipPairing)
-                        {
-                            bool isUntrusted = _devices.Paired.FirstOrDefault(p => p.TrustId == device.Id && p.TrustType == EEBUS.Models.ShipTrustType.None) != null;
-                            if (isUntrusted) return false;
-                        }
-
-                        var paired = _devices.Paired.FirstOrDefault(p => p.TrustId == device.Id && p.TrustType == EEBUS.Models.ShipTrustType.AddCu);
-
-                        if (paired == null) //device was never paired via ship pairing -> ski verification
-                        {
-                            byte[] hash = SHA1.Create().ComputeHash(cert.GetPublicKey() ?? []);
-                            var ski = new SKI(hash);
-                            var skiString = ski.ToString();
-
-                            if (device.SKI.ToString() != skiString)
-                            {
-                                Console.WriteLine($"Certificate SKI {skiString} does not match device SKI {device.SKI.ToString()}");
-                                return false;
-                            }
-                        } else
-                        {
-                            /*
-                            TODO: we imagine the following scenario:
-                            1. devZ pairs via ship pairing
-                            2. devZ disconnects for more than 15 minutes
-                            3. a new devZ2 pairs via ship pairing
-                            4. devZ comes back online and attempts a connection
-                            Normally, this would not be possible because according to spec, devZ is not trusted anymore. However, with our system, if the device is still teached in, its also still trusted. We would need
-                            to automatically delete/disable/set offline the device. Also for the pairing, according to spec, after the device is paired its considered trusted, which would mean we would need to automatically teach it in
-                             */
-
-                            byte[] fpHash = SHA256.HashData(cert.GetRawCertData());
-                            string fingerprint = Convert.ToHexString(fpHash);
-                            if (fingerprint != paired.TrustPar)
-                            {
-                                Console.WriteLine($"Certificate fingerprint for id {device.Id} does not match persisted trustPar");
-                                return false;
-                            }
-                        }
-
-                        bool isValid = false;
-                        lock (_lock)
-                        {
-                            isValid = _trustedSkis.Contains(device.SKI.ToString());
-                        }
-                        return isValid;
-                    };
-                    wsClient.Options.ClientCertificates.Add(_cert);
-                    await wsClient.ConnectAsync(uri, CancellationToken.None).ConfigureAwait(false);
-                    if (wsClient?.State == WebSocketState.Open)
-                    {
-                        Client client = new Client(hostString, wsClient, _devices, device);
-                        _connections[hostString] = client;
-                        await client.Run(_cts.Token).ConfigureAwait(false);
-                        return hostString.ToString();
                     }
                     else
                     {
-                        await DisconnectAsync(hostString).ConfigureAwait(false);
+                        /*
+                        TODO: we imagine the following scenario:
+                        1. devZ pairs via ship pairing
+                        2. devZ disconnects for more than 15 minutes
+                        3. a new devZ2 pairs via ship pairing
+                        4. devZ comes back online and attempts a connection
+                        Normally, this would not be possible because according to spec, devZ is not trusted anymore. However, with our system, if the device is still teached in, its also still trusted. We would need
+                        to automatically delete/disable/set offline the device. Also for the pairing, according to spec, after the device is paired its considered trusted, which would mean we would need to automatically teach it in
+                         */
+
+                        byte[] fpHash = SHA256.HashData(cert.GetRawCertData());
+                        string fingerprint = Convert.ToHexString(fpHash);
+                        if (fingerprint != paired.TrustPar)
+                        {
+                            Console.WriteLine($"Certificate fingerprint for id {device.Id} does not match persisted trustPar");
+                            return false;
+                        }
                     }
-                }
-                else
+
+                    bool isValid = false;
+                    lock (_lock)
+                    {
+                        isValid = _trustedSkis.Contains(device.SKI.ToString());
+                    }
+                    return isValid;
+                };
+                wsClient.Options.ClientCertificates.Add(_cert);
+
+                await wsClient.ConnectAsync(uri, _cts.Token).ConfigureAwait(false);
+
+                if (wsClient.State != WebSocketState.Open)
                 {
-                    wsClient = existingClient.WebSocket as ClientWebSocket;
-                    if (wsClient?.State == WebSocketState.Open)
-                    {
-                        return hostString.ToString();
-                    }
-                    else
-                    {
-                        await DisconnectAsync(hostString).ConfigureAwait(false);
-                    }
+                    wsClient.Dispose();
+                    wsClient = null;
+                    await DisconnectAsync(hostString).ConfigureAwait(false);
+                    return null;
                 }
+
+                Client client = new Client(hostString, wsClient, _devices, device);
+                if (!_connections.TryAdd(hostString, client))
+                {
+                    // Another path inserted a connection for this host while we were
+                    // connecting; drop ours to avoid leaking a duplicate socket.
+                    wsClient.Dispose();
+                    wsClient = null;
+                    return hostString.ToString();
+                }
+
+                // Ownership of wsClient is transferred to the Client/Connection.
+                wsClient = null;
+                await client.Run(_cts.Token).ConfigureAwait(false);
+                return hostString.ToString();
+            }
+            catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+            {
+                wsClient?.Dispose();
+                return null;
             }
             catch (Exception ex)
             {
                 Debug.WriteLine("Connect Error: " + ex.Message);
+                wsClient?.Dispose();
                 throw;
             }
-            return null;
         }
 
         public async Task DisconnectAsync(HostString host)
