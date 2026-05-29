@@ -220,7 +220,7 @@ namespace EEBUS.SPINE.Commands
                         consumeDataStructure.Number = deviceData.Lpc.Limit ?? consumeDataStructure.Number;
                         consumeDataStructure.EndTime = deviceData.Lpc.LimitDuration != null ? XmlConvert.ToString(TimeSpan.FromSeconds(deviceData.Lpc.LimitDuration.Value)) : consumeDataStructure.EndTime;
                     }
-                    didChange = consumeDataStructures.Count() > 0;
+                    didChange = didChange || consumeDataStructures.Count() > 0;
                 }
 
                 if (deviceData.Lpp != null && !deviceData.Lpp.IsEmpty())
@@ -232,7 +232,7 @@ namespace EEBUS.SPINE.Commands
                         produceDataStructure.Number = deviceData.Lpp.Limit ?? produceDataStructure.Number;
                         produceDataStructure.EndTime = deviceData.Lpp.LimitDuration != null ? XmlConvert.ToString(TimeSpan.FromSeconds(deviceData.Lpp.LimitDuration.Value)) : produceDataStructure.EndTime;
                     }
-                    didChange = produceDataStructures.Count() > 0;
+                    didChange = didChange || produceDataStructures.Count() > 0;
                 }
 
                 if (didChange)

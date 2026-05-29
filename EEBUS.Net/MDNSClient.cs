@@ -30,8 +30,17 @@ namespace EEBUS
 
         public void Run(Devices devices)
         {
-            _cts?.Cancel();
+            // Atomically swap in a new CTS, then cancel and dispose the old one.
+            // Publish the new instance first so any racing reader of `_cts` sees a
+            // live source instead of a disposed one.
+            var previousCts = _cts;
             _cts = new CancellationTokenSource();
+            if (previousCts != null)
+            {
+                try { previousCts.Cancel(); } catch (ObjectDisposedException) { }
+                try { previousCts.Dispose(); } catch { }
+            }
+
             this.devices = devices;
 
             _ = Task.Run(() => RunInternalAsync(_cts.Token));
@@ -92,7 +101,13 @@ namespace EEBUS
 
         public void Stop()
         {
-            _cts?.Cancel();
+            var cts = _cts;
+            _cts = null;
+            if (cts != null)
+            {
+                try { cts.Cancel(); } catch (ObjectDisposedException) { }
+                try { cts.Dispose(); } catch { }
+            }
         }
 
         private void Sd_ServiceInstanceDiscovered(object? sender, ServiceInstanceDiscoveryEventArgs ev)
@@ -211,9 +226,9 @@ namespace EEBUS
                                     //PairedDevice? existing = this.devices?.Paired.FirstOrDefault(p => p.Alg == alg && p.Digest == digest);
                                    alreadyPaired = _previousPairings.Any(p => p.Alg == alg && p.Digest == digest);
                                 }
-                                if (alreadyPaired) return;
+                                if (alreadyPaired) continue;
 
-                                if (!ValidateDigest(alg, trustNonce, digest, txtRecords)) return;
+                                if (!ValidateDigest(alg, trustNonce, digest, txtRecords)) continue;
 
                                 if (!string.IsNullOrEmpty(trustId) && !string.IsNullOrEmpty(trustPar) && !string.IsNullOrEmpty(alg) && !string.IsNullOrEmpty(digest))
                                 {

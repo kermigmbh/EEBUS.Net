@@ -19,11 +19,37 @@ namespace EEBUS
         public Server(string ski, HostString host, WebSocket ws, Devices devices)
             : base(host, ws, devices)
         {
+            this._ski = ski ?? string.Empty;
+
+            Server? previous = null;
             lock (mutex)
             {
-                serverMap[ski] = this;
+                // If there is already a Server registered for this SKI, capture it so
+                // we can close it instead of silently dropping the reference (which
+                // would leak the WebSocket and any background tasks rooted by it).
+                serverMap.TryGetValue(this._ski, out previous);
+                serverMap[this._ski] = this;
+            }
+
+            if (previous != null && !ReferenceEquals(previous, this))
+            {
+                // Fire and forget: we don't want the new connection setup to block
+                // on tearing down the stale one, but we must not leak it.
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await previous.CloseAsync().ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine("Failed to close previous Server for SKI " + this._ski + ": " + ex.Message);
+                    }
+                });
             }
         }
+
+        private readonly string _ski;
 
         static private ConcurrentDictionary<string, Server> serverMap = new();
 
@@ -31,13 +57,7 @@ namespace EEBUS
 
         static public Server? Get(string ski)
         {
-            lock (mutex)
-            {
-                if (!serverMap.TryGetValue(ski, out Server server))
-                    return null;
-
-                return server;
-            }
+            return serverMap.TryGetValue(ski, out Server? server) ? server : null;
         }
 
         public async Task Do(CancellationToken cancellationToken)
@@ -103,8 +123,12 @@ namespace EEBUS
 
                 Debug.WriteLine("Exception: " + ex.Message);
             }
-
-            beat?.Change(Timeout.Infinite, Timeout.Infinite);
+            finally
+            {
+                // Dispose the timer (Change(Infinite, Infinite) only stops further
+                // callbacks; the underlying TimerQueueTimer is only released by Dispose).
+                try { beat.Dispose(); } catch { }
+            }
             //eccSend.Change( Timeout.Infinite, Timeout.Infinite );
 
             await CloseAsync().ConfigureAwait(false);
@@ -121,7 +145,17 @@ namespace EEBUS
                 Console.WriteLine("Exception: " + ex.Message);
             }
 
-            serverMap.TryRemove(this.Remote?.SKI.ToString() ?? string.Empty, out _);
+            // Only remove from the map if we are still the registered Server for
+            // this SKI. A newer connection for the same peer may have replaced us
+            // already, and in that case we must not remove its entry.
+            lock (mutex)
+            {
+                if (serverMap.TryGetValue(this._ski, out Server? current) && ReferenceEquals(current, this))
+                {
+                    serverMap.TryRemove(this._ski, out _);
+                }
+            }
+
             this.state = EState.Disconnected;
             this.subState = ESubState.None;
 

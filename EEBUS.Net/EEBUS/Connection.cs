@@ -94,7 +94,7 @@ namespace EEBUS
 
                     SpineDatagramPayload reply = new SpineDatagramPayload();
                     reply.datagram.header.addressSource = heartbeatSource;
-                    reply.datagram.header.addressDestination = heartbeatSource;
+                    reply.datagram.header.addressDestination = heartbeatDestination;
                     reply.datagram.header.msgCounter = DataMessage.NextCount;
                     reply.datagram.header.cmdClassifier = "notify";
 
@@ -168,20 +168,36 @@ namespace EEBUS
         public async Task<CloseMessage?> PushCloseMessageAsync(CloseMessage closeMessage)
         {
             uint timeout = closeMessage.connectionClose.maxTime;
+            string messageId = closeMessage.GetId();
 
             TaskCompletionSource<ShipMessageBase?> tcs = new TaskCompletionSource<ShipMessageBase?>(TaskCreationOptions.RunContinuationsAsynchronously);
-            _pendingRequests.AddOrUpdate(closeMessage.GetId(), tcs, (msgId, completionSource) => completionSource);
-            //TODO: rework DataMessageQueue to be able to handle every kind of message, so we can also send the close message over the queue. Could include an option enum, e.g. insert at the start/end, delete queue before insert, etc.
-            await closeMessage.Send(WebSocket);
-            this.state = EState.WaitingForCloseConfirm;
+            _pendingRequests.AddOrUpdate(messageId, tcs, (msgId, completionSource) => completionSource);
+
             ShipMessageBase? returnMessage = null;
             try
             {
-                returnMessage = await tcs.Task.WaitAsync(TimeSpan.FromMilliseconds(timeout));
-            } catch(Exception) {  }
-            //tcs.TrySetCanceled();
+                //TODO: rework DataMessageQueue to be able to handle every kind of message, so we can also send the close message over the queue. Could include an option enum, e.g. insert at the start/end, delete queue before insert, etc.
+                await closeMessage.Send(WebSocket).ConfigureAwait(false);
+                this.state = EState.WaitingForCloseConfirm;
+
+                try
+                {
+                    returnMessage = await tcs.Task.WaitAsync(TimeSpan.FromMilliseconds(timeout)).ConfigureAwait(false);
+                }
+                catch (TimeoutException) { /* no reply within maxTime - swallow, returnMessage stays null */ }
+                catch (OperationCanceledException) { /* cancelled - swallow, returnMessage stays null */ }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("PushCloseMessageAsync: failed to send close message: " + ex.Message);
+                throw;
+            }
+            finally
+            {
+                _pendingRequests.TryRemove(messageId, out _);
+            }
+
             this.state = EState.Disconnected;
-            _pendingRequests.TryRemove(closeMessage.GetId(), out _);
             return returnMessage as CloseMessage;
         }
 
@@ -199,6 +215,10 @@ namespace EEBUS
         }
 
         private byte[] _receiveBuffer = new byte[10240];
+        // Hard cap so a malicious or buggy peer can't make us allocate
+        // unbounded memory. 1 MiB is well beyond anything legitimate SHIP/SPINE
+        // traffic should produce.
+        private const int MaxReceiveBufferSize = 1024 * 1024;
         protected async Task<ShipMessageBase> ReceiveAsync(CancellationToken cancellationToken)
         {
             int totalCount = 0;
@@ -208,7 +228,11 @@ namespace EEBUS
             do
             {
                 if (totalCount >= _receiveBuffer.Length)
-                    throw new Exception("EEBUS payload too large for receive buffer.");
+                {
+                    if (_receiveBuffer.Length >= MaxReceiveBufferSize)
+                        throw new Exception("EEBUS payload exceeds maximum receive buffer size (" + MaxReceiveBufferSize + " bytes).");
+                    Array.Resize(ref _receiveBuffer, Math.Min(_receiveBuffer.Length * 2, MaxReceiveBufferSize));
+                }
 
                 var segment = new ArraySegment<byte>(
                     _receiveBuffer,

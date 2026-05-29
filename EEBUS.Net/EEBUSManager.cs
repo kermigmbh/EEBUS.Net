@@ -78,7 +78,7 @@ namespace EEBUS.Net
             _devices = new Devices();
 
             _cert = CertificateGenerator.GenerateCert(settings.BasePath, settings.Certificate);
-            byte[] hash = SHA1.Create().ComputeHash(_cert.GetPublicKey());
+            byte[] hash = SHA1.HashData(_cert.GetPublicKey());
 
             _mDNSClient = new MDNSClient(serviceDiscovery, CanEvaluateShipPairingRequests);
             _mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port, serviceDiscovery);
@@ -152,12 +152,15 @@ namespace EEBUS.Net
 
         private bool CanEvaluateShipPairingRequests()
         {
-            var pairedAddCu = _devices.Paired.FirstOrDefault(p => p.TrustType == EEBUS.Models.ShipTrustType.AddCu);
+            // Snapshot Paired/Remote under the Devices mutex to avoid racing
+            // with GetOrCreatePaired/GetOrCreateRemote mutations elsewhere.
+            var pairedSnapshot = _devices.GetPairedSnapshot();
+            var pairedAddCu = pairedSnapshot.FirstOrDefault(p => p.TrustType == EEBUS.Models.ShipTrustType.AddCu);
             if (pairedAddCu == null) return true;  //no device yet paired via ship pairing, so we can accept new requests
 
             //var remote = Devices.Remote.First(r => r.Id == pairedAddCu.TrustId);   //the remote device corresponding to the paired device
             //TODO: Check if this change is correct!
-            var remote = Devices.Remote.FirstOrDefault(r => r.Id == pairedAddCu.TrustId);   //the remote device corresponding to the paired device
+            var remote = _devices.GetRemote(pairedAddCu.TrustId);   //the remote device corresponding to the paired device
             if (remote == null) return false;
 
             bool isConnected = Connections.Any(c => c.Remote != null && c.Remote.Id == remote.Id);
@@ -832,10 +835,33 @@ namespace EEBUS.Net
             }
         }
 
-        public Task DisconnectAsync(string remoteSki)
+        /// <summary>
+        /// Disconnects the active connection whose remote device has the given SKI.
+        /// </summary>
+        /// <param name="remoteSki">The SKI of the remote device to disconnect.</param>
+        /// <returns>
+        /// <c>true</c> if a matching connection was found and disconnect was attempted;
+        /// <c>false</c> if no connection currently matches the given SKI.
+        /// </returns>
+        public async Task<bool> DisconnectAsync(string remoteSki)
         {
-            var host = _connections.FirstOrDefault(c => c.Value.Remote?.SKI.ToString() == remoteSki).Key;
-            return DisconnectAsync(host);
+            if (string.IsNullOrEmpty(remoteSki))
+                return false;
+
+            // Find the matching connection explicitly instead of relying on
+            // FirstOrDefault().Key, which would otherwise hand back a default
+            // HostString on a miss and silently "disconnect" nothing.
+            var match = _connections.FirstOrDefault(c =>
+                c.Value?.Remote?.SKI.ToString() == remoteSki);
+
+            if (match.Value == null)
+            {
+                Debug.WriteLine($"DisconnectAsync: no active connection found for SKI {remoteSki}");
+                return false;
+            }
+
+            await DisconnectAsync(match.Key).ConfigureAwait(false);
+            return true;
         }
 
         public void Start()
@@ -864,7 +890,7 @@ namespace EEBUS.Net
                 }
                 else
                 {
-                    byte[] hash = SHA1.Create().ComputeHash(args.Certificate.GetPublicKey() ?? []);
+                    byte[] hash = SHA1.HashData(args.Certificate.GetPublicKey() ?? []);
                     var ski = new SKI(hash);
                     var skiString = ski.ToString();
 
@@ -907,13 +933,57 @@ namespace EEBUS.Net
 
         public void Stop()
         {
-            _shipListener?.StopAsync();
+            StopAsync().GetAwaiter().GetResult();
+        }
+
+        public async Task StopAsync()
+        {
+            // Stop the listener first so no new connections come in while we tear down.
+            if (_shipListener != null)
+            {
+                try
+                {
+                    await _shipListener.StopAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("EEBUSManager.StopAsync: SHIPListener stop failed: " + ex.Message);
+                }
+            }
+
             _mDNSClient.Stop();
+
+            // Best-effort disconnect of every live connection. Snapshot first so we
+            // don't enumerate _connections while DisconnectAsync mutates it.
+            HostString[] hosts = _connections.Keys.ToArray();
+            foreach (var host in hosts)
+            {
+                try
+                {
+                    await DisconnectAsync(host).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("EEBUSManager.StopAsync: disconnect failed for " + host + ": " + ex.Message);
+                }
+            }
         }
 
         public void Dispose()
         {
-            Stop();
+            // Cancel first so background loops (ReconnectLoopAsync, mDNS) start unwinding
+            // before we wait on graceful shutdown.
+            try { _cts.Cancel(); } catch (ObjectDisposedException) { }
+
+            try
+            {
+                StopAsync().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("EEBUSManager.Dispose: StopAsync failed: " + ex.Message);
+            }
+
             _devices.RemoteDeviceFound -= OnRemoteDeviceFound;
             _devices.ServerStateChanged -= OnServerStateChanged;
             _devices.ClientStateChanged -= OnClientStateChanged;
@@ -924,8 +994,6 @@ namespace EEBUS.Net
             _devices.Local.RemoveUseCaseEvents(this.monitoringUseCasesEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.deviceConnectionStatusEventHandler);
 
-            _cts.Cancel();
-
             lpcStateMachine.Dispose();
             lppStateMachine.Dispose();
 
@@ -933,6 +1001,9 @@ namespace EEBUS.Net
             {
                 _serviceDiscovery?.Dispose();
             }
+
+            try { _cert?.Dispose(); } catch { }
+            try { _cts.Dispose(); } catch { }
         }
 
         //For debug only

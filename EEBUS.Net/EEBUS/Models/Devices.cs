@@ -39,7 +39,7 @@ namespace EEBUS.Models
             }
         }
 
-        public RemoteDevice GetOrCreateRemote(string id, string ski, string url, string name)
+        public RemoteDevice? GetOrCreateRemote(string id, string ski, string url, string name)
         {
             if (null != Local && Local.SKI == new SKI(ski))
                 return null;
@@ -94,6 +94,30 @@ namespace EEBUS.Models
             lock (this.mutex)
             {
                 return Remote.FirstOrDefault(r => r.Id == id);
+            }
+        }
+
+        /// <summary>
+        /// Returns a snapshot of the Remote list. Safe to enumerate without
+        /// holding the internal mutex.
+        /// </summary>
+        public RemoteDevice[] GetRemoteSnapshot()
+        {
+            lock (this.mutex)
+            {
+                return Remote.ToArray();
+            }
+        }
+
+        /// <summary>
+        /// Returns a snapshot of the Paired list. Safe to enumerate without
+        /// holding the internal mutex.
+        /// </summary>
+        public PairedDevice[] GetPairedSnapshot()
+        {
+            lock (this.mutex)
+            {
+                return Paired.ToArray();
             }
         }
 

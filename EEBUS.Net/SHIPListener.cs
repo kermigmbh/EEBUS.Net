@@ -27,6 +27,7 @@ namespace EEBUS
         private Devices devices;
         private CancellationTokenSource _cts = new CancellationTokenSource();
         private WebApplication? _app;
+        private X509Certificate2? _serverCertificate;
         //public event EventHandler<DeviceConnectionChangedEventArgs>? OnDeviceConnectionChanged;
 
         public Func<DeviceConnectionChangedEventArgs, Task>? OnDeviceConnectionChanged;
@@ -43,8 +44,18 @@ namespace EEBUS
 
         public Task StartAsync(int port)
         {
-            _cts.Cancel();
+            var previousCts = _cts;
             _cts = new CancellationTokenSource();
+            try
+            {
+                previousCts.Cancel();
+            }
+            catch (ObjectDisposedException) { }
+            finally
+            {
+                try { previousCts.Dispose(); } catch { }
+            }
+
             return Task.Run(async () =>
             {
                 try
@@ -65,8 +76,36 @@ namespace EEBUS
             _cts.Cancel();
             if (_app != null)
             {
-                await _app.StopAsync();
+                try
+                {
+                    await _app.StopAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("SHIPListener.StopAsync: app stop failed: " + ex.Message);
+                }
+
+                try
+                {
+                    await _app.DisposeAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("SHIPListener.StopAsync: app dispose failed: " + ex.Message);
+                }
+
+                _app = null;
             }
+
+            // Only safe to dispose AFTER Kestrel has fully drained; in-flight
+            // handshakes may otherwise touch a disposed certificate.
+            if (_serverCertificate != null)
+            {
+                try { _serverCertificate.Dispose(); } catch { }
+                _serverCertificate = null;
+            }
+
+            try { _cts.Dispose(); } catch { }
         }
 
         private bool CertificateCallback(object sender, X509Certificate? cert, X509Chain? chain, SslPolicyErrors sslPolicyErrors, IPEndPoint remoteEndpoint)
@@ -77,7 +116,7 @@ namespace EEBUS
             }
            // Console.WriteLine(remoteEndpoint.ToString());
 
-            byte[] hash = SHA1.Create().ComputeHash(cert.GetPublicKey() ?? []);
+            byte[] hash = SHA1.HashData(cert.GetPublicKey() ?? []);
             var ski = new SKI(hash);
             var skiString = ski.ToString();
 
@@ -92,13 +131,20 @@ namespace EEBUS
 
         private async Task StartStandaloneInternalAsync(int port, CancellationToken cancellationToken)
         {
+            // Load the server certificate exactly once. Without this, both
+            // ConfigureHttpsDefaults and OnAuthenticate would call GenerateCert
+            // per TLS handshake - hitting the disk, taking the generator's static
+            // lock and leaking a fresh X509Certificate2 native handle every time.
+            _serverCertificate ??= CertificateGenerator.GenerateCert(_settings.BasePath, _settings.Certificate);
+            var serverCertificate = _serverCertificate;
+
             var builder = WebApplication.CreateEmptyBuilder(new WebApplicationOptions());
             builder.WebHost.UseKestrel();
             builder.WebHost.ConfigureKestrel(options =>
             {
                 options.ConfigureHttpsDefaults(httpOptions =>
                 {
-                    httpOptions.ServerCertificate = CertificateGenerator.GenerateCert(_settings.BasePath, _settings.Certificate);
+                    httpOptions.ServerCertificate = serverCertificate;
 
                     //commented, because the settings are in OnAuthenticate. It will not work if both are set!!!
                     //httpOptions.ClientCertificateMode = ClientCertificateMode.RequireCertificate;
@@ -114,11 +160,11 @@ namespace EEBUS
                         //var remoteEndPoint = socketFeature?.Socket.RemoteEndPoint as IPEndPoint;
                         //var remoteIp = remoteEndPoint?.Address;
                         authenticationOptions.ClientCertificateRequired = true;
-                        authenticationOptions.ServerCertificate = CertificateGenerator.GenerateCert(_settings.BasePath, _settings.Certificate);
+                        authenticationOptions.ServerCertificate = serverCertificate;
                         authenticationOptions.RemoteCertificateValidationCallback =
                             (sender, cert, chain, sslPolicyErrors) =>
                             {
-                                
+
                                 return CertificateCallback(sender, cert, chain, sslPolicyErrors, connectionContext?.RemoteEndPoint as IPEndPoint ?? throw new Exception("not a ip endpoint: " + connectionContext?.RemoteEndPoint?.ToString()));
                             };
                     };
@@ -148,6 +194,7 @@ namespace EEBUS
             app.Run(async httpContext =>
             {
                 Server? server = null;
+                bool connectedFired = false;
                 try
                 {
                     if (!httpContext.WebSockets.IsWebSocketRequest)
@@ -169,19 +216,21 @@ namespace EEBUS
                     }
 
                     var cert = httpContext.Connection.ClientCertificate;
-                    byte[] hash = SHA1.Create().ComputeHash(cert?.GetPublicKey() ?? []);
+                    byte[] hash = SHA1.HashData(cert?.GetPublicKey() ?? []);
                     var ski = new SKI(hash);
 
-                    server = Server.Get(ski.ToString());
-                    if (server != null)
+                    // If a Server is already registered for this SKI, notify the
+                    // manager that the old connection is going away before we
+                    // create the replacement. The new Server's constructor will
+                    // close the previous instance in the background, but the
+                    // manager owns the Connected/Disconnected bookkeeping and
+                    // must be told explicitly - otherwise the old entry leaks
+                    // in _connections (different RemoteHost) and no
+                    // OnDeviceConnectionStatusChanged(Unknown) is fired.
+                    var previous = Server.Get(ski.ToString());
+                    if (previous != null && OnDeviceConnectionChanged != null)
                     {
-                        Debug.WriteLine("Middleware Weiterleitung, Server vorhanden und stoppen");
-                        await server.CloseAsync().ConfigureAwait(false);
-
-                        if (OnDeviceConnectionChanged != null)
-                        {
-                            await OnDeviceConnectionChanged(new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Disconnected });
-                        }
+                        await OnDeviceConnectionChanged(new DeviceConnectionChangedEventArgs() { Connection = previous, ChangeType = DeviceConnectionChangeType.Disconnected });
                     }
 
                     var socket = await httpContext.WebSockets.AcceptWebSocketAsync("ship").ConfigureAwait(false);
@@ -194,6 +243,7 @@ namespace EEBUS
                     server = new Server(ski.ToString(), httpContext.Request.Host, socket, this.devices);
                     if (OnDeviceConnectionChanged != null)
                     {
+                        connectedFired = true;
                         await OnDeviceConnectionChanged(new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Connected });
                     }
                     await server.Do(_cts.Token).ConfigureAwait(false);
@@ -208,7 +258,12 @@ namespace EEBUS
                 }
                 finally
                 {
-                    if (server != null && OnDeviceConnectionChanged != null)
+                    // Only fire Disconnected for connections we actually fired
+                    // Connected for. Without this guard the old code would emit
+                    // a spurious Disconnected event for the previous Server we
+                    // briefly held a reference to on the replace-existing path,
+                    // and for early returns that never produced a live server.
+                    if (server != null && connectedFired && OnDeviceConnectionChanged != null)
                     {
                         await OnDeviceConnectionChanged(new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Disconnected });
                     }
