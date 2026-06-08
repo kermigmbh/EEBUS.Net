@@ -121,7 +121,7 @@ namespace EEBUS.Net
                 try
                 {
                     Debug.WriteLine("[EEBUS] Running Reconnect Loop. Current connections: " + _connections.Count);
-                    foreach (var device in _devices.Remote)
+                    foreach (var device in _devices.GetRemotes())
                     {
                         lock (_lock)
                         {
@@ -154,7 +154,7 @@ namespace EEBUS.Net
         {
             // Snapshot Paired/Remote under the Devices mutex to avoid racing
             // with GetOrCreatePaired/GetOrCreateRemote mutations elsewhere.
-            var pairedSnapshot = _devices.GetPairedSnapshot();
+            var pairedSnapshot = _devices.GetPairedDevices();
             var pairedAddCu = pairedSnapshot.FirstOrDefault(p => p.TrustType == EEBUS.Models.ShipTrustType.AddCu);
             if (pairedAddCu == null) return true;  //no device yet paired via ship pairing, so we can accept new requests
 
@@ -573,7 +573,7 @@ namespace EEBUS.Net
 
         public DeviceData? GetRemoteData(string ski)
         {
-            RemoteDevice? remote = _devices.Remote.FirstOrDefault(r => r.SKI.ToString() == ski);
+            RemoteDevice? remote = _devices.GetRemotes().FirstOrDefault(r => r.SKI.ToString() == ski);
             if (remote == null) return null;
 
             var connection = Connections.FirstOrDefault(c => c.Remote != null && c.Remote.SKI.ToString() == ski);
@@ -613,7 +613,7 @@ namespace EEBUS.Net
                 DefaultIgnoreCondition = JsonIgnoreCondition.Never
             };
 
-            var projection = _devices.Remote.Select(rd => new
+            var projection = _devices.GetRemotes().Select(rd => new
             {
                 id = rd.Id,
                 name = rd.Name,
@@ -630,7 +630,7 @@ namespace EEBUS.Net
 
         public IEnumerable<RemoteDeviceData> GetConnectedDevices()
         {
-            return _devices.Remote.Select(rd => new RemoteDeviceData
+            return _devices.GetRemotes().Select(rd => new RemoteDeviceData
             {
                 Id = rd.Id,
                 Name = rd.Name,
@@ -674,7 +674,7 @@ namespace EEBUS.Net
         {
             SKI Ski = new SKI(ski);
 
-            RemoteDevice? device = _devices.Remote.FirstOrDefault(rd => rd.SKI == Ski);
+            RemoteDevice? device = _devices.GetRemotes().FirstOrDefault(rd => rd.SKI == Ski);
             if (null == device)
             {
                 return null;
@@ -715,12 +715,11 @@ namespace EEBUS.Net
                     //strict mode (only ship paired devices can communicate):
                     if (_settings.UseStrictShipPairing)
                     {
-                        bool isUntrusted = _devices.Paired.FirstOrDefault(p => p.TrustId == device.Id && p.TrustType == EEBUS.Models.ShipTrustType.None) != null;
+                        bool isUntrusted = _devices.GetPairedDevices().FirstOrDefault(p => p.TrustId == device.Id && p.TrustType == EEBUS.Models.ShipTrustType.None) != null;
                         if (isUntrusted) return false;
                     }
 
-                    var paired = _devices.Paired.FirstOrDefault(p => p.TrustId == device.Id && p.TrustType == EEBUS.Models.ShipTrustType.AddCu);
-
+                    var paired = _devices.GetPairedDevices().FirstOrDefault(p => p.TrustId == device.Id && p.TrustType == EEBUS.Models.ShipTrustType.AddCu);
                     if (paired == null) //device was never paired via ship pairing -> ski verification
                     {
                         byte[] hash = SHA1.HashData(cert.GetPublicKey() ?? []);
@@ -869,14 +868,14 @@ namespace EEBUS.Net
             _shipListener = new SHIPListener(_devices, _settings);
             _shipListener.OnNewConnectionValidation = (args) =>
             {
-                RemoteDevice? device = _devices.Remote.FirstOrDefault(rd => rd.SKI.ToString() == args.Ski);
+                RemoteDevice? device = _devices.GetRemotes().FirstOrDefault(rd => rd.SKI.ToString() == args.Ski);
                 if (null == device)
                 {
                     Console.WriteLine($"remote device with SKI {args.Ski} has no mDNS advertisements");
                     return false;
                 }
 
-                var paired = _devices.Paired.FirstOrDefault(p => p.TrustId == device.Id);
+                var paired = _devices.GetPairedDevices().FirstOrDefault(p => p.TrustId == device.Id);
 
                 if (paired != null) //device was added via ship pairing
                 {

@@ -13,8 +13,9 @@ namespace EEBUS.Models
         }
 
         public LocalDevice Local { get; private set; }
-        public List<RemoteDevice> Remote { get; set; } = [];
-        public List<PairedDevice> Paired { get; set; } = [];
+
+        private List<RemoteDevice> _remote = [];
+        private List<PairedDevice> _paired = [];
 
         private object mutex = new();
 
@@ -49,12 +50,12 @@ namespace EEBUS.Models
 
             lock (this.mutex)
             {
-                remote = Remote.FirstOrDefault(r => r.Id == id);
+                remote = _remote.FirstOrDefault(r => r.Id == id);
 
                 if (null == remote)
                 {
                     remote = new RemoteDevice(id, ski, url, name, FireServerStateChanged, FireClientStateChanged);
-                    Remote.Add(remote);
+                    _remote.Add(remote);
                     foundNew = true;
                 }
             }
@@ -70,20 +71,20 @@ namespace EEBUS.Models
             PairedDevice? paired = null;
             lock (this.mutex)
             {
-                paired = Paired.FirstOrDefault(p => p.TrustId == trustId && p.TrustPar == trustPar);
+                paired = _paired.FirstOrDefault(p => p.TrustId == trustId && p.TrustPar == trustPar);
 
                 if (paired == null)
                 {
                     paired = new PairedDevice(trustPar, trustId, trustType);
                     if (trustType == ShipTrustType.AddCu)   //We can only ever have one device at a time paired with addCu (according to spec), so we set all other ones to none and add the new one
                     {
-                        IEnumerable<PairedDevice> pairedAddCu = Paired.Where(p => p.TrustType == ShipTrustType.AddCu);
+                        IEnumerable<PairedDevice> pairedAddCu = _paired.Where(p => p.TrustType == ShipTrustType.AddCu);
                         foreach (var item in pairedAddCu)
                         {
                             item.TrustType = ShipTrustType.None; 
                         }
                     }
-                    Paired.Add(paired);
+                    _paired.Add(paired);
                 }
             }
             return paired;
@@ -93,7 +94,7 @@ namespace EEBUS.Models
         {
             lock (this.mutex)
             {
-                return Remote.FirstOrDefault(r => r.Id == id);
+                return _remote.FirstOrDefault(r => r.Id == id);
             }
         }
 
@@ -101,11 +102,11 @@ namespace EEBUS.Models
         /// Returns a snapshot of the Remote list. Safe to enumerate without
         /// holding the internal mutex.
         /// </summary>
-        public RemoteDevice[] GetRemoteSnapshot()
+        public RemoteDevice[] GetRemotes()
         {
             lock (this.mutex)
             {
-                return Remote.ToArray();
+                return _remote.ToArray();
             }
         }
 
@@ -113,11 +114,11 @@ namespace EEBUS.Models
         /// Returns a snapshot of the Paired list. Safe to enumerate without
         /// holding the internal mutex.
         /// </summary>
-        public PairedDevice[] GetPairedSnapshot()
+        public PairedDevice[] GetPairedDevices()
         {
             lock (this.mutex)
             {
-                return Paired.ToArray();
+                return _paired.ToArray();
             }
         }
 
@@ -135,10 +136,10 @@ namespace EEBUS.Models
         {
             lock (this.mutex)
             {
-                foreach (RemoteDevice remote in Remote.ToArray())
+                foreach (RemoteDevice remote in _remote.ToArray())
                 {
                     if (remote.OlderThan(new TimeSpan(1, 0, 0)))
-                        Remote.Remove(remote);
+                        _remote.Remove(remote);
                 }
             }
         }
