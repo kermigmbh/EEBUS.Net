@@ -112,8 +112,6 @@ namespace ConsoleDemo
                 }
             }
 
-            _manager.Stop();
-
             foreach (string hostString in s_connectedClients)
             {
                 await _manager.DisconnectAsync(new Microsoft.AspNetCore.Http.HostString(hostString));
