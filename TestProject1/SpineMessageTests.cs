@@ -33,8 +33,7 @@ namespace TestProject1
         {
             var devices = new Devices();
             devices.GetOrCreateLocal(GetSkiBytes(DefaultLocalSki), GetDeviceSettings());
-            var remoteDevice = new RemoteDevice("TestRemote", DefaultRemoteSki, string.Empty, "TestRemote", default, default);
-            devices.Remote.Add(remoteDevice);
+            var remoteDevice = devices.GetOrCreateRemote("TestRemote", DefaultRemoteSki, string.Empty, "TestRemote");
             var client = new Client(default, default, devices, remoteDevice);
             SetDiscoveryData(remoteDevice, client);
             return client;
@@ -187,8 +186,7 @@ namespace TestProject1
                 Port = 7201,
                 Entities = [new EntitySettings { Type = "DeviceInformation" }]
             });
-            var remoteDevice = new RemoteDevice("TestRemote", DefaultRemoteSki, string.Empty, "TestRemote", default, default);
-            devices.Remote.Add(remoteDevice);
+            var remoteDevice = devices.GetOrCreateRemote("TestRemote", DefaultRemoteSki, string.Empty, "TestRemote");
             Connection connectionWithoutFeature = new Client(default, default, devices, remoteDevice);
 
             // Manually add a data structure without registering the ElectricalConnection server feature

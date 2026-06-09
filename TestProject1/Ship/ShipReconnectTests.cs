@@ -70,9 +70,7 @@ namespace TestProject1.Ship
 
             if (withRegisteredRemote)
             {
-                devices.Remote.Add(
-                    new RemoteDevice(RemoteId, RemoteSki, string.Empty, "TestRemote",
-                                     default, default));
+                devices.GetOrCreateRemote(RemoteId, RemoteSki, string.Empty, "TestRemote");
             }
 
             return devices;
@@ -101,7 +99,8 @@ namespace TestProject1.Ship
             var b = new SKI(RemoteSki);
             Assert.True(a != b, "Verschiedene Bytes müssen != ergeben.");
         }
-
+        
+        [Fact]
         public void Devices_GetOrCreateRemote_RejectsSelfSki()
         {
             var devices = CreateDevices(withRegisteredRemote: false);
@@ -117,14 +116,14 @@ namespace TestProject1.Ship
             var second  = devices.GetOrCreateRemote(RemoteId, RemoteSki, string.Empty, "R");
 
             Assert.Same(first, second);
-            Assert.Equal(1, devices.Remote.Count);
+            Assert.Single(devices.GetRemotes());
         }
 
         [Fact]
         public void Client_Reconnect_DevicesRemoteIsUnchangedAfterReconnect()
         {
             var devices        = CreateDevices();
-            var originalRemote = devices.Remote[0];
+            var originalRemote = devices.GetRemotes()[0];
 
             // Erste Verbindung aufbauen und wieder trennen
             var ws1     = new FakeWebSocket();
@@ -136,8 +135,8 @@ namespace TestProject1.Ship
             var client2 = new TestClient(ws2, devices, originalRemote);
             client2.SetState(Connection.EState.Connected);
 
-            Assert.Equal(1, devices.Remote.Count);
-            Assert.Same(originalRemote, devices.Remote[0]);
+            Assert.Single(devices.GetRemotes());
+            Assert.Same(originalRemote, devices.GetRemotes()[0]);
         }
 
         [Fact]
@@ -156,7 +155,7 @@ namespace TestProject1.Ship
             Assert.NotNull(found1);
             Assert.NotNull(found2);
             Assert.Same(found1, found2);      // selbes Objekt, keine Kopie
-            Assert.Equal(1, devices.Remote.Count);
+            Assert.Single(devices.GetRemotes());
         }
 
         [Fact]

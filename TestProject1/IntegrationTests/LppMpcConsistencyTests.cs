@@ -83,9 +83,7 @@ namespace TestProject1.IntegrationTests
                     },
                 ],
             });
-            var remoteDevice = new RemoteDevice(
-                "TestRemote", TestRemoteSki, string.Empty, "TestRemote", default, default);
-            devices.Remote.Add(remoteDevice);
+            var remoteDevice = devices.GetOrCreateRemote("TestRemote", TestRemoteSki, string.Empty, "TestRemote");
             return new Client(default, default, devices, remoteDevice);
         }
 

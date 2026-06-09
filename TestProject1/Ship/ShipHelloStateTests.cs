@@ -47,10 +47,8 @@ namespace TestProject1.Ship
                     Type = "EnergyManagementSystem", Serial = "SHIP001", Port = 7200,
                     Entities = [new EntitySettings { Type = "DeviceInformation" }],
                 });
-            var remote = new RemoteDevice(
-                "TestRemote", "c09ff4c4dc2916414714662366f968f4743af7b7",
-                string.Empty, "TestRemote", default, default);
-            devices.Remote.Add(remote);
+
+            var remote = devices.GetOrCreateRemote("TestRemote", "c09ff4c4dc2916414714662366f968f4743af7b7", string.Empty, "TestRemote");
             return new TestClient(fakeWs, devices, remote);
         }
 

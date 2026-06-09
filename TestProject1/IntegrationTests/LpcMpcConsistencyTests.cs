@@ -82,10 +82,8 @@ namespace TestProject1.IntegrationTests
                     },
                 ],
             });
-            var remoteDevice = new RemoteDevice(
-                "TestRemote", TestRemoteSki, string.Empty, "TestRemote", default, default);
-            devices.Remote.Add(remoteDevice);
-            return new Client(default, default, devices, remoteDevice);
+            var remote = devices.GetOrCreateRemote("TestRemote", TestRemoteSki, string.Empty, "TestRemote");
+            return new Client(default, default, devices, remote);
         }
 
         private static MeasurementServerFeature GetMeasurementFeature(Connection connection)

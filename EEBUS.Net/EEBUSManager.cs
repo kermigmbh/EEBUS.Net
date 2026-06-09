@@ -930,11 +930,6 @@ namespace EEBUS.Net
             }
         }
 
-        public void Stop()
-        {
-            StopAsync().GetAwaiter().GetResult();
-        }
-
         public async Task StopAsync()
         {
             // Stop the listener first so no new connections come in while we tear down.

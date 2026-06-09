@@ -125,7 +125,7 @@ public class DevicesController : ControllerBase, IDisposable
 			DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never
 		};
 
-		var projection = this.devices?.Remote.Select(rd => new
+		var projection = this.devices?.GetRemotes().Select(rd => new
 		{
 			id			= rd.Id,
 			name		= rd.Name,
@@ -143,7 +143,7 @@ public class DevicesController : ControllerBase, IDisposable
 	{
 		SKI Ski = new SKI( ski );
 		
-		RemoteDevice? device = this.devices.Remote.FirstOrDefault( rd => rd.SKI == Ski );
+		RemoteDevice? device = this.devices.GetRemotes().FirstOrDefault( rd => rd.SKI == Ski );
 		if ( null == device )
 			return;
 

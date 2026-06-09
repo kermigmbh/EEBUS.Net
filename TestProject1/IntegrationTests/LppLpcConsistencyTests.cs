@@ -66,9 +66,8 @@ public class LppLpcConsistencyTests : EebusTests
                 },
             ],
         });
-        var remoteDevice = new RemoteDevice(
-            "TestRemote", TestRemoteSki, string.Empty, "TestRemote", default, default);
-        devices.Remote.Add(remoteDevice);
+
+        var remoteDevice = devices.GetOrCreateRemote("TestRemote", TestRemoteSki, string.Empty, "TestRemote");
         Connection connection = new Client(default, default, devices, remoteDevice);
 
         ElectricalConnectionCharacteristicDataStructure lpcCharacteristic = connection.Local
