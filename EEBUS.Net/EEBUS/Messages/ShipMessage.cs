@@ -1,5 +1,6 @@
 ﻿using EEBUS.Enums;
 using Makaretu.Dns;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
@@ -69,17 +70,17 @@ namespace EEBUS.Messages
             return obj;
         }
 
-        public override Task Send(WebSocket ws)
+        public override Task Send(WebSocket ws, ILogger? logger = null)
         {
-            return SendInternalAsync(ws);
+            return SendInternalAsync(ws, logger);
         }
 
-        public Task Resend(WebSocket ws)
+        public Task Resend(WebSocket ws, ILogger? logger = null)
         {
-            return SendInternalAsync(ws, SHIPMessageTimeout.T_HELLO_PROLONG_WAITING_GAP);
+            return SendInternalAsync(ws, logger, SHIPMessageTimeout.T_HELLO_PROLONG_WAITING_GAP);
         }
 
-        private async Task SendInternalAsync(WebSocket ws, int timeoutMilliseconds = SHIPMessageTimeout.CMI_TIMEOUT)
+        private async Task SendInternalAsync(WebSocket ws, ILogger? logger = null, int timeoutMilliseconds = SHIPMessageTimeout.CMI_TIMEOUT)
         {
             byte[] msg = ToJson();
             string msgStr = Encoding.Default.GetString(msg);
@@ -88,11 +89,11 @@ namespace EEBUS.Messages
             this.sentData[0] = GetDataType();
             Buffer.BlockCopy(msg, 0, this.sentData, 1, msg.Length);
 
-            Debug.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " ---> " + this.ToString() + "\n");
+            logger?.LogTrace(DateTime.Now.ToString("HH:mm:ss.fff") + " ---> " + this.ToString() + "\n");
             await ws.SendAsync(this.sentData, WebSocketMessageType.Binary, true, new CancellationTokenSource(timeoutMilliseconds).Token).ConfigureAwait(false);
         }
 
-        static public async Task<T> Receive(WebSocket ws, int timeout = SHIPMessageTimeout.CMI_TIMEOUT)
+        static public async Task<T> Receive(WebSocket ws, ILogger? logger = null, int timeout = SHIPMessageTimeout.CMI_TIMEOUT)
         {
             byte[] msg = new byte[10240];
             WebSocketReceiveResult result = await ws.ReceiveAsync(msg, new CancellationTokenSource(timeout).Token).ConfigureAwait(false);
@@ -103,7 +104,7 @@ namespace EEBUS.Messages
                 throw new Exception($"Expected message of type {template.GetDataType()}!");
 
             var ret = template.FromJsonVirtual(msg/*, null*/ );
-            Debug.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " re <---" + ret.ToString() + "\n");
+            logger?.LogTrace(DateTime.Now.ToString("HH:mm:ss.fff") + "<---" + ret.ToString() + "\n");
             return ret;
         }
     }

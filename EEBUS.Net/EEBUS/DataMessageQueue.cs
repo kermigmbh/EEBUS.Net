@@ -1,4 +1,5 @@
 ﻿using EEBUS.SHIP.Messages;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Threading.Channels;
 
@@ -9,10 +10,12 @@ namespace EEBUS
         private readonly Channel<DataMessage> _channel;
         private readonly Connection _connection;
         private readonly Task _workerTask;
+        private ILogger? _logger;
 
-        public DataMessageQueue(Connection connection)
+        public DataMessageQueue(Connection connection, ILogger? logger = null)
         {
             _connection = connection;
+            _logger = logger;
 
             // Unbounded channel, single reader, multiple writers
             _channel = Channel.CreateUnbounded<DataMessage>(
@@ -71,7 +74,7 @@ namespace EEBUS
                     try
                     {
                         //Debug.WriteLine("===> " + message.ToString());
-                        await message.Send(_connection.WebSocket)
+                        await message.Send(_connection.WebSocket, _logger)
                                      .ConfigureAwait(false);
                     }
                     catch (Exception ex)

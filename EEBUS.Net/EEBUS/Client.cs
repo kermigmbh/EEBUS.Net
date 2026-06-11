@@ -5,6 +5,7 @@ using EEBUS.SHIP.Messages;
 using EEBUS.SPINE.Commands;
 using Makaretu.Dns;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text.Json;
@@ -13,8 +14,8 @@ namespace EEBUS
 {
 	public class Client : Connection
 	{
-		public Client(HostString host, WebSocket ws, Devices devices, RemoteDevice remoteDevice)
-			: base(host, ws, devices)
+		public Client(HostString host, WebSocket ws, Devices devices, RemoteDevice remoteDevice, ILogger? logger = null)
+			: base(host, ws, devices, logger)
 		{
 			this.Remote = remoteDevice;
 		}
@@ -105,7 +106,7 @@ namespace EEBUS
 
 			InitMessage initMessage = new InitMessage();
 
-			await initMessage.Send(this.ws).ConfigureAwait(false);
+			await initMessage.Send(this.ws, Logger).ConfigureAwait(false);
 
 			var heart = new HeartBeatTask();
 			Timer beat = new System.Threading.Timer(arg => heart.Beat(arg), this, 4000, 4000);
@@ -135,7 +136,7 @@ namespace EEBUS
 						Console.WriteLine(error);
 
 					EState oldState = this.state;
-					(this.state, this.subState) = await message.NextClientState(this).ConfigureAwait(false);
+					(this.state, this.subState) = await message.NextClientState(this, Logger).ConfigureAwait(false);
 
 					if (null != this.Remote)
 						this.Remote.SetClientState(this.state);

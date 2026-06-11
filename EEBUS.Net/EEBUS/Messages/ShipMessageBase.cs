@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 
 using EEBUS.Enums;
 using EEBUS.Net.EEBUS.Models;
+using Microsoft.Extensions.Logging;
 
 namespace EEBUS.Messages
 {
@@ -44,17 +45,17 @@ namespace EEBUS.Messages
 			return (state, Connection.ESubState.None, null);
 		}
 
-		public virtual async Task<(Connection.EState, Connection.ESubState)> NextServerState( Connection connection )
+		public virtual async Task<(Connection.EState, Connection.ESubState)> NextServerState( Connection connection, ILogger? logger = null)
 		{
 			return (Connection.EState.ErrorOrTimeout, Connection.ESubState.None);
 		}
 
-		public virtual async Task<(Connection.EState, Connection.ESubState)> NextClientState( Connection connection )
+		public virtual async Task<(Connection.EState, Connection.ESubState)> NextClientState( Connection connection, ILogger? logger = null)
 		{
-			return await NextServerState( connection );
+			return await NextServerState( connection, logger );
 		}
 
-		public abstract Task Send( WebSocket ws );
+		public abstract Task Send( WebSocket ws, ILogger? logger = null);
 
 		static protected string GetCommand(ReadOnlySpan<byte> bytes )
 		{

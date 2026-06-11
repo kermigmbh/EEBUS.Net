@@ -4,6 +4,7 @@ using EEBUS.Net;
 using EEBUS.SHIP.Messages;
 using EEBUS.SPINE.Commands;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.WebSockets;
@@ -110,13 +111,15 @@ namespace EEBUS
             }
         }
 
-        public Connection(HostString host, WebSocket ws, Devices devices)
+        protected ILogger? Logger { get; private set; }
+        public Connection(HostString host, WebSocket ws, Devices devices, ILogger? logger = null)
         {
             this.host = host;
             this.ws = ws;
             this.devices = devices;
+            Logger = logger;
 
-            this.WaitingMessages = new(this);
+            this.WaitingMessages = new(this, logger);
             this.BindingAndSubscriptionManager = new BindingAndSubscriptionManager(this);
         }
 
@@ -177,7 +180,7 @@ namespace EEBUS
             try
             {
                 //TODO: rework DataMessageQueue to be able to handle every kind of message, so we can also send the close message over the queue. Could include an option enum, e.g. insert at the start/end, delete queue before insert, etc.
-                await closeMessage.Send(WebSocket).ConfigureAwait(false);
+                await closeMessage.Send(WebSocket, Logger).ConfigureAwait(false);
                 this.state = EState.WaitingForCloseConfirm;
 
                 try
@@ -264,7 +267,7 @@ namespace EEBUS
                 throw new Exception("Message couldn't be recognized");
             }
 
-            Debug.WriteLine(DateTime.Now.ToString("HH:mm:ss.fff") + " <=== " + message.ToString() + "\n");
+            Logger?.LogTrace(DateTime.Now.ToString("HH:mm:ss.fff") + " <--- " + message.ToString() + "\n");
 
             return message;
         }

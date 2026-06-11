@@ -1,5 +1,6 @@
 ﻿using EEBUS.Messages;
 using Makaretu.Dns;
+using Microsoft.Extensions.Logging;
 using System.Text.Json.Serialization;
 
 namespace EEBUS.SHIP.Messages
@@ -35,7 +36,7 @@ namespace EEBUS.SHIP.Messages
             }
         }
 
-        public override async Task<(Connection.EState, Connection.ESubState)> NextServerState(Connection connection)
+        public override async Task<(Connection.EState, Connection.ESubState)> NextServerState(Connection connection, ILogger? logger = null)
         {
             if (connection.State == Connection.EState.WaitingForAccessMethods)
             {
@@ -44,14 +45,14 @@ namespace EEBUS.SHIP.Messages
                     return (Connection.EState.Stopped, Connection.ESubState.None);
                 }
 
-                await Send(connection.WebSocket).ConfigureAwait(false);
+                await Send(connection.WebSocket, logger).ConfigureAwait(false);
                 return (Connection.EState.Connected, Connection.ESubState.None);
             }
 
             throw new Exception("Was waiting for AccessMethods");
         }
 
-        public override async Task<(Connection.EState, Connection.ESubState)> NextClientState(Connection connection)
+        public override async Task<(Connection.EState, Connection.ESubState)> NextClientState(Connection connection, ILogger? logger = null)
         {
             if (connection.State == Connection.EState.WaitingForAccessMethods)
             {

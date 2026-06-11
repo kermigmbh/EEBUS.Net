@@ -1,55 +1,56 @@
 ﻿using EEBUS.Messages;
+using Microsoft.Extensions.Logging;
 
 namespace EEBUS.SHIP.Messages
 {
-	public class AccessMethodsRequestMessage : ShipControlMessage<AccessMethodsRequestMessage>
-	{
-		static AccessMethodsRequestMessage()
-		{
-			Register( new Class() );
-		}
+    public class AccessMethodsRequestMessage : ShipControlMessage<AccessMethodsRequestMessage>
+    {
+        static AccessMethodsRequestMessage()
+        {
+            Register(new Class());
+        }
 
-		public AccessMethodsRequestMessage()
-		{
-		}
+        public AccessMethodsRequestMessage()
+        {
+        }
 
-		public new class Class : ShipControlMessage<AccessMethodsRequestMessage>.Class
-		{
-			public override AccessMethodsRequestMessage Create(ReadOnlySpan<byte> data/*, Connection connection*/ )
-			{
-				return template.FromJsonVirtual( data/*, connection*/ );
-			}
-		}
+        public new class Class : ShipControlMessage<AccessMethodsRequestMessage>.Class
+        {
+            public override AccessMethodsRequestMessage Create(ReadOnlySpan<byte> data/*, Connection connection*/ )
+            {
+                return template.FromJsonVirtual(data/*, connection*/ );
+            }
+        }
 
-		public AccessMethodsRequestType accessMethodsRequest { get; set; } = new();
-	
-		public override async Task<(Connection.EState, Connection.ESubState)> NextServerState( Connection connection )
-		{
-			if ( connection.State == Connection.EState.WaitingForAccessMethodsRequest )
-			{
-				await Send( connection.WebSocket ).ConfigureAwait( false );
-				return (Connection.EState.WaitingForAccessMethods, Connection.ESubState.None);
-			}
+        public AccessMethodsRequestType accessMethodsRequest { get; set; } = new();
 
-			throw new Exception( "Was waiting for AccessMethodsRequest" );
-		}
+        public override async Task<(Connection.EState, Connection.ESubState)> NextServerState(Connection connection, ILogger? logger = null)
+        {
+            if (connection.State == Connection.EState.WaitingForAccessMethodsRequest)
+            {
+                await Send(connection.WebSocket, logger).ConfigureAwait(false);
+                return (Connection.EState.WaitingForAccessMethods, Connection.ESubState.None);
+            }
 
-		public override async Task<(Connection.EState, Connection.ESubState)> NextClientState( Connection connection )
-		{
-			if ( connection.State == Connection.EState.WaitingForAccessMethodsRequest )
-			{
-				AccessMethodsMessage method = new AccessMethodsMessage( connection.Local.DeviceId );
-				await method.Send( connection.WebSocket ).ConfigureAwait( false );
+            throw new Exception("Was waiting for AccessMethodsRequest");
+        }
 
-				return (Connection.EState.WaitingForAccessMethods, Connection.ESubState.None);
-			}
+        public override async Task<(Connection.EState, Connection.ESubState)> NextClientState(Connection connection, ILogger? logger = null)
+        {
+            if (connection.State == Connection.EState.WaitingForAccessMethodsRequest)
+            {
+                AccessMethodsMessage method = new AccessMethodsMessage(connection.Local.DeviceId);
+                await method.Send(connection.WebSocket, logger).ConfigureAwait(false);
 
-			throw new Exception( "Was waiting for PinChecked" );
-		}
-	}
+                return (Connection.EState.WaitingForAccessMethods, Connection.ESubState.None);
+            }
 
-	[System.SerializableAttribute()]
-	public class AccessMethodsRequestType
-	{
-	}
+            throw new Exception("Was waiting for PinChecked");
+        }
+    }
+
+    [System.SerializableAttribute()]
+    public class AccessMethodsRequestType
+    {
+    }
 }

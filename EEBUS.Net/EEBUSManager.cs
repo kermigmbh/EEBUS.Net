@@ -13,6 +13,7 @@ using EEBUS.UseCases;
 using EEBUS.UseCases.ControllableSystem;
 using Makaretu.Dns;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Data.SqlTypes;
 using System.Diagnostics;
@@ -59,8 +60,11 @@ namespace EEBUS.Net
         internal List<Connection> Connections => _connections.Values.ToList();
         internal LocalDevice Localdevice => _devices.Local;
 
-        public EEBUSManager(Settings settings, ServiceDiscovery? serviceDiscovery = null)
+        private ILogger? _logger;
+
+        public EEBUSManager(Settings settings, ServiceDiscovery? serviceDiscovery = null, ILogger? logger = null)
         {
+            _logger = logger;
             if (serviceDiscovery == null)
             {
                 _serviceDiscoveryNeedsDispose = true;
@@ -121,7 +125,7 @@ namespace EEBUS.Net
 
                 try
                 {
-                    Debug.WriteLine("[EEBUS] Running Reconnect Loop. Current connections: " + _connections.Count);
+                    _logger?.LogDebug("[EEBUS] Running Reconnect Loop. Current connections: " + _connections.Count);
                     foreach (var device in _devices.GetRemotes())
                     {
                         lock (_lock)
@@ -132,12 +136,13 @@ namespace EEBUS.Net
                         Connection? connection = Connections.FirstOrDefault(c => c.Remote != null && c.Remote.SKI == device.SKI);
                         if ((connection == null || connection.WebSocket.State != WebSocketState.Open || connection.State != Connection.EState.Connected) && !cancellationToken.IsCancellationRequested)
                         {
-                            Debug.WriteLine($"Device {device.Name} does not have an active connection anymore, reconnecting...");
+                            _logger?.LogDebug($"Device {device.Name} does not have an active connection anymore, reconnecting...");
                             try
                             {
                                 await ConnectAsync(device.SKI.ToString());
-                            } catch (Exception)
+                            } catch (Exception ex)
                             {
+                                _logger?.LogError($"Unable to connect to device {device.Name}: {ex}");
                             }
                         }
                     }
@@ -795,7 +800,7 @@ namespace EEBUS.Net
                     return null;
                 }
 
-                Client client = new Client(hostString, wsClient, _devices, device);
+                Client client = new Client(hostString, wsClient, _devices, device, _logger);
                 if (!_connections.TryAdd(hostString, client))
                 {
                     // Another path inserted a connection for this host while we were
@@ -834,7 +839,7 @@ namespace EEBUS.Net
                 // send close message
                 CloseMessage closeMessage = new CloseMessage(ConnectionClosePhaseType.announce);
                 closeMessage.connectionClose.reason = ConnectionCloseReasonType.removedConnection;
-                await client.PushCloseMessageAsync(closeMessage);
+                await client.PushCloseMessageAsync(closeMessage, _logger);
 
                 // now close websocket
                 await wsClient.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None).ConfigureAwait(false);
@@ -888,7 +893,7 @@ namespace EEBUS.Net
 
         public void Start()
         {
-            _shipListener = new SHIPListener(_devices, _settings);
+            _shipListener = new SHIPListener(_devices, _settings, _logger);
             _shipListener.OnNewConnectionValidation = (args) =>
             {
                 RemoteDevice? device = _devices.GetRemotes().FirstOrDefault(rd => rd.SKI.ToString() == args.Ski);

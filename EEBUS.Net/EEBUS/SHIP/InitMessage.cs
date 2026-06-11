@@ -1,80 +1,81 @@
 ﻿using EEBUS.Enums;
 using EEBUS.Messages;
+using Microsoft.Extensions.Logging;
 
 namespace EEBUS.SHIP.Messages
 {
-	public class InitMessage : ShipInitMessage<InitMessage>
-	{
-		static InitMessage()
-		{
-			Register( new Class() );
-		}
+    public class InitMessage : ShipInitMessage<InitMessage>
+    {
+        static InitMessage()
+        {
+            Register(new Class());
+        }
 
-		public InitMessage()
-		{
-		}
+        public InitMessage()
+        {
+        }
 
-		public new class Class : ShipInitMessage<InitMessage>.Class
-		{
-			public override InitMessage Create(ReadOnlySpan<byte> data/*, Connection connection*/ )
-			{
-				return template.FromJsonVirtual( data/*, connection */);
-			}
-		}
+        public new class Class : ShipInitMessage<InitMessage>.Class
+        {
+            public override InitMessage Create(ReadOnlySpan<byte> data/*, Connection connection*/ )
+            {
+                return template.FromJsonVirtual(data/*, connection */);
+            }
+        }
 
-		public override byte[] bytes { get; set; } = { SHIPMessageType.INIT, SHIPMessageValue.CMI_HEAD };
+        public override byte[] bytes { get; set; } = { SHIPMessageType.INIT, SHIPMessageValue.CMI_HEAD };
 
 
-		public override (Connection.EState, Connection.ESubState, string) ServerTest( Connection.EState state )
-		{
-			string		 error	  = null;
-			Connection.EState newState = state;
+        public override (Connection.EState, Connection.ESubState, string) ServerTest(Connection.EState state)
+        {
+            string error = null;
+            Connection.EState newState = state;
 
-			if ( this.bytes[1] != SHIPMessageValue.CMI_HEAD )
-			{
-				error = "Expected SMI_HEAD payload in INIT message!";
-				newState = Connection.EState.Stopped;
-			}
+            if (this.bytes[1] != SHIPMessageValue.CMI_HEAD)
+            {
+                error = "Expected SMI_HEAD payload in INIT message!";
+                newState = Connection.EState.Stopped;
+            }
 
-			return (newState, Connection.ESubState.None, error);
-		}
+            return (newState, Connection.ESubState.None, error);
+        }
 
-		public override async Task<(Connection.EState, Connection.ESubState)> NextServerState( Connection connection )
-		{
-			if ( connection.State == Connection.EState.Disconnected || connection.State == Connection.EState.Connected )
-			{
-				await Send( connection.WebSocket ).ConfigureAwait( false );
-				return (Connection.EState.WaitingForConnectionHello, Connection.ESubState.None);
-			}
+        public override async Task<(Connection.EState, Connection.ESubState)> NextServerState(Connection connection, ILogger? logger = null)
+        {
+            if (connection.State == Connection.EState.Disconnected || connection.State == Connection.EState.Connected)
+            {
+                await Send(connection.WebSocket, logger).ConfigureAwait(false);
+                return (Connection.EState.WaitingForConnectionHello, Connection.ESubState.None);
+            }
 
-			throw new Exception( "Was waiting for Init" );
-		}
+            throw new Exception("Was waiting for Init");
+        }
 
-		public override (Connection.EState, Connection.ESubState, string) ClientTest( Connection.EState state )
-		{
-			string		 error	  = null;
-			Connection.EState newState = state;
+        public override (Connection.EState, Connection.ESubState, string) ClientTest(Connection.EState state)
+        {
+            string error = null;
+            Connection.EState newState = state;
 
-			if ( this.bytes[1] != SHIPMessageValue.CMI_HEAD )
-			{
-				error = "Expected SMI_HEAD payload in INIT message!";
-				newState = Connection.EState.Stopped;
-			}
+            if (this.bytes[1] != SHIPMessageValue.CMI_HEAD)
+            {
+                error = "Expected SMI_HEAD payload in INIT message!";
+                newState = Connection.EState.Stopped;
+            }
 
-			return (newState, Connection.ESubState.None, error);
-		}
+            return (newState, Connection.ESubState.None, error);
+        }
 
-		public override async Task<(Connection.EState, Connection.ESubState)> NextClientState( Connection connection )
-		{
-			if ( connection.State == Connection.EState.Disconnected || connection.State == Connection.EState.Connected )
-			{
-				ConnectionHelloMessage message = new ConnectionHelloMessage( ConnectionHelloPhaseType.ready, 60000 );
-				await message.Send( connection.WebSocket ).ConfigureAwait( false );
+        public override async Task<(Connection.EState, Connection.ESubState)> NextClientState(Connection connection, ILogger? logger = null)
+        {
+            if (connection.State == Connection.EState.Disconnected || connection.State == Connection.EState.Connected)
+            {
+                ConnectionHelloMessage message = new ConnectionHelloMessage(ConnectionHelloPhaseType.ready, 60000);
+                await message.Send(connection.WebSocket, logger).ConfigureAwait(false);
 
-				return (Connection.EState.WaitingForConnectionHello, Connection.ESubState.None);
-			}
+                return (Connection.EState.WaitingForConnectionHello, Connection.ESubState.None);
+            }
 
-			throw new Exception( "Was waiting for Init" );
-		}
-	}
+            throw new Exception("Was waiting for Init");
+        }
+    }
 }

@@ -1,4 +1,5 @@
 ﻿using EEBUS.Messages;
+using Microsoft.Extensions.Logging;
 
 namespace EEBUS.SHIP.Messages
 {
@@ -28,12 +29,12 @@ namespace EEBUS.SHIP.Messages
 
 		public MessageProtocolHandshakeErrorType messageProtocolHandshakeError { get; set; } = new();
 
-		public override async Task<(Connection.EState, Connection.ESubState)> NextServerState( Connection connection )
+		public override async Task<(Connection.EState, Connection.ESubState)> NextServerState( Connection connection, ILogger? logger = null)
 		{
 			return (Connection.EState.Stopped, Connection.ESubState.None);
 		}
 
-		public override async Task<(Connection.EState, Connection.ESubState)> NextClientState( Connection connection )
+		public override async Task<(Connection.EState, Connection.ESubState)> NextClientState( Connection connection, ILogger? logger = null)
 		{
 			return (Connection.EState.Stopped, Connection.ESubState.None);
 		}

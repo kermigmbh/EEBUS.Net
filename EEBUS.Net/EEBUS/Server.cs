@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 
 using EEBUS.Messages;
 using EEBUS.Models;
+using Microsoft.Extensions.Logging;
 
 namespace EEBUS
 {
@@ -16,8 +17,8 @@ namespace EEBUS
     public class Server : Connection
     {
 
-        public Server(string ski, HostString host, WebSocket ws, Devices devices)
-            : base(host, ws, devices)
+        public Server(string ski, HostString host, WebSocket ws, Devices devices, ILogger? logger = null)
+            : base(host, ws, devices, logger)
         {
             this._ski = ski ?? string.Empty;
 
@@ -87,7 +88,7 @@ namespace EEBUS
                         Console.WriteLine(error);
 
                     EState oldState = this.state;
-                    (this.state, this.subState) = await message.NextServerState(this).ConfigureAwait(false);
+                    (this.state, this.subState) = await message.NextServerState(this, Logger).ConfigureAwait(false);
 
                     if (null == this.Remote)
                     {

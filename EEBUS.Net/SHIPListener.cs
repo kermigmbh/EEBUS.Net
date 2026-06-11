@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Security;
@@ -29,6 +30,7 @@ namespace EEBUS
         private WebApplication? _app;
         private X509Certificate2? _serverCertificate;
         //public event EventHandler<DeviceConnectionChangedEventArgs>? OnDeviceConnectionChanged;
+        private ILogger? _logger;
 
         public Func<DeviceConnectionChangedEventArgs, Task>? OnDeviceConnectionChanged;
 
@@ -36,10 +38,11 @@ namespace EEBUS
 
         public Func<NewConnectionValidationEventArgs, bool>? OnNewConnectionValidation { get; set; } = (NewConnectionValidationEventArgs args) => true;
 
-        public SHIPListener(Devices devices, Settings settings)
+        public SHIPListener(Devices devices, Settings settings, ILogger? logger = null)
         {
             this.devices = devices;
             _settings = settings;
+            _logger = logger;
         }
 
         public Task StartAsync(int port)
@@ -240,7 +243,7 @@ namespace EEBUS
                         return;
                     }
 
-                    server = new Server(ski.ToString(), httpContext.Request.Host, socket, this.devices);
+                    server = new Server(ski.ToString(), httpContext.Request.Host, socket, this.devices, _logger);
                     if (OnDeviceConnectionChanged != null)
                     {
                         connectedFired = true;
