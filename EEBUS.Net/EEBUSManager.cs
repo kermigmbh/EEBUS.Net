@@ -23,6 +23,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.ConstrainedExecution;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
@@ -129,7 +130,7 @@ namespace EEBUS.Net
                         }
 
                         Connection? connection = Connections.FirstOrDefault(c => c.Remote != null && c.Remote.SKI == device.SKI);
-                        if (connection == null && !cancellationToken.IsCancellationRequested)
+                        if ((connection == null || connection.WebSocket.State != WebSocketState.Open || connection.State != Connection.EState.Connected) && !cancellationToken.IsCancellationRequested)
                         {
                             Debug.WriteLine($"Device {device.Name} does not have an active connection anymore, reconnecting...");
                             try
@@ -228,6 +229,28 @@ namespace EEBUS.Net
             return DeviceConnectionStatus.Unknown;
         }
 
+        public string GetConnectionInfo(string ski)
+        {
+            Connection? connection = _connections.Values.FirstOrDefault(c => c.Remote?.SKI.ToString() == ski);
+            if (connection == null) return "No active connection for ski " + ski;
+
+            string connectionType = connection is Client ? "Client" : "Server";
+            string wsState = connection.WebSocket.State.ToString();
+            bool isTrusted = false;
+            lock(_lock)
+            {
+                isTrusted = _trustedSkis.Contains(ski);
+            }
+            string connectionState = connection.State.ToString() + " - " + connection.SubState.ToString();
+
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("Connection type: " + connectionType + ";");
+            sb.AppendLine("Websocket state: " + wsState + ";");
+            sb.AppendLine("Is trusted: " + isTrusted + ";");
+            sb.AppendLine("Connection state: " + connectionState + ";");
+            return sb.ToString();
+        }
+
         private LpcLimitStateMachine lpcStateMachine;
         private LppLimitStateMachine lppStateMachine;
         private MonitoringUseCasesEventHandler monitoringUseCasesEventHandler;
@@ -265,7 +288,7 @@ namespace EEBUS.Net
         {
             public async Task DeviceConnectionStatusUpdatedAsync(Connection connection)
             {
-                if (connection.ConnectionStatus == DeviceConnectionStatus.Connected)
+                if (connection.ConnectionStatus == DeviceConnectionStatus.UseCaseDiscoveryCompleted)
                 {
                     //if (connection.Remote != null && EEBusManager.Localdevice.SKI > connection.Remote.SKI)  //device with bigger ski shall close old connections according to spec
                     //{
@@ -577,7 +600,7 @@ namespace EEBUS.Net
             if (remote == null) return null;
 
             var connection = Connections.FirstOrDefault(c => c.Remote != null && c.Remote.SKI.ToString() == ski);
-            if (connection == null) return null;    //remote does not have an active connection anymore
+            if (connection == null || connection.WebSocket.State != WebSocketState.Open) return null;    //remote does not have an active connection anymore
 
             MeasurementsData? measurements = null;
             AddressType? address = remote.GetFeatureAddress("Measurement", true);

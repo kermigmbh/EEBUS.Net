@@ -39,7 +39,7 @@ namespace EEBUS.SPINE.Commands
 				if (payload != null && connection.Remote != null)
 				{
 					connection.Remote.SetUseCaseData(payload);
-                    connection.ConnectionStatus = Net.DeviceConnectionStatus.Connected;
+                    connection.ConnectionStatus = Net.DeviceConnectionStatus.UseCaseDiscoveryCompleted;
                     await SendDiscoveryCompletedEvent(connection);
                 }
 				return;

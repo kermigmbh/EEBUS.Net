@@ -7,8 +7,6 @@ namespace EEBUS.Net
     public enum DeviceConnectionStatus
     {
         Unknown = 0,
-        NotConnected = 1,
-        HandshakeCompleted = 2,
-        Connected = 3,
+        UseCaseDiscoveryCompleted = 1,
     }
 }
