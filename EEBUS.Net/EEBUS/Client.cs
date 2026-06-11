@@ -25,7 +25,7 @@ namespace EEBUS
 
 		public Task Run(CancellationToken cancellationToken = default)
 		{
-			Debug.WriteLine("Running new Client for device " + this.Remote?.Name);
+			Logger?.LogDebug("Running new Client for device " + this.Remote?.Name);
 
 			lock (_runLock)
 			{
@@ -45,9 +45,9 @@ namespace EEBUS
 					}
 					catch (Exception ex)
 					{
+                        Logger?.LogError(ex, "Client RunInternal escaped exception.");
 						// Observe any exception that escaped RunInternalAsync so it
 						// doesn't become an UnobservedTaskException.
-						Debug.WriteLine("Client RunInternal escaped exception: " + ex);
 					}
 				});
 			}
@@ -83,7 +83,7 @@ namespace EEBUS
 			}
 			catch (Exception ex)
 			{
-				Debug.WriteLine("Client.CloseAsync: CloseOutputAsync failed: " + ex.Message);
+               Logger?.LogError(ex, "Client.CloseAsync: CloseOutputAsync failed.");
 			}
 
 			// Dispose the underlying socket. The Client took ownership of it from
@@ -95,7 +95,7 @@ namespace EEBUS
 			}
 			catch (Exception ex)
 			{
-				Debug.WriteLine("Client.CloseAsync: WebSocket dispose failed: " + ex.Message);
+              Logger?.LogError(ex, "Client.CloseAsync: WebSocket dispose failed.");
 			}
 		}
 
@@ -152,8 +152,7 @@ namespace EEBUS
 			}
 			catch (Exception ex)
 			{
-				// consider logging ex
-				Debug.WriteLine($"Client connection closed with error: {ex.ToString()}");
+              Logger?.LogError(ex, "Client connection closed with error.");
 				this.state = EState.ErrorOrTimeout;
 				if (this.Remote != null)
 				{
@@ -176,7 +175,7 @@ namespace EEBUS
 				}
 				catch (Exception ex)
 				{
-					Debug.WriteLine("Client.RunInternalAsync: CloseAsync in finally failed: " + ex.Message);
+                    Logger?.LogError(ex, "Client.RunInternalAsync: CloseAsync in finally failed.");
 				}
 			}
 		}

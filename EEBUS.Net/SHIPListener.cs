@@ -254,6 +254,7 @@ namespace EEBUS
                 }
                 catch (Exception ex)
                 {
+                    _logger?.LogError(ex, "Error while processing EEBUS websocket request.");
                     Console.WriteLine("Exception: " + ex.Message);
 
                     httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;

@@ -192,7 +192,7 @@ namespace EEBUS
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("PushCloseMessageAsync: failed to send close message: " + ex.Message);
+                Logger?.LogError(ex, "PushCloseMessageAsync: failed to send close message.");
                 throw;
             }
             finally

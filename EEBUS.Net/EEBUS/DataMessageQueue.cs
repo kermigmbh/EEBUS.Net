@@ -89,7 +89,7 @@ namespace EEBUS
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("WorkerLoop crashed: " + ex);
+                _logger?.LogError(ex, "DataMessageQueue worker loop crashed.");
             }
         }
     }

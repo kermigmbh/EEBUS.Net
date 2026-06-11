@@ -149,9 +149,7 @@ namespace EEBUS.Net
                 }
                 catch (Exception ex)
                 {
-                    {
-                        Debug.WriteLine(ex);
-                    }
+                    Debug.WriteLine(ex);
                 }
             }
         }
@@ -822,7 +820,7 @@ namespace EEBUS.Net
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("Connect Error: " + ex.Message);
+                _logger?.LogError(ex, "Connect error for SKI {Ski}.", ski);
                 wsClient?.Dispose();
                 throw;
             }
@@ -839,7 +837,7 @@ namespace EEBUS.Net
                 // send close message
                 CloseMessage closeMessage = new CloseMessage(ConnectionClosePhaseType.announce);
                 closeMessage.connectionClose.reason = ConnectionCloseReasonType.removedConnection;
-                await client.PushCloseMessageAsync(closeMessage, _logger);
+                await client.PushCloseMessageAsync(closeMessage);
 
                 // now close websocket
                 await wsClient.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None).ConfigureAwait(false);
@@ -847,7 +845,7 @@ namespace EEBUS.Net
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("Disconnect Error: " + ex.Message);
+                _logger?.LogError(ex, "Disconnect error for host {Host}.", host);
             }
             finally
             {

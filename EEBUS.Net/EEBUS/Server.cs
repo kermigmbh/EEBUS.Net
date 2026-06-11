@@ -63,7 +63,7 @@ namespace EEBUS
 
         public async Task Do(CancellationToken cancellationToken)
         {
-			Debug.WriteLine("Starting Server for device " + this.Remote?.Name);
+			Logger?.LogDebug("Starting Server for device " + this.Remote?.Name);
             var heart = new HeartBeatTask();
             Timer beat = new System.Threading.Timer(arg => heart.Beat(arg), this, 4000, 4000);
 
