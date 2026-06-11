@@ -140,9 +140,9 @@ namespace EEBUS.Net
                             try
                             {
                                 await ConnectAsync(device.SKI.ToString());
-                            } catch (Exception ex)
+                            } catch (Exception)
                             {
-                                _logger?.LogError($"Unable to connect to device {device.Name}: {ex}");
+                                _logger?.LogError("Unable to connect to device {deviceName}", device.Name);
                             }
                         }
                     }
@@ -854,8 +854,14 @@ namespace EEBUS.Net
                 {
                     await removedClient.CloseAsync();
                 }
-                
-                wsClient.Dispose();
+
+                try
+                {
+                    wsClient.Dispose();
+                }
+                catch (Exception)
+                {
+                }
                 wsClient = null;
             }
         }
