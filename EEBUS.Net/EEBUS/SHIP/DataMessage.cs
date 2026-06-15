@@ -152,8 +152,9 @@ namespace EEBUS.SHIP.Messages
                     }
                 }
             }
-
-            throw new Exception("Was waiting for Data");
+            
+            logger?.LogWarning("Was waiting for Data: {shipMessage}", this.ToString());
+            return (connection.State, connection.SubState);
         }
     }
 

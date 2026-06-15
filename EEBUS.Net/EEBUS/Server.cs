@@ -21,6 +21,7 @@ namespace EEBUS
             : base(host, ws, devices, logger)
         {
             this._ski = ski ?? string.Empty;
+            this.Remote = devices.GetRemotes().FirstOrDefault(r => r.SKI.ToString() == ski);
 
             Server? previous = null;
             lock (mutex)
@@ -63,7 +64,7 @@ namespace EEBUS
 
         public async Task Do(CancellationToken cancellationToken)
         {
-			Logger?.LogDebug("Starting Server for device " + this.Remote?.Name);
+			Logger?.LogDebug("Starting Server for ski {serverSki}", _ski);
             var heart = new HeartBeatTask();
             Timer beat = new System.Threading.Timer(arg => heart.Beat(arg), this, 4000, 4000);
 
@@ -122,7 +123,7 @@ namespace EEBUS
                     this.Remote.LastDisconnectUtc = DateTime.UtcNow;
                 }
 
-                Debug.WriteLine("Exception: " + ex.Message);
+                Logger?.LogError(ex, "Error during Server.Do");
             }
             finally
             {

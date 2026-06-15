@@ -134,7 +134,12 @@ namespace EEBUS.Net
                         }
 
                         Connection? connection = Connections.FirstOrDefault(c => c.Remote != null && c.Remote.SKI == device.SKI);
-                        if ((connection == null || connection.WebSocket.State != WebSocketState.Open || connection.State != Connection.EState.Connected) && !cancellationToken.IsCancellationRequested)
+                        if ((connection == null 
+                            || connection.WebSocket.State != WebSocketState.Open 
+                            || connection.State == Connection.EState.Disconnected
+                            || connection.State == Connection.EState.Stopped
+                            || connection.State == Connection.EState.ErrorOrTimeout) 
+                            && !cancellationToken.IsCancellationRequested)
                         {
                             _logger?.LogDebug($"Device {device.Name} does not have an active connection anymore, reconnecting...");
                             try
@@ -830,7 +835,10 @@ namespace EEBUS.Net
         {
             var wsClient = _connections.TryGetValue(host, out Connection? client) ? client?.WebSocket : null;
             if (client == null || wsClient == null)
+            {
+                _logger?.LogInformation("No connection found for host {Host}.", host);
                 return;
+            }
 
             try
             {
