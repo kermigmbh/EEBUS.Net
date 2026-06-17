@@ -35,7 +35,7 @@ namespace EEBUS.Net
     public class EEBUSManager : IDisposable
     {
         private const int ReconnectLoopIntervalMs = 10000;
-        private ConcurrentDictionary<HostString, Connection> _connections = new();
+        private ConcurrentDictionary<string, Connection> _connections = new();
         private List<string> _trustedSkis = new();
         private object _lock = new object();
 
@@ -54,11 +54,6 @@ namespace EEBUS.Net
 
         private CancellationTokenSource _cts = new();
         private X509Certificate2 _cert;
-
-        public Devices Devices => _devices;
-
-        internal List<Connection> Connections => _connections.Values.ToList();
-        internal LocalDevice Localdevice => _devices.Local;
 
         private ILogger? _logger;
 
@@ -133,19 +128,21 @@ namespace EEBUS.Net
                             if (!_trustedSkis.Contains(device.SKI.ToString())) continue;
                         }
 
-                        Connection? connection = Connections.FirstOrDefault(c => c.Remote != null && c.Remote.SKI == device.SKI);
-                        if ((connection == null 
-                            || connection.WebSocket.State != WebSocketState.Open 
+                        _connections.TryGetValue(device.SKI.ToString(), out Connection? connection);
+
+                        if ((connection == null
+                            || connection.WebSocket.State != WebSocketState.Open
                             || connection.State == Connection.EState.Disconnected
                             || connection.State == Connection.EState.Stopped
-                            || connection.State == Connection.EState.ErrorOrTimeout) 
+                            || connection.State == Connection.EState.ErrorOrTimeout)
                             && !cancellationToken.IsCancellationRequested)
                         {
-                            _logger?.LogDebug($"Device {device.Name} does not have an active connection anymore, reconnecting...");
+                            _logger?.LogDebug("Device {deviceName} does not have an active connection anymore, reconnecting...", device.Name);
                             try
                             {
                                 await ConnectAsync(device.SKI.ToString());
-                            } catch (Exception)
+                            }
+                            catch (Exception)
                             {
                                 _logger?.LogError("Unable to connect to device {deviceName}", device.Name);
                             }
@@ -172,7 +169,11 @@ namespace EEBUS.Net
             var remote = _devices.GetRemote(pairedAddCu.TrustId);   //the remote device corresponding to the paired device
             if (remote == null) return false;
 
-            bool isConnected = Connections.Any(c => c.Remote != null && c.Remote.Id == remote.Id);
+            bool isConnected = _connections.TryGetValue(remote.SKI.ToString(), out Connection? connection)
+                            && connection.WebSocket.State == WebSocketState.Open
+                            && connection.State != Connection.EState.Disconnected
+                            && connection.State != Connection.EState.Stopped
+                            && connection.State != Connection.EState.ErrorOrTimeout;
             if (isConnected) return false;  //do not process pairing requests when we are still connected to an addCu device
 
             TimeSpan diff = DateTime.UtcNow - remote.LastDisconnectUtc;
@@ -228,7 +229,7 @@ namespace EEBUS.Net
 
         public DeviceConnectionStatus GetConnectionStatus(string ski)
         {
-            Connection? connection = _connections.Values.FirstOrDefault(c => c.Remote?.SKI.ToString() == ski);
+            _connections.TryGetValue(ski, out Connection? connection);
             if (connection != null)
             {
                 return connection.ConnectionStatus;
@@ -239,13 +240,13 @@ namespace EEBUS.Net
 
         public string GetConnectionInfo(string ski)
         {
-            Connection? connection = _connections.Values.FirstOrDefault(c => c.Remote?.SKI.ToString() == ski);
+            _connections.TryGetValue(ski, out Connection? connection);
             if (connection == null) return "No active connection for ski " + ski;
 
             string connectionType = connection is Client ? "Client" : "Server";
             string wsState = connection.WebSocket.State.ToString();
             bool isTrusted = false;
-            lock(_lock)
+            lock (_lock)
             {
                 isTrusted = _trustedSkis.Contains(ski);
             }
@@ -271,7 +272,8 @@ namespace EEBUS.Net
                 if (payload == null) return;
                 AddressType serverAddress = localFeatureAddress;
 
-                foreach (Connection connection in EEBusManager.Connections)
+                var connections = EEBusManager._connections.Values.ToList();
+                foreach (Connection connection in connections)
                 {
                     IEnumerable<AddressType> clientAddresses = connection.BindingAndSubscriptionManager.GetSubscriptionsByServerAddress(serverAddress);
 
@@ -607,8 +609,12 @@ namespace EEBUS.Net
             RemoteDevice? remote = _devices.GetRemotes().FirstOrDefault(r => r.SKI.ToString() == ski);
             if (remote == null) return null;
 
-            var connection = Connections.FirstOrDefault(c => c.Remote != null && c.Remote.SKI.ToString() == ski);
-            if (connection == null || connection.WebSocket.State != WebSocketState.Open) return null;    //remote does not have an active connection anymore
+            //var connection = Connections.FirstOrDefault(c => c.Remote != null && c.Remote.SKI.ToString() == ski);
+            if (!_connections.TryGetValue(ski, out Connection? connection))
+            {
+                return null;
+            }
+            if (connection.WebSocket.State != WebSocketState.Open) return null;    //remote does not have an active connection anymore
 
             MeasurementsData? measurements = null;
             AddressType? address = remote.GetFeatureAddress("Measurement", true);
@@ -696,42 +702,24 @@ namespace EEBUS.Net
             }
         }
 
-        /// <summary>
-        /// returns hoststring if success, otherwise null or exception
-        /// </summary>
-        /// <param name="ski"></param>
-        /// <returns></returns>
-        public async Task<string?> ConnectAsync(string ski)
+        public async Task ConnectAsync(string ski)
         {
             SKI Ski = new SKI(ski);
 
             RemoteDevice? device = _devices.GetRemotes().FirstOrDefault(rd => rd.SKI == Ski);
-            if (null == device)
-            {
-                return null;
-            }
+            if (device == null) return;
 
             Uri uri = new Uri("wss://" + device.Url);
-            HostString hostString = new HostString(uri.Host, uri.Port);
 
             ClientWebSocket? wsClient = null;
             try
             {
-                // Any existing connection for this SKI counts as a hit, regardless of
-                // host/port (covers the case where we already have a server-side
-                // connection on a different URI than the one mDNS now advertises).
-                Connection? existingClient = _connections.Values
-                    .FirstOrDefault(c => c.Remote != null && c.Remote.SKI == Ski);
-
-                if (existingClient != null)
+                if (_connections.TryGetValue(ski, out Connection? existingConnection) && existingConnection != null)
                 {
-                    if (existingClient.WebSocket?.State == WebSocketState.Open)
-                    {
-                        return existingClient.RemoteHost.ToString();
-                    }
+                    if (existingConnection.WebSocket?.State == WebSocketState.Open) return;
 
                     // Stale connection - tear it down before opening a new one.
-                    await DisconnectAsync(existingClient.RemoteHost).ConfigureAwait(false);
+                    await DisconnectAsync(ski).ConfigureAwait(false);
                 }
 
                 wsClient = new ClientWebSocket();
@@ -799,29 +787,30 @@ namespace EEBUS.Net
                 {
                     wsClient.Dispose();
                     wsClient = null;
-                    await DisconnectAsync(hostString).ConfigureAwait(false);
-                    return null;
+                    await DisconnectAsync(ski).ConfigureAwait(false);
+                    return;
                 }
 
+                HostString hostString = new HostString(uri.Host, uri.Port);
                 Client client = new Client(hostString, wsClient, _devices, device, _logger);
-                if (!_connections.TryAdd(hostString, client))
+                if (!_connections.TryAdd(ski, client))
                 {
                     // Another path inserted a connection for this host while we were
                     // connecting; drop ours to avoid leaking a duplicate socket.
                     wsClient.Dispose();
                     wsClient = null;
-                    return hostString.ToString();
+                    return;
                 }
 
                 // Ownership of wsClient is transferred to the Client/Connection.
                 wsClient = null;
                 await client.Run(_cts.Token).ConfigureAwait(false);
-                return hostString.ToString();
+                return;
             }
             catch (OperationCanceledException) when (_cts.IsCancellationRequested)
             {
                 wsClient?.Dispose();
-                return null;
+                return;
             }
             catch (Exception ex)
             {
@@ -831,12 +820,12 @@ namespace EEBUS.Net
             }
         }
 
-        public async Task DisconnectAsync(HostString host)
+        public async Task DisconnectAsync(string ski)
         {
-            var wsClient = _connections.TryGetValue(host, out Connection? client) ? client?.WebSocket : null;
+            var wsClient = _connections.TryGetValue(ski, out Connection? client) ? client?.WebSocket : null;
             if (client == null || wsClient == null)
             {
-                _logger?.LogInformation("No connection found for host {Host}.", host);
+                _logger?.LogInformation("No connection found for ski {Ski}.", ski);
                 return;
             }
 
@@ -853,14 +842,18 @@ namespace EEBUS.Net
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Disconnect error for host {Host}.", host);
+                _logger?.LogError(ex, "Disconnect error for ski {Ski}.", ski);
             }
             finally
             {
                 //We need to dispose the websocket in any case, e.g. it can be that we send a close message, but we do not receive one from the remote partner. In this case, we must close the connection
-                if (_connections.TryRemove(host, out Connection? removedClient) && removedClient != null)
+                if (_connections.TryRemove(ski, out Connection? removedClient) && removedClient != null)
                 {
                     await removedClient.CloseAsync();
+                }
+                else
+                {
+                    _logger?.LogInformation("Failed to remove connection with ski {ski}", ski);
                 }
 
                 try
@@ -874,34 +867,34 @@ namespace EEBUS.Net
             }
         }
 
-        /// <summary>
-        /// Disconnects the active connection whose remote device has the given SKI.
-        /// </summary>
-        /// <param name="remoteSki">The SKI of the remote device to disconnect.</param>
-        /// <returns>
-        /// <c>true</c> if a matching connection was found and disconnect was attempted;
-        /// <c>false</c> if no connection currently matches the given SKI.
-        /// </returns>
-        public async Task<bool> DisconnectAsync(string remoteSki)
-        {
-            if (string.IsNullOrEmpty(remoteSki))
-                return false;
+        ///// <summary>
+        ///// Disconnects the active connection whose remote device has the given SKI.
+        ///// </summary>
+        ///// <param name="remoteSki">The SKI of the remote device to disconnect.</param>
+        ///// <returns>
+        ///// <c>true</c> if a matching connection was found and disconnect was attempted;
+        ///// <c>false</c> if no connection currently matches the given SKI.
+        ///// </returns>
+        //public async Task<bool> DisconnectAsync(string remoteSki)
+        //{
+        //    if (string.IsNullOrEmpty(remoteSki))
+        //        return false;
 
-            // Find the matching connection explicitly instead of relying on
-            // FirstOrDefault().Key, which would otherwise hand back a default
-            // HostString on a miss and silently "disconnect" nothing.
-            var match = _connections.FirstOrDefault(c =>
-                c.Value?.Remote?.SKI.ToString() == remoteSki);
+        //    // Find the matching connection explicitly instead of relying on
+        //    // FirstOrDefault().Key, which would otherwise hand back a default
+        //    // HostString on a miss and silently "disconnect" nothing.
+        //    var match = _connections.FirstOrDefault(c =>
+        //        c.Value?.Remote?.SKI.ToString() == remoteSki);
 
-            if (match.Value == null)
-            {
-                Debug.WriteLine($"DisconnectAsync: no active connection found for SKI {remoteSki}");
-                return false;
-            }
+        //    if (match.Value == null)
+        //    {
+        //        Debug.WriteLine($"DisconnectAsync: no active connection found for SKI {remoteSki}");
+        //        return false;
+        //    }
 
-            await DisconnectAsync(match.Key).ConfigureAwait(false);
-            return true;
-        }
+        //    await DisconnectAsync(match.Key).ConfigureAwait(false);
+        //    return true;
+        //}
 
         public void Start()
         {
@@ -953,13 +946,15 @@ namespace EEBUS.Net
 
         private async Task OnDeviceConnectionChangedAsync(DeviceConnectionChangedEventArgs e)
         {
+            if (e.Connection.Remote == null) return;
+
             if (e.ChangeType == DeviceConnectionChangeType.Connected)
             {
-                _connections[e.Connection.RemoteHost] = e.Connection;
+                _connections[e.Connection.Remote.SKI.ToString()] = e.Connection;
             }
             else
             {
-                _connections.TryRemove(e.Connection.RemoteHost, out Connection? removedConnection);
+                _connections.TryRemove(e.Connection.Remote.SKI.ToString(), out Connection? removedConnection);
                 if (removedConnection?.Remote != null)
                 {
                     if (OnDeviceConnectionStatusChanged != null)
@@ -989,16 +984,16 @@ namespace EEBUS.Net
 
             // Best-effort disconnect of every live connection. Snapshot first so we
             // don't enumerate _connections while DisconnectAsync mutates it.
-            HostString[] hosts = _connections.Keys.ToArray();
-            foreach (var host in hosts)
+            string[] skis = _connections.Keys.ToArray();
+            foreach (var ski in skis)
             {
                 try
                 {
-                    await DisconnectAsync(host).ConfigureAwait(false);
+                    await DisconnectAsync(ski).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine("EEBUSManager.StopAsync: disconnect failed for " + host + ": " + ex.Message);
+                    Debug.WriteLine("EEBUSManager.StopAsync: disconnect failed for " + ski + ": " + ex.Message);
                 }
             }
         }
