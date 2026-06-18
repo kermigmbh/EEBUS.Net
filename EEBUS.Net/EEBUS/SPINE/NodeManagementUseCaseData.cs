@@ -40,7 +40,7 @@ namespace EEBUS.SPINE.Commands
 				{
 					connection.Remote.SetUseCaseData(payload);
                     connection.ConnectionStatus = Net.DeviceConnectionStatus.UseCaseDiscoveryCompleted;
-                    await SendDiscoveryCompletedEvent(connection);
+                    await SendConnectionStatusUpdatedEvent(connection);
                 }
 				return;
             }

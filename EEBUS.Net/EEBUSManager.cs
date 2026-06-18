@@ -312,6 +312,11 @@ namespace EEBUS.Net
                     connection.ReadAndSubscribe();
                 }
 
+                if (connection.ConnectionStatus == DeviceConnectionStatus.NodeDiscoveryCompleted)
+                {
+                    connection.SendUseCaseDiscoveryRead();  //We only send the use case discovery read after the node discovery is completed, as we need the node information first (entities, features)
+                }
+
                 if (EEBusManager.OnDeviceConnectionStatusChanged != null && connection.Remote != null)
                 {
                     await EEBusManager.OnDeviceConnectionStatusChanged(connection.Remote, connection.ConnectionStatus);

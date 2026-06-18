@@ -8,5 +8,6 @@ namespace EEBUS.Net
     {
         Unknown = 0,
         UseCaseDiscoveryCompleted = 1,
+        NodeDiscoveryCompleted = 2,
     }
 }

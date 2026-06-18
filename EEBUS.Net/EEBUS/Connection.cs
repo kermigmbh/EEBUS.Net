@@ -277,7 +277,7 @@ namespace EEBUS
         {
             //The order here is important! We first need to get the discovery data to create the entities
             SendNodeManagementDetailedDiscoveryRead();
-            SendUseCaseDiscoveryRead();
+            //SendUseCaseDiscoveryRead();
         }
 
         private void SendNodeManagementDetailedDiscoveryRead()
@@ -302,7 +302,7 @@ namespace EEBUS
             PushDataMessage(message);
         }
 
-        private void SendUseCaseDiscoveryRead()
+        public void SendUseCaseDiscoveryRead()
         {
             SpineDatagramPayload read = new SpineDatagramPayload();
             read.datagram.header.addressSource = new();
