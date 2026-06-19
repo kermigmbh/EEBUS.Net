@@ -55,6 +55,8 @@ namespace EEBUS.Net
         private CancellationTokenSource _cts = new();
         private X509Certificate2 _cert;
 
+        public Devices Devices => _devices;
+
         private ILogger? _logger;
 
         public EEBUSManager(Settings settings, ServiceDiscovery? serviceDiscovery = null, ILogger? logger = null)

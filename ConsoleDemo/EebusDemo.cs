@@ -18,8 +18,6 @@ namespace ConsoleDemo
     {
         private EEBUSManager? _manager;
 
-        private List<string> s_connectedClients = [];
-
         public async Task RunAsync(Settings settings)
         {
             
@@ -112,10 +110,7 @@ namespace ConsoleDemo
                 }
             }
 
-            foreach (string hostString in s_connectedClients)
-            {
-                await _manager.DisconnectAsync(new Microsoft.AspNetCore.Http.HostString(hostString));
-            }
+            
             _manager.Dispose();
         }
 
@@ -169,10 +164,14 @@ namespace ConsoleDemo
             var ski = remote["ski"];
             if (ski == null) return false;
 
-            string? hostString = await _manager.ConnectAsync(ski.ToString());
-            if (hostString == null) return false;
-
-            s_connectedClients.Add(hostString);
+            try
+            {
+                await _manager.ConnectAsync(ski.ToString());
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
             return true;
         }
     }
