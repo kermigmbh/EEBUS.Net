@@ -123,13 +123,14 @@ namespace EEBUS
             var ski = new SKI(hash);
             var skiString = ski.ToString();
 
-            return OnNewConnectionValidation?.Invoke(new NewConnectionValidationEventArgs()
+            var result =  OnNewConnectionValidation?.Invoke(new NewConnectionValidationEventArgs()
             {
                 Certificate = new X509Certificate2(cert),
                 RemoteEndpoint = remoteEndpoint.ToString(),
                 Ski = skiString
 
             }) ?? false;
+            return result;
         }
 
         private async Task StartStandaloneInternalAsync(int port, CancellationToken cancellationToken)

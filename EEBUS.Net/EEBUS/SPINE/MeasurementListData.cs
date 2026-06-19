@@ -84,9 +84,11 @@ namespace EEBUS.SPINE.Commands
                 }
             }
 
-            public override Task WriteDataAsync(LocalDevice localDevice, DeviceData deviceData)
+            public override  Task WriteDataAsync(Connection connection, DeviceData deviceData)
             {
-				if (deviceData.Measurements == null) return Task.CompletedTask;
+
+                LocalDevice localDevice = connection.Local;
+                if (deviceData.Measurements == null) return Task.CompletedTask;
 
                 AddressType? address = localDevice.GetFeatureAddress("Measurement", true);
 				if (address == null) return Task.CompletedTask;

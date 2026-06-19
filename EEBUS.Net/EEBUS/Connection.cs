@@ -404,6 +404,16 @@ namespace EEBUS
                                 DataMessage callMessage = DataMessage.CreateSubscription(featureSourceAddress, featureDestinationAddress, feature.Type, Local.DeviceId, Remote.DeviceId);
                                 PushDataMessage(callMessage);
                             }
+
+                            if (!BindingAndSubscriptionManager.HasBinding(featureSourceAddress, featureDestinationAddress))
+                            {
+                                //TODO: Check for which features we need a binding
+                                if (feature.Type == "LoadControl")
+                                {
+                                    DataMessage callMessage = DataMessage.CreateBinding(featureSourceAddress, featureDestinationAddress, feature.Type, Local.DeviceId, Remote.DeviceId);
+                                    PushDataMessage(callMessage);
+                                }
+                            }
                         }
                     }
                 }

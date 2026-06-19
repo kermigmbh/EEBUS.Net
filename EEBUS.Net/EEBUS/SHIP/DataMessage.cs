@@ -72,6 +72,32 @@ namespace EEBUS.SHIP.Messages
 
             return Create(messageSource, messageDestination, "call", callPayload);
         }
+        public static DataMessage CreateBinding(AddressType source, AddressType destination, string serverFeatureType, string clientDeviceId, string serverDeviceId)
+        {
+            //Fixed address for subscription
+            var messageSource = new AddressType()
+            {
+                device = clientDeviceId,
+                entity = [0],
+                feature = 0
+            };
+
+            //Fixed address for subscription
+            var messageDestination = new AddressType()
+            {
+                device = serverDeviceId,
+                entity = [0],
+                feature = 0
+            };
+
+            NodeManagementBindingRequestCall callPayload = new NodeManagementBindingRequestCall();
+            BindingRequestType request = callPayload.cmd[0].nodeManagementBindingRequestCall.bindingRequest;
+            request.clientAddress = source;
+            request.serverAddress = destination;
+            request.serverFeatureType = serverFeatureType;
+
+            return Create(messageSource, messageDestination, "call", callPayload);
+        }
 
         public DataMessage(SpineDatagramPayload datagram)
         {

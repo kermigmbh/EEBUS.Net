@@ -53,6 +53,8 @@ namespace EEBUS.UseCases.ControllableSystem
                 entity.Local.AddUnique(new FailsafeConsumptionActivePowerLimitKeyValue(entity.Local, failsafeLimit, 0, true));
                 entity.Local.AddUnique(new FailsafeDurationMinimumKeyValue(entity.Local, xmlFailsafeDuration, true));
             }
+
+            
         }
 
         protected override List<Scenario> GetScenarios()

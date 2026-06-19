@@ -166,13 +166,13 @@ namespace ConsoleDemo
 
             try
             {
-                await _manager.ConnectAsync(ski.ToString());
+                return await _manager.TryConnectAsync(ski.ToString());
             }
             catch (Exception ex)
             {
                 return false;
             }
-            return true;
+            
         }
     }
 }

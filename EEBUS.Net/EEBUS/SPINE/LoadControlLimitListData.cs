@@ -206,14 +206,17 @@ namespace EEBUS.SPINE.Commands
                 }
             }
 
+           
 
-            public override async Task WriteDataAsync(LocalDevice device, DeviceData deviceData)
+            public override async Task WriteDataAsync(Connection connection, DeviceData deviceData)
             {
+
+                LocalDevice localDevice = connection.Local;
                 bool didChange = false;
 
                 if (deviceData.Lpc != null && !deviceData.Lpc.IsEmpty())
                 {
-                    var consumeDataStructures = device.GetDataStructures<LoadControlLimitDataStructure>().Where(ds => ds.LimitDirection == "consume");
+                    var consumeDataStructures = localDevice.GetDataStructures<LoadControlLimitDataStructure>().Where(ds => ds.LimitDirection == "consume");
                     foreach (var consumeDataStructure in consumeDataStructures)
                     {
                         consumeDataStructure.LimitActive = deviceData.Lpc.LimitActive ?? consumeDataStructure.LimitActive;
@@ -225,7 +228,7 @@ namespace EEBUS.SPINE.Commands
 
                 if (deviceData.Lpp != null && !deviceData.Lpp.IsEmpty())
                 {
-                    var produceDataStructures = device.GetDataStructures<LoadControlLimitDataStructure>().Where(ds => ds.LimitDirection == "produce");
+                    var produceDataStructures = localDevice.GetDataStructures<LoadControlLimitDataStructure>().Where(ds => ds.LimitDirection == "produce");
                     foreach (var produceDataStructure in produceDataStructures)
                     {
                         produceDataStructure.LimitActive = deviceData.Lpp.LimitActive ?? produceDataStructure.LimitActive;
@@ -237,10 +240,21 @@ namespace EEBUS.SPINE.Commands
 
                 if (didChange)
                 {
-                    AddressType? featureAddress = device.GetFeatureAddress("LoadControl", true);
-                    if (featureAddress != null)
+                    AddressType? featureAddressServer = localDevice.GetFeatureAddress("LoadControl", true);
+                    if (featureAddressServer != null)
                     {
-                        await SendNotifyAsync(device, featureAddress);
+                        await SendNotifyAsync(localDevice, featureAddressServer);
+                    }
+                    AddressType? featureAddressClient = localDevice.GetFeatureAddress("LoadControl", false);
+                    if (featureAddressClient != null)
+                    {
+
+                        AddressType? remoteFeatureAddress = connection.Remote?.GetFeatureAddress("LoadControl", true);
+                        //AddressType? localFeatureAddress = connection.Local.GetFeatureAddress("LoadControl", false);
+                        if (remoteFeatureAddress != null && featureAddressClient != null)
+                        {
+                            await SendWriteAsync(connection, featureAddressClient, remoteFeatureAddress);
+                        }
                     }
                 }
             }
@@ -258,6 +272,21 @@ namespace EEBUS.SPINE.Commands
                 data.loadControlLimitData = datas.ToArray();
                 return limitData.ToJsonNode();
             }
+
+            public override JsonNode? CreateWritePayload(LocalDevice localDevice)
+            {
+                LoadControlLimitListData limitData = new LoadControlLimitListData();
+                LoadControlLimitListDataType data = limitData.cmd[0].loadControlLimitListData;
+
+                List<LoadControlLimitDataType> datas = new();
+                foreach (LoadControlLimitDataStructure structure in localDevice.GetDataStructures<LoadControlLimitDataStructure>())
+                {
+                    datas.Add(structure.Data);
+                }
+                data.loadControlLimitData = datas.ToArray();
+                return limitData.ToJsonNode();
+            }
+           
         }
     }
 
@@ -265,6 +294,7 @@ namespace EEBUS.SPINE.Commands
     [System.SerializableAttribute()]
     public class CmdLoadControlLimitListDataType : CmdType
     {
+        public string function { get; set; } = "loadControlLimitListData";
         public LoadControlLimitListDataFilterType[]? filter { get; set; }
         public LoadControlLimitListDataType loadControlLimitListData { get; set; } = new();
     }

@@ -229,9 +229,11 @@ namespace EEBUS.SPINE.Commands
 				return payload.ToJsonNode();
 			}
 
-			public override async Task WriteDataAsync(LocalDevice localDevice, DeviceData deviceData)
-			{
-				bool didChange = false;
+            public override async Task WriteDataAsync(Connection connection, DeviceData deviceData)
+            {
+
+                LocalDevice localDevice = connection.Local;
+                bool didChange = false;
 
 				if (deviceData.Lpc?.FailSafeLimit != null)
 				{

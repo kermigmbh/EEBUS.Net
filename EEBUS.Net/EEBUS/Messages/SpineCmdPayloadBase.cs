@@ -1,5 +1,6 @@
 ﻿using EEBUS.Models;
 using EEBUS.Net.EEBUS.Models.Data;
+using EEBUS.SHIP.Messages;
 using EEBUS.UseCases.ControllableSystem;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -33,21 +34,39 @@ namespace EEBUS.Messages
 			{
 				return null;
 			}
+            public virtual SpineCmdPayloadBase? CreateWrite(Connection connection)
+            {
+                return null;
+            }
 
-			public virtual SpineCmdPayloadBase? CreateCall( Connection connection )
+            public virtual SpineCmdPayloadBase? CreateCall( Connection connection )
 			{
 				return null;
 			}
 
-			public virtual Task WriteDataAsync(LocalDevice localDevice, DeviceData deviceData)
+			/// <summary>
+			/// write to local device
+			/// </summary>
+			/// <param name="localDevice"></param>
+			/// <param name="deviceData"></param>
+			/// <returns></returns>
+			public virtual Task WriteDataAsync(Connection connection, DeviceData deviceData)
 			{
 				return Task.CompletedTask;
 			}
 
-			public virtual JsonNode? CreateNotifyPayload(LocalDevice localDevice)
+
+		
+
+            public virtual JsonNode? CreateNotifyPayload(LocalDevice localDevice)
 			{
 				return null;
 			}
+
+            public virtual JsonNode? CreateWritePayload(LocalDevice localDevice)
+            {
+                return null;
+            }
 
             public async Task SendNotifyAsync(LocalDevice localDevice, AddressType localAddress)
 			{
@@ -57,6 +76,23 @@ namespace EEBUS.Messages
                 {
                     await ev.NotifyAsync(payload, localAddress);
                 }
+            }
+
+            protected async Task SendWriteAsync(Connection connection, AddressType localAddress, AddressType remoteAddress)
+            {
+				 
+
+                SpineDatagramPayload reply = new SpineDatagramPayload();
+                reply.datagram.header.addressSource = localAddress;
+                reply.datagram.header.addressDestination = remoteAddress;
+                reply.datagram.header.msgCounter = DataMessage.NextCount;
+                reply.datagram.header.cmdClassifier = "write";
+
+                reply.datagram.payload = CreateWritePayload(connection.Local); ;
+                DataMessage dataMessage = new DataMessage();
+                dataMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize data message"));
+                connection.PushDataMessage(dataMessage);
+
             }
 
             protected async Task SendConnectionStatusUpdatedEvent(Connection connection)

@@ -142,7 +142,7 @@ namespace EEBUS.Net
                             _logger?.LogDebug("Device {deviceName} does not have an active connection anymore, reconnecting...", device.Name);
                             try
                             {
-                                await ConnectAsync(device.SKI.ToString());
+                                await TryConnectAsync(device.SKI.ToString());
                             }
                             catch (Exception)
                             {
@@ -681,22 +681,27 @@ namespace EEBUS.Net
                 Ski = rd.SKI.ToString(),
             });
         }
-
-        public async Task WriteDataAsync(DeviceData deviceData)
+        
+        public async Task WriteDataAsync(DeviceData deviceData, string remoteSki)
         {
+            if (!_connections.TryGetValue(remoteSki, out Connection? connection))
+            {
+               throw new Exception("No active connection for ski " + remoteSki);
+            }
+
             if (deviceData.Lpc != null || deviceData.Lpp != null)
             {
                 var loadControlLimitListData = SpineCmdPayloadBase.GetClass("loadControlLimitListData");
                 if (loadControlLimitListData != null)
                 {
-                    await loadControlLimitListData.WriteDataAsync(_devices.Local, deviceData);
+                    await loadControlLimitListData.WriteDataAsync(connection, deviceData);
                 }
             }
 
             var deviceConfigurationKeyValueListData = SpineCmdPayloadBase.GetClass("deviceConfigurationKeyValueListData");
             if (deviceConfigurationKeyValueListData != null)
             {
-                await deviceConfigurationKeyValueListData.WriteDataAsync(_devices.Local, deviceData);
+                await deviceConfigurationKeyValueListData.WriteDataAsync(connection, deviceData);
             }
 
             if (deviceData.Measurements != null)
@@ -704,17 +709,18 @@ namespace EEBUS.Net
                 var measurementListData = SpineCmdPayloadBase.GetClass("measurementListData");
                 if (measurementListData != null)
                 {
-                    await measurementListData.WriteDataAsync(_devices.Local, deviceData);
+                    await measurementListData.WriteDataAsync(connection, deviceData);
                 }
             }
         }
 
-        public async Task ConnectAsync(string ski)
+        public async Task<bool> TryConnectAsync(string ski)
         {
             SKI Ski = new SKI(ski);
 
             RemoteDevice? device = _devices.GetRemotes().FirstOrDefault(rd => rd.SKI == Ski);
-            if (device == null) return;
+            if (device == null) 
+                return false;
 
             Uri uri = new Uri("wss://" + device.Url);
 
@@ -723,7 +729,8 @@ namespace EEBUS.Net
             {
                 if (_connections.TryGetValue(ski, out Connection? existingConnection) && existingConnection != null)
                 {
-                    if (existingConnection.WebSocket?.State == WebSocketState.Open) return;
+                    if (existingConnection.WebSocket?.State == WebSocketState.Open) 
+                        return false;
 
                     // Stale connection - tear it down before opening a new one.
                     await DisconnectAsync(ski).ConfigureAwait(false);
@@ -742,7 +749,8 @@ namespace EEBUS.Net
                     if (_settings.UseStrictShipPairing)
                     {
                         bool isUntrusted = _devices.GetPairedDevices().FirstOrDefault(p => p.TrustId == device.Id && p.TrustType == EEBUS.Models.ShipTrustType.None) != null;
-                        if (isUntrusted) return false;
+                        if (isUntrusted) 
+                            return false;
                     }
 
                     var paired = _devices.GetPairedDevices().FirstOrDefault(p => p.TrustId == device.Id && p.TrustType == EEBUS.Models.ShipTrustType.AddCu);
@@ -795,7 +803,7 @@ namespace EEBUS.Net
                     wsClient.Dispose();
                     wsClient = null;
                     await DisconnectAsync(ski).ConfigureAwait(false);
-                    return;
+                    return false;
                 }
 
                 HostString hostString = new HostString(uri.Host, uri.Port);
@@ -806,18 +814,18 @@ namespace EEBUS.Net
                     // connecting; drop ours to avoid leaking a duplicate socket.
                     wsClient.Dispose();
                     wsClient = null;
-                    return;
+                    return false;
                 }
 
                 // Ownership of wsClient is transferred to the Client/Connection.
                 wsClient = null;
                 await client.Run(_cts.Token).ConfigureAwait(false);
-                return;
+                return true;
             }
             catch (OperationCanceledException) when (_cts.IsCancellationRequested)
             {
                 wsClient?.Dispose();
-                return;
+                return false;
             }
             catch (Exception ex)
             {

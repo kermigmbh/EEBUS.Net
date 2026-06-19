@@ -1,9 +1,10 @@
-﻿using System.Collections.Generic;
-using System.Xml;
-using EEBUS.DataStructures;
+﻿using EEBUS.DataStructures;
 using EEBUS.KeyValues;
 using EEBUS.Models;
+using EEBUS.Net.EEBUS.Data.DataStructures;
 using EEBUS.SPINE.Commands;
+using System.Collections.Generic;
+using System.Xml;
 
 namespace EEBUS.UseCases.EnergyGuard
 {
@@ -22,6 +23,24 @@ namespace EEBUS.UseCases.EnergyGuard
             entity.GetOrAdd(Feature.Create("DeviceConfiguration", "client", entity));
             entity.GetOrAdd(Feature.Create("DeviceDiagnosis", "client", entity));
             entity.GetOrAdd(Feature.Create("ElectricalConnection", "client", entity));
+
+
+            if (usecaseSettings.InitLimits != null)
+            {
+                bool active = usecaseSettings.InitLimits.Active;
+                long limit = usecaseSettings.InitLimits.Limit;
+                long failsafeLimit = usecaseSettings.InitLimits.FailsafeLimit;
+
+                string xmlDuration = XmlConvert.ToString(usecaseSettings.InitLimits.Duration);
+                string xmlFailsafeDuration = XmlConvert.ToString(usecaseSettings.InitLimits.FailsafeDurationMinimum);
+
+                entity.Local.Add(new LoadControlLimitDataStructure("consume", limit, 0, xmlDuration, active));
+                entity.Local.Add(new ElectricalConnectionCharacteristicDataStructure("contractualConsumptionNominalMax", usecaseSettings.InitLimits.NominalMax, 0));
+
+                entity.Local.AddUnique(new FailsafeConsumptionActivePowerLimitKeyValue(entity.Local, failsafeLimit, 0, true));
+                entity.Local.AddUnique(new FailsafeDurationMinimumKeyValue(entity.Local, xmlFailsafeDuration, true));
+            }
+
         }
 
         protected override List<Scenario> GetScenarios()
