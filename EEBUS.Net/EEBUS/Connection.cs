@@ -91,7 +91,7 @@ namespace EEBUS
                     else
                         Debug.WriteLine("--- Send heartbeat via client ---");
 
-                    
+
 
                     SpineDatagramPayload reply = new SpineDatagramPayload();
                     reply.datagram.header.addressSource = heartbeatSource;
@@ -123,7 +123,7 @@ namespace EEBUS
             this.BindingAndSubscriptionManager = new BindingAndSubscriptionManager(this);
         }
 
-        public BindingAndSubscriptionManager BindingAndSubscriptionManager { get; } 
+        public BindingAndSubscriptionManager BindingAndSubscriptionManager { get; }
 
         public WebSocket WebSocket { get { return this.ws; } }
 
@@ -143,7 +143,7 @@ namespace EEBUS
 
 
         public abstract Task CloseAsync();
-        
+
         protected RemoteDevice? GetRemote(string id)
         {
             if (null == id)
@@ -157,6 +157,28 @@ namespace EEBUS
             var remote = this.devices.GetRemote(id);
             return remote != null;
         }
+        public async Task<DataMessage> PushDataMessageAsync(DataMessage message) 
+        {
+
+            uint timeout = 5000;
+            string messageId = message.GetId();
+            TaskCompletionSource<ShipMessageBase?> tcs = new TaskCompletionSource<ShipMessageBase?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _pendingRequests.AddOrUpdate(messageId, tcs, (msgId, completionSource) => completionSource);
+
+            this.WaitingMessages.Push(message);
+
+            try
+            {
+                var returnMessage = await tcs.Task.WaitAsync(TimeSpan.FromMilliseconds(timeout)).ConfigureAwait(false);
+                return returnMessage as DataMessage ?? throw new Exception("Received message is not a DataMessage");
+            }
+            finally
+            {
+                _pendingRequests.TryRemove(messageId, out _);
+            }
+        }
+
+
 
         public void PushDataMessage(DataMessage message)
         {
@@ -355,7 +377,7 @@ namespace EEBUS
         public void HeartbeatRead()
         {
             AddressType source = this.Local.GetHeartbeatAddress(false);
-            AddressType  destination = this.Remote?.GetHeartbeatAddress(true) ?? throw new Exception("Remote device is not available");
+            AddressType destination = this.Remote?.GetHeartbeatAddress(true) ?? throw new Exception("Remote device is not available");
 
             SpineDatagramPayload read = new SpineDatagramPayload();
             read.datagram.header.addressSource = source;

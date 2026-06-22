@@ -1,5 +1,6 @@
 ﻿using EEBUS.Messages;
 using EEBUS.Models;
+using EEBUS.Net.EEBUS.Models;
 using EEBUS.SPINE.Commands;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -104,6 +105,34 @@ namespace EEBUS.SHIP.Messages
             this.data.payload = JsonSerializer.SerializeToNode(datagram);
         }
 
+
+
+        private SpineDatagramPayload? _spineDatagramPayload  = null;
+
+        [JsonIgnore]
+        public SpineDatagramPayload SpineDatagramPayload
+        {
+            get
+            {
+                return _spineDatagramPayload ??= data.payload.Deserialize<SpineDatagramPayload>() ?? throw new Exception("Failed to deserialize SpineDatagramPayload"); 
+            }
+        }
+
+
+
+        public override string GetId()
+        {
+            return SpineDatagramPayload.datagram.header.msgCounter.ToString();
+        }
+        public override string? GetReferencedId()
+        {
+            return base.GetReferencedId();
+        }
+        public override ShipMessageDirection GetMessageDirection()
+        {
+            return SpineDatagramPayload.datagram.header.msgCounterReference != null ? ShipMessageDirection.Response : ShipMessageDirection.Request;
+        }
+
         public new class Class : ShipDataMessage<DataMessage>.Class
         {
             public override DataMessage Create(ReadOnlySpan<byte> data/*, Connection connection */)
@@ -146,9 +175,9 @@ namespace EEBUS.SHIP.Messages
             {
                 if (this.data.payload is JsonObject payloadObj && payloadObj.ContainsKey("datagram"))
                 {
-                    SpineDatagramPayload payload = this.data.payload.Deserialize<SpineDatagramPayload>() ?? throw new Exception("Failed to deserialize SpineDatagramPayload");
+                    SpineDatagramPayload payload = SpineDatagramPayload;
                     string? cmdClassifier = payload.datagram?.header?.cmdClassifier;
-
+                    
                     await payload.EvaluateAsync(connection);
 
                     if (cmdClassifier == "reply" || cmdClassifier == "notify" || cmdClassifier == "result")

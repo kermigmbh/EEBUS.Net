@@ -80,8 +80,6 @@ namespace EEBUS.Messages
 
             protected async Task SendWriteAsync(Connection connection, AddressType localAddress, AddressType remoteAddress)
             {
-				 
-
                 SpineDatagramPayload reply = new SpineDatagramPayload();
                 reply.datagram.header.addressSource = localAddress;
                 reply.datagram.header.addressDestination = remoteAddress;
@@ -92,7 +90,8 @@ namespace EEBUS.Messages
                 DataMessage dataMessage = new DataMessage();
                 dataMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize data message"));
                 connection.PushDataMessage(dataMessage);
-
+                //var resp = await connection.PushDataMessageAsync(dataMessage);
+				//return resp;
             }
 
             protected async Task SendConnectionStatusUpdatedEvent(Connection connection)

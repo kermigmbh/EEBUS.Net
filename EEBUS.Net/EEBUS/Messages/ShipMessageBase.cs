@@ -19,12 +19,21 @@ namespace EEBUS.Messages
 
 		//protected Connection connection;
 
+		/// <summary>
+		/// unique id of message, e.g. counter
+		/// </summary>
+		/// <returns></returns>
 		public virtual string GetId()
 		{
 			return null;
 		}
 
 		public virtual ShipMessageDirection GetMessageDirection() { return ShipMessageDirection.Unknown; }
+
+		/// <summary>
+		/// in the response message this is the reference to the request message
+		/// </summary>
+		/// <returns></returns>
 		public virtual string? GetReferencedId() { return null; }
 
 		public abstract ShipMessageBase FromJsonVirtual(ReadOnlySpan<byte> data/*, Connection connection */);

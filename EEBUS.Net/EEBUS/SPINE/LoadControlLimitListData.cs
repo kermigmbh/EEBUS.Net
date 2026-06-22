@@ -204,6 +204,10 @@ namespace EEBUS.SPINE.Commands
                     }
                     await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
                 }
+                else
+                {
+
+                }
             }
 
            
@@ -257,6 +261,7 @@ namespace EEBUS.SPINE.Commands
                         }
                     }
                 }
+                
             }
 
             public override JsonNode? CreateNotifyPayload(LocalDevice localDevice)

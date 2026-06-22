@@ -162,10 +162,14 @@ namespace EEBUS
 
                                 }
 
-                                if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(path))
+                                if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(path) && !string.IsNullOrEmpty(ski))
                                 {
                                     string url = serverAddress.Address.ToString() + ":" + server.Port.ToString() + path;
                                     this.devices?.GetOrCreateRemote(id, ski, url, instanceName);
+                                }
+                                else
+                                {
+
                                 }
                             }
                         }

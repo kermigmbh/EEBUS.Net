@@ -1,6 +1,8 @@
 ﻿using EEBUS;
 using EEBUS.Models;
 using EEBUS.Net;
+using EEBUS.Net.EEBUS.Models.Data;
+using EEBUS.StateMachines;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -22,133 +24,19 @@ namespace TestProject1.IntegrationTests
 
         private void Log(string message)
         {
-            _output.WriteLine(message);
             Debug.WriteLine(message);
+            _output.WriteLine(message);
+            
         }
 
-        private sealed class TestOutputLogger(ITestOutputHelper output, string categoryName) : ILogger
-        {
-            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
-
-            public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None;
-
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-            {
-                if (!IsEnabled(logLevel))
-                {
-                    return;
-                }
-
-                var message = formatter(state, exception);
-                Console.WriteLine($"[{categoryName}] {logLevel}: {message}");
-
-                if (exception is not null)
-                {
-                    Console.WriteLine(exception.ToString());
-                }
-            }
-
-            private sealed class NullScope : IDisposable
-            {
-                public static readonly NullScope Instance = new();
-
-                public void Dispose()
-                {
-                }
-            }
-        }
 
         [Fact]
         public async Task TwoEEBUSDevicesConnectivityAsync()
         {
-            var settings1 = new Settings()
-            {
-                Device = new DeviceSettings()
-                {
-                    Name = "KermiConsumer",
-                    Id = "KermiConsumer",
-                    Model = "KermiDemo",
-                    Brand = "Kermi",
-                    Type = "EnergyManagementSystem",
-                    Serial = "123456",
-                    Port = 7200,
-                    Entities = [
-                       new EntitySettings { Type = "DeviceInformation" },
-                        new EntitySettings { Type  = "CEM", UseCases = [
-                            new UseCaseSettings {
-                                Type = "limitationOfPowerConsumption",
-                                Actor = "ControllableSystem",
-                                InitLimits = new LimitSettings {
-                                    Active = false,
-                                    Limit = 0,
-                                    Duration = Timeout.InfiniteTimeSpan,
-                                    FailsafeLimit = 7200,
-                                    FailsafeDurationMinimum = TimeSpan.FromHours(2),
-                                    NominalMax = 40000
-                                },
-                            },
-                            new UseCaseSettings {
-                                Type = "monitoringOfGridConnectionPoint",
-                                Actor = "MonitoringAppliance"
-                            },
-                            new UseCaseSettings {
-                                Type = "monitoringOfPowerConsumption",
-                                Actor = "MonitoringAppliance"
-                            },
-                            new UseCaseSettings {
-                                Type = "monitoringOfPowerConsumption",
-                                Actor = "MonitoredUnit"
-                            }
-                            ]}
-                           ]
-                },
-                //Certificate = "XCenterEEBUS"
-                Certificate = "EEBUS1.net"
-            };
-
-            var settings2 = new Settings()
-            {
-                Device = new DeviceSettings()
-                {
-                    Name = "KermiControlbox",
-                    Id = "KermiControlbox",
-                    Model = "KermiDemo",
-                    Brand = "Kermi",
-                    Type = "EnergyGuard",
-                    Serial = "444444",
-                    Port = 7201,
-                    Entities = [
-                      new EntitySettings { Type = "DeviceInformation" },
-                        new EntitySettings { Type  = "GridGuard", UseCases = [
-                            new UseCaseSettings {
-                                Type = "limitationOfPowerConsumption",
-                                Actor = "EnergyGuard",
-                                InitLimits = new LimitSettings {
-                                    Active = false,
-                                    Limit = 0,
-                                    Duration = Timeout.InfiniteTimeSpan,
-                                    FailsafeLimit = 7200,
-                                    FailsafeDurationMinimum = TimeSpan.FromHours(2),
-                                    NominalMax = 40000
-                                }
-                            }
-
-                            ]}
-                          ]
-                },
-                //Certificate = "XCenterEEBUS"
-                Certificate = "EEBUS2.net"
-            };
             ILogger manager1Logger = new TestOutputLogger(_output, "Manager1");
             ILogger manager2Logger = new TestOutputLogger(_output, "Manager2");
-
-            EEBUSManager manager1 = new EEBUSManager(settings1, logger: manager1Logger);
-
-            EEBUSManager manager2 = new EEBUSManager(settings2, logger: manager2Logger);
-
-            manager1.Start();
-            manager2.Start();
-
+            EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(), logger: manager1Logger);
+            EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings(), logger: manager2Logger);
 
             manager1.OnDeviceDataChanged += deviceData =>
             {
@@ -176,65 +64,75 @@ namespace TestProject1.IntegrationTests
                 Log($"Manager1 connection status changed: {remoteDevice.Name} is now {status}");
                 return Task.CompletedTask;
             };
-
+            
             manager2.OnDeviceConnectionStatusChanged += (remoteDevice, status) =>
             {
                 Log($"Manager2 connection status changed: {remoteDevice.Name} is now {status}");
                 return Task.CompletedTask;
             };
 
-            //await Task.Delay(5000);
-
             manager1.AddTrustedSki(manager2.GetLocalData().SKI);
             manager2.AddTrustedSki(manager1.GetLocalData().SKI);
 
-            bool success = false;
+            string manager2Ski = manager2.GetLocalData().SKI;
+            string manager1Ski = manager1.GetLocalData().SKI;
 
-            for (int i = 0; i < 3; i++)
-            {
-                try
-                {
-                    success = await manager1.TryConnectAsync(manager2.GetLocalData().SKI);
-                }
-                catch (Exception ex)
-                {
-                    Log(ex.ToString());
-                    await Task.Delay(2000);
-                }
+            using var manager2FoundWaiter = new TestWaiter<RemoteDevice>(
+                subscribe: handler => manager1.OnDeviceFound += handler,
+                unsubscribe: handler => manager1.OnDeviceFound -= handler);
 
-                await Task.Delay(1000);
-                if (success == true)
-                {
-                    Log("Connection established successfully.");
-                    break;
-                }
-                else
-                {
-                    Log("Connection attempt failed. Retrying...");
-                    await Task.Delay(2000);
-                }
-            }
+            using var manager1FoundWaiter = new TestWaiter<RemoteDevice>(
+               subscribe: handler => manager2.OnDeviceFound += handler,
+               unsubscribe: handler => manager2.OnDeviceFound -= handler);
 
-            if (success == false)
+            manager1.Start();
+            manager2.Start();
+
+            var t1 = manager2FoundWaiter.Match(device => device.SKI.ToString() == manager2Ski, 15000);
+            var t2 =  manager1FoundWaiter.Match(device => device.SKI.ToString() == manager1Ski, 15000);
+            await Task.WhenAll(t1, t2);
+            Log("Manager1 found manager2.");
+
+            using var manager2ReadyWaiter = new TestWaiter<RemoteDevice, DeviceConnectionStatus>(
+                subscribe: handler => manager2.OnDeviceConnectionStatusChanged += handler,
+                unsubscribe: handler => manager2.OnDeviceConnectionStatusChanged -= handler);
+            using var manager1ReadyWaiter = new TestWaiter<RemoteDevice, DeviceConnectionStatus>(
+                subscribe: handler => manager1.OnDeviceConnectionStatusChanged += handler,
+                unsubscribe: handler => manager1.OnDeviceConnectionStatusChanged -= handler);
+
+            bool connected = await manager1.TryConnectAsync(manager2.GetLocalData().SKI);
+            if (connected == false)
             {
                 Log("Failed to establish connection after multiple attempts.");
                 throw new Exception("Failed to establish connection after multiple attempts.");
             }
+            Log("manager1 -> manager2: connection OK");
 
-            for (int i = 0; i < 50; i++)
+            await manager2ReadyWaiter.Match((remoteDevice, status) => remoteDevice.SKI.ToString() == manager1Ski);
+            Log("Manager2 connection to manager1 is ready (UseCaseDiscoveryCompleted).");
+
+            await manager1ReadyWaiter.Match((remoteDevice, status) => remoteDevice.SKI.ToString() == manager2Ski);
+            Log("Manager1 is ready (UseCaseDiscoveryCompleted).");
+
+
+            using var dataChangedWaiter = new TestWaiter<DeviceData>(
+                subscribe: handler => manager1.OnDeviceDataChanged += handler,
+                unsubscribe: handler => manager1.OnDeviceDataChanged -= handler);
+
+
+            Log("Waiting for heartbeat init...");
+            await dataChangedWaiter.Match(data => data.Lpc != null && data.Lpc.LimitState != LimitState.Init, 10000);
+
+            Log("Sending data");
+            await manager2.WriteDataAsync(new DeviceData()
             {
-                await Task.Delay(5000);
-                Log("Sending data");
-                await manager2.WriteDataAsync(new EEBUS.Net.EEBUS.Models.Data.DeviceData()
-                {
-                    Lpc = new EEBUS.Net.EEBUS.Models.Data.LpcLppData() { Limit = 1000, LimitActive = true }
-                }, manager1.GetLocalData().SKI);
+                Lpc = new LpcLppData() { Limit = 1000, LimitActive = true }
+            }, manager1.GetLocalData().SKI);
 
-            }
+            await dataChangedWaiter.Match(data => data.Lpc?.Limit == 1000, 3000);
 
 
-
-            await Task.Delay(50000);
+            Log("Data received!");
 
         }
     }

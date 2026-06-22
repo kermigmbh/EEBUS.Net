@@ -87,8 +87,7 @@ namespace EEBUS.Net
 
             LocalDevice localDevice = _devices.GetOrCreateLocal(hash, settings.Device);
 
-            _mDNSService.Run(localDevice, _cts.Token);
-            _mDNSClient.Run(_devices);
+            
             _devices.RemoteDeviceFound += OnRemoteDeviceFound;
             _devices.ServerStateChanged += OnServerStateChanged;
             _devices.ClientStateChanged += OnClientStateChanged;
@@ -326,6 +325,9 @@ namespace EEBUS.Net
             }
         }
 
+
+      
+
         private class MonitoringUseCasesEventHandler(EEBUSManager eebusManager) : MonitoringUseCaseEvents
         {
             public async Task DataUpdateMeasurementsAsync(List<MeasurementData.MeasurementData> measurementData, string ski)
@@ -388,6 +390,18 @@ namespace EEBUS.Net
             public async Task OnStateChanged(LimitState oldState, LimitState newState, string reason)
             {
                 Console.WriteLine($"OnStateChanged {oldState} -> {newState} ({reason})");
+                var changedCallback = EEBusManager.OnDeviceDataChanged;
+                if (changedCallback != null)
+                {
+                    var deviceData = new DeviceData
+                    {
+                        Lpc = new LpcLppData
+                        {
+                            LimitState = newState
+                        }
+                    };
+                    await changedCallback(deviceData);
+                }
             }
 
             public async Task OnFailsafeEntered(string reason)
@@ -444,6 +458,21 @@ namespace EEBUS.Net
             public async Task OnEffectiveLimitChanged(EffectiveLimit limit)
             {
                 //using var _ = Push(new LimitDataChanged(false, active, limit, duration));
+            }
+            public async Task OnStateChanged(LimitState oldState, LimitState newState, string reason)
+            {
+                var changedCallback = EEBusManager.OnDeviceDataChanged;
+                if (changedCallback != null)
+                {
+                    var deviceData = new DeviceData
+                    {
+                        Lpp = new LpcLppData
+                        {
+                            LimitState = newState
+                        }
+                    };
+                    await changedCallback(deviceData);
+                }
             }
         }
 
@@ -913,6 +942,10 @@ namespace EEBUS.Net
 
         public void Start()
         {
+            var localDevice = _devices.Local;
+            _mDNSService.Run(localDevice, _cts.Token);
+            _mDNSClient.Run(_devices);
+
             _shipListener = new SHIPListener(_devices, _settings, _logger);
             _shipListener.OnNewConnectionValidation = (args) =>
             {
