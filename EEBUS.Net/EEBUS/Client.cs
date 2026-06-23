@@ -110,14 +110,18 @@ namespace EEBUS
 
 			var heart = new HeartBeatTask();
 			Timer beat = new System.Threading.Timer(arg => heart.Beat(arg), this, 4000, 4000);
-			//var ecc = new ElectricalConnectionCharacteristicTask();
-			//var eccSend = new System.Threading.Timer(ecc.SendData, this, 2000, Timeout.Infinite);
+            //var ecc = new ElectricalConnectionCharacteristicTask();
+            //var eccSend = new System.Threading.Timer(ecc.SendData, this, 2000, Timeout.Infinite);
 
-			//var md = new MeasurementDataTask();
-			//var mdSend = new System.Threading.Timer(md.SendData, this, 3000, 3000);
+            //var md = new MeasurementDataTask();
+            //var mdSend = new System.Threading.Timer(md.SendData, this, 3000, 3000);
 
+            if (this.Remote != null)
+            {
+                this.Remote.LastDisconnectUtc = null;
+            }
 
-			try
+            try
 			{
 				while (this.state != EState.Stopped && !cancellationToken.IsCancellationRequested)
 				{

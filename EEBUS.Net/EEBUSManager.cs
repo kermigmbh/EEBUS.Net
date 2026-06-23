@@ -176,8 +176,10 @@ namespace EEBUS.Net
                             && connection.State != Connection.EState.Stopped
                             && connection.State != Connection.EState.ErrorOrTimeout;
             if (isConnected) return false;  //do not process pairing requests when we are still connected to an addCu device
+            
+            if (remote.LastDisconnectUtc == null) return false;
 
-            TimeSpan diff = DateTime.UtcNow - remote.LastDisconnectUtc;
+            TimeSpan diff = DateTime.UtcNow - remote.LastDisconnectUtc.Value;
             //if (diff.TotalMinutes > 15)
             //{
             //    //addCuRemote.TrustType = EEBUS.Models.ShipTrustType.SkiVerification;
@@ -476,6 +478,8 @@ namespace EEBUS.Net
             }
         }
 
+
+        [Obsolete]
         public JsonObject GetLocal()
         {
             LocalDevice? local = _devices?.Local;
@@ -678,6 +682,8 @@ namespace EEBUS.Net
             };
         }
 
+
+        [Obsolete]
         public JsonArray GetRemotes()
         {
             var options = new JsonSerializerOptions
@@ -701,7 +707,7 @@ namespace EEBUS.Net
             return JsonSerializer.SerializeToNode(projection, options)!.AsArray();
         }
 
-        public IEnumerable<RemoteDeviceData> GetConnectedDevices()
+        public IEnumerable<RemoteDeviceData> GetDiscoveredDevices()
         {
             return _devices.GetRemotes().Select(rd => new RemoteDeviceData
             {
@@ -894,6 +900,10 @@ namespace EEBUS.Net
                 if (_connections.TryRemove(ski, out Connection? removedClient) && removedClient != null)
                 {
                     await removedClient.CloseAsync();
+                    if (OnDeviceConnectionStatusChanged != null && removedClient.Remote != null)
+                    {
+                        await OnDeviceConnectionStatusChanged(removedClient.Remote, DeviceConnectionStatus.Unknown);
+                    }
                 }
                 else
                 {

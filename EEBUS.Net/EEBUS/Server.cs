@@ -74,7 +74,10 @@ namespace EEBUS
             //var md         = new MeasurementDataTask();
             //using var mdSend   = new System.Threading.Timer( md.SendData, this, 3000, 3000 );
 
-
+            if (this.Remote != null)
+            {
+                this.Remote.LastDisconnectUtc = null;
+            }
             try
             {
                 while (this.ws.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)

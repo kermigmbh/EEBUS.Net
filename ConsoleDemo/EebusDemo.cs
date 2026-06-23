@@ -20,7 +20,7 @@ namespace ConsoleDemo
 
         public async Task RunAsync(Settings settings)
         {
-            
+
             var onNewConnectionValidation = (NewConnectionValidationEventArgs args) =>
             {
                 Debug.WriteLine("Ski: " + args.Ski);
@@ -30,7 +30,7 @@ namespace ConsoleDemo
 
             _manager = new EEBUSManager(settings);
 
-            
+
 
 
             _manager.OnLimitDataChanged = async (args) =>
@@ -57,6 +57,7 @@ namespace ConsoleDemo
             Console.WriteLine("- remote <index>: prints all data of the remote device on index <index>");
             Console.WriteLine("- connect <index>: connects to the remote device with index <index>, starting at 0");
             Console.WriteLine("- read: prints out all properties of the local device");
+            Console.WriteLine("- ski: sets trusted ski");
 
 
             while (true)
@@ -72,6 +73,10 @@ namespace ConsoleDemo
                 {
                     case "remotes":
                         PrintRemotes();
+                        break;
+                    case "ski":
+                        string trustedSki = tokens.ElementAtOrDefault(1);
+                        _manager.AddTrustedSki(trustedSki);
                         break;
                     case "remote":
                         if (int.TryParse(tokens.ElementAtOrDefault(1), out int remoteIndex))
@@ -110,7 +115,7 @@ namespace ConsoleDemo
                 }
             }
 
-            
+
             _manager.Dispose();
         }
 
@@ -140,7 +145,7 @@ namespace ConsoleDemo
 
         private void PrintRemoteData(int index)
         {
-            IEnumerable<RemoteDeviceData>? remotes = _manager?.GetConnectedDevices();
+            IEnumerable<RemoteDeviceData>? remotes = _manager?.GetDiscoveredDevices();
             RemoteDeviceData? match = remotes?.ElementAtOrDefault(index);
             if (match == null) return;
             DeviceData? remoteData = _manager?.GetRemoteData(match.Ski);
@@ -155,24 +160,23 @@ namespace ConsoleDemo
         {
             if (_manager == null) return false;
 
-            JsonArray? remotes = _manager.GetRemotes();
+            var remotes = _manager.GetDiscoveredDevices();
             if (remotes == null) return false;
 
             var remote = remotes.ElementAtOrDefault(remoteIndex);
             if (remote == null) return false;
 
-            var ski = remote["ski"];
-            if (ski == null) return false;
+             
 
             try
             {
-                return await _manager.TryConnectAsync(ski.ToString());
+                return await _manager.TryConnectAsync(remote.Ski);
             }
             catch (Exception ex)
             {
                 return false;
             }
-            
+
         }
     }
 }

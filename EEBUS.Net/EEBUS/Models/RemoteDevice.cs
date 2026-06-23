@@ -27,7 +27,7 @@ namespace EEBUS.Models
         public string Url { get; private set; }
         private DateTime Age = DateTime.UtcNow;
 
-        public DateTime LastDisconnectUtc { get; set; }
+        public DateTime? LastDisconnectUtc { get; set; }
 
         public void SetServerState(Connection.EState state)
         {
