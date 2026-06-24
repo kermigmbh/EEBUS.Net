@@ -13,28 +13,17 @@ using Xunit.Abstractions;
 
 namespace TestProject1.IntegrationTests
 {
-    public class CommunicationTest
+    public class CommunicationTest : EebusIntegrationTests
     {
-        private readonly ITestOutputHelper _output;
-
-        public CommunicationTest(ITestOutputHelper output)
+        public CommunicationTest(ITestOutputHelper output) : base(output)
         {
-            _output = output;
         }
-
-        private void Log(string message)
-        {
-            Debug.WriteLine(message);
-            _output.WriteLine(message);
-            
-        }
-
 
         [Fact]
         public async Task TwoEEBUSDevicesConnectivityAsync()
         {
-            ILogger manager1Logger = new TestOutputLogger(_output, "Manager1");
-            ILogger manager2Logger = new TestOutputLogger(_output, "Manager2");
+            ILogger manager1Logger = GetLogger("Manager1");
+            ILogger manager2Logger = GetLogger("Manager2");
             EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(), logger: manager1Logger);
             EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings(), logger: manager2Logger);
 
@@ -71,27 +60,12 @@ namespace TestProject1.IntegrationTests
                 return Task.CompletedTask;
             };
 
-            manager1.AddTrustedSki(manager2.GetLocalData().SKI);
-            manager2.AddTrustedSki(manager1.GetLocalData().SKI);
-
             string manager2Ski = manager2.GetLocalData().SKI;
             string manager1Ski = manager1.GetLocalData().SKI;
+            manager1.AddTrustedSki(manager2Ski);
+            manager2.AddTrustedSki(manager1Ski);
 
-            using var manager2FoundWaiter = new TestWaiter<RemoteDevice>(
-                subscribe: handler => manager1.OnDeviceFound += handler,
-                unsubscribe: handler => manager1.OnDeviceFound -= handler);
-
-            using var manager1FoundWaiter = new TestWaiter<RemoteDevice>(
-               subscribe: handler => manager2.OnDeviceFound += handler,
-               unsubscribe: handler => manager2.OnDeviceFound -= handler);
-
-            manager1.Start();
-            manager2.Start();
-
-            var t1 = manager2FoundWaiter.Match(device => device.SKI.ToString() == manager2Ski, 15000);
-            var t2 =  manager1FoundWaiter.Match(device => device.SKI.ToString() == manager1Ski, 15000);
-            await Task.WhenAll(t1, t2);
-            Log("Manager1 found manager2.");
+            await StartManagersAsync(manager1, manager2);
 
             using var manager2ReadyWaiter = new TestWaiter<RemoteDevice, DeviceConnectionStatus>(
                 subscribe: handler => manager2.OnDeviceConnectionStatusChanged += handler,
@@ -134,6 +108,26 @@ namespace TestProject1.IntegrationTests
 
             Log("Data received!");
 
+        }
+
+        [Fact]
+        public async Task WHEN_SkiNotRegisteredAsTrusted_THEN_ConnectionFailsAsync()
+        {
+            ILogger manager1Logger = GetLogger("Manager1");
+            ILogger manager2Logger = GetLogger("Manager2");
+            EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(), logger: manager1Logger);
+            EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings(), logger: manager2Logger);
+
+            await StartManagersAsync(manager1, manager2);
+
+            bool connected = await manager1.TryConnectAsync(manager2.GetLocalData().SKI);
+            Assert.False(connected, "Connection should fail when SKI is not registered as trusted.");
+
+            manager1.AddTrustedSki(manager2.GetLocalData().SKI);
+            manager2.AddTrustedSki(manager1.GetLocalData().SKI);
+
+            connected = await manager1.TryConnectAsync(manager2.GetLocalData().SKI);
+            Assert.True(connected, "Connection should succeed after SKI is registered as trusted.");
         }
     }
 }

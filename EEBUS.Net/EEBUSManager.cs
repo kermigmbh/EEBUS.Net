@@ -866,7 +866,7 @@ namespace EEBUS.Net
             {
                 _logger?.LogError(ex, "Connect error for SKI {Ski}.", ski);
                 wsClient?.Dispose();
-                throw;
+                return false;
             }
         }
 
