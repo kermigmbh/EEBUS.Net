@@ -10,7 +10,8 @@ namespace EEBUS.Net
         /// Unknown - not connected
         /// </summary>
         Unknown = 0,
-        UseCaseDiscoveryCompleted = 1,
-        NodeDiscoveryCompleted = 2,
+        NodeDiscoveryCompleted = 1,
+        UseCaseDiscoveryCompleted = 2,
+        Aborted = 3,
     }
 }

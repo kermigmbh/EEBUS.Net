@@ -1,7 +1,8 @@
-﻿using System.Text.Json.Serialization;
-
-using EEBUS.Messages;
+﻿using EEBUS.Messages;
+using EEBUS.Net;
+using EEBUS.UseCases.ControllableSystem;
 using Microsoft.Extensions.Logging;
+using System.Text.Json.Serialization;
 
 namespace EEBUS.SHIP.Messages
 {
@@ -73,14 +74,28 @@ namespace EEBUS.SHIP.Messages
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.pending && connection.SubState == Connection.ESubState.SecondPending)
             {
                 this.connectionHello.phase = ConnectionHelloPhaseType.aborted;
+                await UpdateConnectionStatusAsync(connection, DeviceConnectionStatus.Aborted).ConfigureAwait(false);
                 await Send(connection.WebSocket, logger).ConfigureAwait(false);
                 return (Connection.EState.Stopped, Connection.ESubState.None);
             }
 
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.aborted)
+            {
+                await UpdateConnectionStatusAsync(connection, DeviceConnectionStatus.Aborted).ConfigureAwait(false);
                 return (Connection.EState.Stopped, Connection.ESubState.None);
+            }
 
             throw new Exception("Hello aborted!");
+        }
+
+        private async Task UpdateConnectionStatusAsync(Connection connection, DeviceConnectionStatus status)
+        {
+            connection.ConnectionStatus = status;
+            List<DeviceConnectionStatusEvents> notifyEvents = connection.Local.GetUseCaseEvents<DeviceConnectionStatusEvents>();
+            foreach (var ev in notifyEvents)
+            {
+                await ev.DeviceConnectionStatusUpdatedAsync(connection);
+            }
         }
 
         public override async Task<(Connection.EState, Connection.ESubState)> NextClientState(Connection connection, ILogger? logger = null)
@@ -125,7 +140,10 @@ namespace EEBUS.SHIP.Messages
                 return (Connection.EState.Stopped, Connection.ESubState.None);
 
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.aborted)
+            {
+                await UpdateConnectionStatusAsync(connection, DeviceConnectionStatus.Aborted).ConfigureAwait(false);
                 return (Connection.EState.Stopped, Connection.ESubState.None);
+            }
 
             throw new Exception("Was waiting for Init");
         }
