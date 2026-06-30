@@ -33,6 +33,7 @@ namespace EEBUS
         private ILogger? _logger;
 
         public Func<DeviceConnectionChangedEventArgs, Task>? OnDeviceConnectionChanged;
+        public Func<DeviceConnectionRequestEventArgs, Task>? OnDeviceConnectionRequest;
 
         private Settings _settings;
 
@@ -231,10 +232,16 @@ namespace EEBUS
                     // must be told explicitly - otherwise the old entry leaks
                     // in _connections (different RemoteHost) and no
                     // OnDeviceConnectionStatusChanged(Unknown) is fired.
-                    var previous = Server.Get(ski.ToString());
-                    if (previous != null && OnDeviceConnectionChanged != null)
+
+                    //var previous = Server.Get(ski.ToString());
+                    //if (previous != null && OnDeviceConnectionChanged != null)
+                    //{
+                    //    await OnDeviceConnectionChanged(new DeviceConnectionChangedEventArgs() { Connection = previous, ChangeType = DeviceConnectionChangeType.Disconnected });
+                    //}
+
+                    if (OnDeviceConnectionRequest != null)
                     {
-                        await OnDeviceConnectionChanged(new DeviceConnectionChangedEventArgs() { Connection = previous, ChangeType = DeviceConnectionChangeType.Disconnected });
+                        await OnDeviceConnectionRequest(new DeviceConnectionRequestEventArgs(ski));
                     }
 
                     var socket = await httpContext.WebSockets.AcceptWebSocketAsync("ship").ConfigureAwait(false);

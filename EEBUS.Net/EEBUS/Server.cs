@@ -16,50 +16,13 @@ namespace EEBUS
     /// </summary>
     public class Server : Connection
     {
+        private readonly string _ski;
 
         public Server(string ski, HostString host, WebSocket ws, Devices devices, ILogger? logger = null)
             : base(host, ws, devices, logger)
         {
             this._ski = ski ?? string.Empty;
             this.Remote = devices.GetRemotes().FirstOrDefault(r => r.SKI.ToString() == ski);
-
-            Server? previous = null;
-            lock (mutex)
-            {
-                // If there is already a Server registered for this SKI, capture it so
-                // we can close it instead of silently dropping the reference (which
-                // would leak the WebSocket and any background tasks rooted by it).
-                serverMap.TryGetValue(this._ski, out previous);
-                serverMap[this._ski] = this;
-            }
-
-            if (previous != null && !ReferenceEquals(previous, this))
-            {
-                // Fire and forget: we don't want the new connection setup to block
-                // on tearing down the stale one, but we must not leak it.
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await previous.CloseAsync().ConfigureAwait(false);
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine("Failed to close previous Server for SKI " + this._ski + ": " + ex.Message);
-                    }
-                });
-            }
-        }
-
-        private readonly string _ski;
-
-        static private ConcurrentDictionary<string, Server> serverMap = new();
-
-        static private object mutex = new();
-
-        static public Server? Get(string ski)
-        {
-            return serverMap.TryGetValue(ski, out Server? server) ? server : null;
         }
 
         public async Task Do(CancellationToken cancellationToken)
@@ -67,12 +30,6 @@ namespace EEBUS
 			Logger?.LogDebug("Starting Server for ski {serverSki}", _ski);
             var heart = new HeartBeatTask();
             Timer beat = new System.Threading.Timer(arg => heart.Beat(arg), this, 4000, 4000);
-
-            //var ecc        = new ElectricalConnectionCharacteristicTask();
-            //using var eccSend   = new System.Threading.Timer( ecc.SendData, this, 2000, Timeout.Infinite );
-
-            //var md         = new MeasurementDataTask();
-            //using var mdSend   = new System.Threading.Timer( md.SendData, this, 3000, 3000 );
 
             if (this.Remote != null)
             {
@@ -109,7 +66,6 @@ namespace EEBUS
                     if (this.state == EState.Connected && this.state != oldState)
                     {
                         RequestRemoteDeviceConfiguration();
-                        // ReadAndSubscribe();
                     }
 
                     ResolvePendingRequest(message);
@@ -134,7 +90,6 @@ namespace EEBUS
                 // callbacks; the underlying TimerQueueTimer is only released by Dispose).
                 try { beat.Dispose(); } catch { }
             }
-            //eccSend.Change( Timeout.Infinite, Timeout.Infinite );
 
             await CloseAsync().ConfigureAwait(false);
         }
@@ -153,18 +108,9 @@ namespace EEBUS
             // Only remove from the map if we are still the registered Server for
             // this SKI. A newer connection for the same peer may have replaced us
             // already, and in that case we must not remove its entry.
-            lock (mutex)
-            {
-                if (serverMap.TryGetValue(this._ski, out Server? current) && ReferenceEquals(current, this))
-                {
-                    serverMap.TryRemove(this._ski, out _);
-                }
-            }
 
             this.state = EState.Disconnected;
             this.subState = ESubState.None;
-
-            Debug.WriteLine($"Closed websocket for connectedNode {this.host}. Remaining active connectedNodes : {serverMap.Count}");
         }
     }
 }

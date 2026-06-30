@@ -301,6 +301,7 @@ namespace EEBUS.Net
         {
             public async Task DeviceConnectionStatusUpdatedAsync(Connection connection)
             {
+                EEBusManager._logger?.LogTrace("Status Changed for device {ski}: {status}", connection.Remote?.SKI.ToString(), connection.ConnectionStatus.ToString());
                 if (connection.ConnectionStatus == DeviceConnectionStatus.UseCaseDiscoveryCompleted)
                 {
                     //if (connection.Remote != null && EEBusManager.Localdevice.SKI > connection.Remote.SKI)  //device with bigger ski shall close old connections according to spec
@@ -373,25 +374,25 @@ namespace EEBUS.Net
         {
             public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync(ActiveLimitWriteRequest request)
             {
-                Console.WriteLine($"LPC Active Limit Write Request: Value={request.Value}, Active={request.IsLimitActive}");
+                EEBusManager._logger?.LogTrace($"LPC Active Limit Write Request: Value={request.Value}, Active={request.IsLimitActive}");
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
             public Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync(FailsafeLimitWriteRequest request)
             {
-                Console.WriteLine($"LPC Failsafe Limit Write Request: Value={request.Value}");
+                EEBusManager._logger?.LogTrace($"LPC Failsafe Limit Write Request: Value={request.Value}");
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
             public Task<WriteApprovalResult> ApproveFailsafeDurationMinimumWriteAsync(FailsafeDurationWriteRequest request)
             {
-                Console.WriteLine($"Failsafe Duration Write Request: Duration={request.Duration}");
+                EEBusManager._logger?.LogTrace($"Failsafe Duration Write Request: Duration={request.Duration}");
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
             public async Task OnStateChanged(LimitState oldState, LimitState newState, string reason)
             {
-                Console.WriteLine($"OnStateChanged {oldState} -> {newState} ({reason})");
+                EEBusManager._logger?.LogTrace($"OnStateChanged {oldState} -> {newState} ({reason})");
                 var changedCallback = EEBusManager.OnDeviceDataChanged;
                 if (changedCallback != null)
                 {
@@ -408,12 +409,12 @@ namespace EEBUS.Net
 
             public async Task OnFailsafeEntered(string reason)
             {
-                Console.WriteLine($"Entered Failsafe");
+                EEBusManager._logger?.LogTrace($"Entered Failsafe");
             }
 
             public async Task OnFailsafeExited(string reason)
             {
-                Console.WriteLine($"Left Failsafe");
+                EEBusManager._logger?.LogTrace($"Left Failsafe");
             }
 
             public async Task OnEffectiveLimitChanged(EffectiveLimit limit)
@@ -441,19 +442,19 @@ namespace EEBUS.Net
         {
             public Task<WriteApprovalResult> ApproveActiveLimitWriteAsync(ActiveLimitWriteRequest request)
             {
-                Console.WriteLine($"LPP Active Limit Write Request: Value={request.Value}, Active={request.IsLimitActive}");
+                EEBusManager._logger?.LogTrace($"LPP Active Limit Write Request: Value={request.Value}, Active={request.IsLimitActive}");
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
             public Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync(FailsafeLimitWriteRequest request)
             {
-                Console.WriteLine($"LPP Failsafe Limit Write Request: Value={request.Value}");
+                EEBusManager._logger?.LogTrace($"LPP Failsafe Limit Write Request: Value={request.Value}");
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
             public Task<WriteApprovalResult> ApproveFailsafeDurationMinimumWriteAsync(FailsafeDurationWriteRequest request)
             {
-                Console.WriteLine($"Failsafe Duration Write Request: Duration={request.Duration}");
+                EEBusManager._logger?.LogTrace($"Failsafe Duration Write Request: Duration={request.Duration}");
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
@@ -999,7 +1000,18 @@ namespace EEBUS.Net
                 return isValid;
             };
             _shipListener.OnDeviceConnectionChanged = OnDeviceConnectionChangedAsync;
+            _shipListener.OnDeviceConnectionRequest = OnDeviceConnectionRequestAsync;
             _shipListener.StartAsync(_settings.Device.Port);
+        }
+
+        private async Task OnDeviceConnectionRequestAsync(DeviceConnectionRequestEventArgs e)
+        {
+            string ski = e.Ski.ToString();
+            if (_connections.TryGetValue(ski, out Connection? existingConnection) && existingConnection != null)
+            {
+                //Connection exists already, close the old one before accepting the new one
+                await DisconnectAsync(ski).ConfigureAwait(false);
+            }
         }
 
         private async Task OnDeviceConnectionChangedAsync(DeviceConnectionChangedEventArgs e)
