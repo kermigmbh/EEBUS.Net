@@ -1,29 +1,35 @@
 ﻿using EEBUS;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace TestProject1.IntegrationTests
 {
     public static  class Setup
     {
+        //_nodeNumber ensures we do not create the same node multiple times, which could influence the test results
+        private static int _nodeNumber = 0;
+        private static object _lock = new object();
 
-        public static Settings GetCEMSettings()
+        public static Settings GetCEMSettings([CallerMemberName] string methodName = "")
         {
-
-            var settings1 = new Settings()
+            lock (_lock)
             {
-                Device = new DeviceSettings()
+                _nodeNumber++;
+                var settings1 = new Settings()
                 {
-                    Name = "KermiConsumer",
-                    Id = "KermiConsumer",
-                    Model = "KermiDemo",
-                    Brand = "Kermi",
-                    Type = "EnergyManagementSystem",
-                    Serial = "123456",
-                    Port = 7200,
-                    Entities = [
-                          new EntitySettings { Type = "DeviceInformation" },
+                    Device = new DeviceSettings()
+                    {
+                        Name = "KermiConsumer",
+                        Id = "KermiConsumer-" + _nodeNumber,
+                        Model = "KermiDemo",
+                        Brand = "Kermi",
+                        Type = "EnergyManagementSystem",
+                        Serial = "123456",
+                        Port = (ushort)(7000 + _nodeNumber),
+                        Entities = [
+                              new EntitySettings { Type = "DeviceInformation" },
                         new EntitySettings { Type  = "CEM", UseCases = [
                             new UseCaseSettings {
                                 Type = "limitationOfPowerConsumption",
@@ -50,30 +56,34 @@ namespace TestProject1.IntegrationTests
                                 Actor = "MonitoredUnit"
                             }
                             ]}
-                              ]
-                },
-                //Certificate = "XCenterEEBUS"
-                Certificate = "EEBUS1.net"
-            };
-            return settings1;
+                                  ]
+                    },
+                    //Certificate = "XCenterEEBUS"
+                    Certificate = "EEBUS" + (_nodeNumber) + ".net"
+                };
+                return settings1;
+            }
         }
 
 
-        public static Settings GetControlBoxSettings()
+        public static Settings GetControlBoxSettings([CallerMemberName] string methodName = "")
         {
-            var settings2 = new Settings()
+            lock (_lock)
             {
-                Device = new DeviceSettings()
+                _nodeNumber++;
+                var settings2 = new Settings()
                 {
-                    Name = "KermiControlbox",
-                    Id = "KermiControlbox",
-                    Model = "KermiDemo",
-                    Brand = "Kermi",
-                    Type = "EnergyGuard",
-                    Serial = "444444",
-                    Port = 7201,
-                    Entities = [
-                      new EntitySettings { Type = "DeviceInformation" },
+                    Device = new DeviceSettings()
+                    {
+                        Name = "KermiControlbox",
+                        Id = "KermiControlbox-" + _nodeNumber,
+                        Model = "KermiDemo",
+                        Brand = "Kermi",
+                        Type = "EnergyGuard",
+                        Serial = "444444",
+                        Port = (ushort)(7200 + _nodeNumber),
+                        Entities = [
+                          new EntitySettings { Type = "DeviceInformation" },
                         new EntitySettings { Type  = "GridGuard", UseCases = [
                             new UseCaseSettings {
                                 Type = "limitationOfPowerConsumption",
@@ -89,12 +99,13 @@ namespace TestProject1.IntegrationTests
                             }
 
                             ]}
-                          ]
-                },
-                //Certificate = "XCenterEEBUS"
-                Certificate = "EEBUS2.net"
-            };
-            return settings2;
+                              ]
+                    },
+                    //Certificate = "XCenterEEBUS"
+                    Certificate = "EEBUS" + (_nodeNumber) + ".net"
+                };
+                return settings2;
+            }
         }
 
     }

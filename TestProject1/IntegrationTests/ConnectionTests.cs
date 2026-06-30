@@ -20,8 +20,8 @@ namespace TestProject1.IntegrationTests
         {
             ILogger manager1Logger = GetLogger("Manager1");
             ILogger manager2Logger = GetLogger("Manager2");
-            EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(), logger: manager1Logger);
-            EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings(), logger: manager2Logger);
+            using EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(), logger: manager1Logger);
+            using EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings(), logger: manager2Logger);
 
             string manager1Ski = manager1.GetLocalData().SKI;
             string manager2Ski = manager2.GetLocalData().SKI;
@@ -58,8 +58,8 @@ namespace TestProject1.IntegrationTests
         {
             ILogger manager1Logger = GetLogger("Manager1");
             ILogger manager2Logger = GetLogger("Manager2");
-            EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(), logger: manager1Logger);
-            EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings(), logger: manager2Logger);
+            using EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(), logger: manager1Logger);
+            using EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings(), logger: manager2Logger);
 
             string manager1Ski = manager1.GetLocalData().SKI;
             string manager2Ski = manager2.GetLocalData().SKI;
@@ -91,8 +91,8 @@ namespace TestProject1.IntegrationTests
         {
             ILogger manager1Logger = GetLogger("Manager1");
             ILogger manager2Logger = GetLogger("Manager2");
-            EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(), logger: manager1Logger);
-            EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings(), logger: manager2Logger);
+            using EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(), logger: manager1Logger);
+            using EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings(), logger: manager2Logger);
 
             string manager1Ski = manager1.GetLocalData().SKI;
             string manager2Ski = manager2.GetLocalData().SKI;
