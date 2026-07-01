@@ -18,14 +18,14 @@ namespace EEBUS
 					basePath = Directory.GetCurrentDirectory();
                 }
 				string path		= Path.Combine(basePath, subject + ".pfx" );
-				string password = Environment.GetEnvironmentVariable( "PFX_PASSWORD" ) ?? string.Empty;
+				string password = "xcenter";
 
 				// check if we have a persisted cert already
 				if ( File.Exists( path ) )
 				{
 					// load and return
 					return new X509Certificate2( path,
-												 Environment.GetEnvironmentVariable("PFX_PASSWORD"),
+												 password,
 												 X509KeyStorageFlags.UserKeySet |
 												 X509KeyStorageFlags.PersistKeySet |
 												 X509KeyStorageFlags.Exportable );
@@ -38,12 +38,12 @@ namespace EEBUS
 						X509Certificate2 rootCertificate;
 						if ( File.Exists( rootPath ) )
 						{
-							rootCertificate = new X509Certificate2( rootPath, "vollautomat" );
+							rootCertificate = new X509Certificate2( rootPath, "xcenterRoot" );
 						}
 						else
 						{
 							rootCertificate = CreateRootCertificate();
-							File.WriteAllBytes( rootPath, rootCertificate.Export( X509ContentType.Pfx, "vollautomat" ) );
+							File.WriteAllBytes( rootPath, rootCertificate.Export( X509ContentType.Pfx, "xcenterRoot" ) );
 						}
 
 						using ( ECDsa ecdsa = ECDsa.Create( ECCurve.NamedCurves.nistP256 ) )
@@ -107,7 +107,7 @@ namespace EEBUS
 			using ( ECDsa ecdsa = ECDsa.Create( ECCurve.NamedCurves.nistP256 ))
 			{
 				CertificateRequest request = new CertificateRequest(
-					"CN=Vollautomat Root Certificate",
+					"CN=XCenter Root Certificate",
 					ecdsa,
 					HashAlgorithmName.SHA256 );
 
