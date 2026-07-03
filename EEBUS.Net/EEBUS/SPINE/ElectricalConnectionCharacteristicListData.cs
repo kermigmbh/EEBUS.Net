@@ -3,45 +3,46 @@ using EEBUS.Models;
 using EEBUS.Net.EEBUS.Data.DataStructures;
 using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.Net.EEBUS.SPINE.Types;
+using EEBUS.SHIP.Messages;
 using System.Text.Json.Nodes;
 
 namespace EEBUS.SPINE.Commands
 {
-	public class ElectricalConnectionCharacteristicListData : SpineCmdPayload<CmdElectricalConnectionCharacteristicListDataType>
-	{
-		static ElectricalConnectionCharacteristicListData()
-		{
-			Register( "electricalConnectionCharacteristicListData", new Class() );
-		}
+    public class ElectricalConnectionCharacteristicListData : SpineCmdPayload<CmdElectricalConnectionCharacteristicListDataType>
+    {
+        static ElectricalConnectionCharacteristicListData()
+        {
+            Register("electricalConnectionCharacteristicListData", new Class());
+        }
 
-		//static public ulong counter = 1;
+        //static public ulong counter = 1;
 
-		public new class Class : SpineCmdPayload<CmdElectricalConnectionCharacteristicListDataType>.Class
-		{
+        public new class Class : SpineCmdPayload<CmdElectricalConnectionCharacteristicListDataType>.Class
+        {
             public override SpineCmdPayloadBase? CreateRead(Connection connection)
             {
-				return new ElectricalConnectionCharacteristicListData();
+                return new ElectricalConnectionCharacteristicListData();
             }
 
-			public override SpineCmdPayloadBase CreateNotify( Connection connection )
-			{
-				ElectricalConnectionCharacteristicListData payload = new ElectricalConnectionCharacteristicListData();
-				payload.cmd = [new()];
-				payload.cmd[0].function = "electricalConnectionCharacteristicListData";
-				payload.cmd[0].filter = [new()];
-				payload.cmd[0].electricalConnectionCharacteristicListData = new();
+            public override SpineCmdPayloadBase CreateNotify(Connection connection)
+            {
+                ElectricalConnectionCharacteristicListData payload = new ElectricalConnectionCharacteristicListData();
+                payload.cmd = [new()];
+                payload.cmd[0].function = "electricalConnectionCharacteristicListData";
+                payload.cmd[0].filter = [new()];
+                payload.cmd[0].electricalConnectionCharacteristicListData = new();
 
                 //connection.Local.FillData<ElectricalConnectionCharacteristicDataType>( eccs, connection );
 
                 List<ElectricalConnectionCharacteristicDataStructure> structures = connection.Local.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>();
-				payload.cmd[0].electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData = structures.Select(structure => structure.Data).ToArray();
+                payload.cmd[0].electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData = structures.Select(structure => structure.Data).ToArray();
 
-				return payload;
-			}
+                return payload;
+            }
 
             public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync(DatagramType datagram, HeaderType header, Connection connection)
             {
-				if (datagram.header.cmdClassifier != "read") return null;
+                if (datagram.header.cmdClassifier != "read") return null;
 
                 ElectricalConnectionCharacteristicListData payload = new ElectricalConnectionCharacteristicListData();
                 payload.cmd[0].electricalConnectionCharacteristicListData = new();
@@ -66,67 +67,90 @@ namespace EEBUS.SPINE.Commands
                 LocalDevice localDevice = connection.Local;
                 bool didChange = false;
 
-				if (deviceData.Lpc != null && !deviceData.Lpc.IsEmpty())
-				{
+                if (deviceData.Lpc != null && !deviceData.Lpc.IsEmpty())
+                {
                     var consumptionDataStructures = localDevice.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>().Where(ds => ds.CharacteristicType == "contractualConsumptionNominalMax");
-					foreach (var consumptionDataStructure in consumptionDataStructures)
-					{
-						didChange = deviceData.Lpc.ContractualNominalMax != null && consumptionDataStructure.Number != deviceData.Lpc.ContractualNominalMax;
-						consumptionDataStructure.Number = deviceData.Lpc.ContractualNominalMax ?? consumptionDataStructure.Number;
-					}
-				}
+                    foreach (var consumptionDataStructure in consumptionDataStructures)
+                    {
+                        didChange = didChange || (deviceData.Lpc.ContractualNominalMax != null && consumptionDataStructure.Number != deviceData.Lpc.ContractualNominalMax);
+                        consumptionDataStructure.Number = deviceData.Lpc.ContractualNominalMax ?? consumptionDataStructure.Number;
+                    }
+                }
 
                 if (deviceData.Lpp != null && !deviceData.Lpp.IsEmpty())
                 {
                     var productionDataStructures = localDevice.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>().Where(ds => ds.CharacteristicType == "contractualProductionNominalMax");
                     foreach (var productionDataStructure in productionDataStructures)
                     {
-                        didChange = deviceData.Lpp.ContractualNominalMax != null && productionDataStructure.Number != deviceData.Lpp.ContractualNominalMax;
+                        didChange = didChange || (deviceData.Lpp.ContractualNominalMax != null && productionDataStructure.Number != deviceData.Lpp.ContractualNominalMax);
                         productionDataStructure.Number = deviceData.Lpp.ContractualNominalMax ?? productionDataStructure.Number;
                     }
                 }
 
-				if (didChange)
-				{
+                if (didChange)
+                {
                     AddressType? featureAddress = localDevice.GetFeatureAddress("ElectricalConnection", true);
-					if (featureAddress != null)
-					{
-						await SendNotifyAsync(localDevice, featureAddress);
-					}
+                    if (featureAddress != null)
+                    {
+                        await SendNotifyAsync(localDevice, featureAddress);
+                    }
                 }
             }
-		}
-	}
 
-	[System.SerializableAttribute()]
-	public class CmdElectricalConnectionCharacteristicListDataType : CmdType
-	{
-		public string										  function									 { get; set; }
-		public FilterType[]									  filter									 { get; set; }
-		public ElectricalConnectionCharacteristicListDataType electricalConnectionCharacteristicListData { get; set; } = new();
-	}
+            public override async Task ReadDataAsync(Connection connection, DeviceData deviceData)
+            {
+                if (connection.Remote == null) return;
 
-	//[System.SerializableAttribute()]
-	//public class FilterType
-	//{
-	//	public object cmdControl { get; set; } = new { partial = new { } };
-	//}
+                AddressType? featureSourceAddress = connection.Local.GetFeatureAddress("ElectricalConnection", false);
+                AddressType? featureDestinationAddress = connection.Remote.GetFeatureAddress("ElectricalConnection", true);
 
-	[System.SerializableAttribute()]
-	public class ElectricalConnectionCharacteristicListDataType
-	{
-		public ElectricalConnectionCharacteristicDataType[] electricalConnectionCharacteristicData { get; set; }
-	}
+                if (featureSourceAddress == null || featureDestinationAddress == null) return;
 
-	[System.SerializableAttribute()]
-	public class ElectricalConnectionCharacteristicDataType
-	{
-		public uint				electricalConnectionId { get; set; }
-		public uint				parameterId			   { get; set; }
-		public uint				characteristicId	   { get; set; }
-		public string			characteristicContext  { get; set; }
-		public string			characteristicType	   { get; set; }
-		public ScaledNumberType	value				   { get; set; } = new();
-		public string			unit				   { get; set; }
-	}
+                if (deviceData.Lpc != null || deviceData.Lpp != null)
+                {
+                    var electricalConnectionCharacteristicListData = await ReadFunctionFromRemoteAsync<ElectricalConnectionCharacteristicListData>(connection, "ElectricalConnection", "electricalConnectionCharacteristicListData");
+                    if (electricalConnectionCharacteristicListData != null)
+                    {
+                        var contractualConsumptionNominalMax = electricalConnectionCharacteristicListData.cmd.First().electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData.FirstOrDefault(d => d.characteristicType == "contractualConsumptionNominalMax")?.value.ToLong();
+                        var contractualProductionNominalMax = electricalConnectionCharacteristicListData.cmd.First().electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData.FirstOrDefault(d => d.characteristicType == "contractualProductionNominalMax")?.value.ToLong();
+
+                        deviceData.Lpc?.ContractualNominalMax = contractualConsumptionNominalMax;
+                        deviceData.Lpp?.ContractualNominalMax = contractualProductionNominalMax;
+                    }
+                }
+            }
+        }
+    }
+
+    [System.SerializableAttribute()]
+    public class CmdElectricalConnectionCharacteristicListDataType : CmdType
+    {
+        public string function { get; set; } = "electricalConnectionCharacteristicListData";
+        public FilterType[] filter { get; set; }
+        public ElectricalConnectionCharacteristicListDataType electricalConnectionCharacteristicListData { get; set; } = new();
+    }
+
+    //[System.SerializableAttribute()]
+    //public class FilterType
+    //{
+    //	public object cmdControl { get; set; } = new { partial = new { } };
+    //}
+
+    [System.SerializableAttribute()]
+    public class ElectricalConnectionCharacteristicListDataType
+    {
+        public ElectricalConnectionCharacteristicDataType[] electricalConnectionCharacteristicData { get; set; }
+    }
+
+    [System.SerializableAttribute()]
+    public class ElectricalConnectionCharacteristicDataType
+    {
+        public uint electricalConnectionId { get; set; }
+        public uint parameterId { get; set; }
+        public uint characteristicId { get; set; }
+        public string characteristicContext { get; set; }
+        public string characteristicType { get; set; }
+        public ScaledNumberType value { get; set; } = new();
+        public string unit { get; set; }
+    }
 }

@@ -14,9 +14,16 @@ namespace EEBUS.SPINE.Commands
 
 		public new class Class : SpineCmdPayload<CmdDeviceConfigurationKeyValueDescriptionListDataType>.Class
 		{
+            public override SpineCmdPayloadBase? CreateRead(Connection connection)
+            {
+                return new DeviceConfigurationKeyValueDescriptionListData();
+            }
 			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
-				DeviceConfigurationKeyValueDescriptionListData	   payload = new DeviceConfigurationKeyValueDescriptionListData();
+				if (datagram.header.cmdClassifier != "read")
+                    return null;
+
+                DeviceConfigurationKeyValueDescriptionListData	   payload = new DeviceConfigurationKeyValueDescriptionListData();
 				DeviceConfigurationKeyValueDescriptionListDataType data	   = payload.cmd[0].deviceConfigurationKeyValueDescriptionListData;
 
 				List<DeviceConfigurationKeyValueDescriptionDataType> datas = new();
@@ -71,7 +78,7 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class CmdDeviceConfigurationKeyValueDescriptionListDataType : CmdType
 	{
-		public DeviceConfigurationKeyValueDescriptionListDataType deviceConfigurationKeyValueDescriptionListData { get; set; } = new();
+        public DeviceConfigurationKeyValueDescriptionListDataType deviceConfigurationKeyValueDescriptionListData { get; set; } = new();
 	}
 
 	[System.SerializableAttribute()]

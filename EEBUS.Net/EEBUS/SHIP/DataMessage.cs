@@ -126,7 +126,7 @@ namespace EEBUS.SHIP.Messages
         }
         public override string? GetReferencedId()
         {
-            return base.GetReferencedId();
+            return SpineDatagramPayload.datagram.header.msgCounterReference?.ToString();
         }
         public override ShipMessageDirection GetMessageDirection()
         {

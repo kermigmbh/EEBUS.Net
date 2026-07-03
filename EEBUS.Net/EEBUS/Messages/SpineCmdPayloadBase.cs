@@ -1,6 +1,7 @@
 ﻿using EEBUS.Models;
 using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.SHIP.Messages;
+using EEBUS.SPINE.Commands;
 using EEBUS.UseCases.ControllableSystem;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -55,7 +56,7 @@ namespace EEBUS.Messages
 				return Task.CompletedTask;
 			}
 
-
+			public virtual Task ReadDataAsync(Connection connection, DeviceData deviceData) { return Task.CompletedTask; }
 		
 
             public virtual JsonNode? CreateNotifyPayload(LocalDevice localDevice)
@@ -111,7 +112,24 @@ namespace EEBUS.Messages
 			{
 				return null;
 			}
-		}
+
+            protected async Task<T?> ReadFunctionFromRemoteAsync<T>(Connection connection, string feature, string function) where T : SpineCmdPayloadBase
+            {
+                if (connection.Remote == null) return null;
+                AddressType? featureSourceAddress = connection.Local.GetFeatureAddress(feature, false);
+                AddressType? featureDestinationAddress = connection.Remote.GetFeatureAddress(feature, true);
+
+                if (featureSourceAddress == null || featureDestinationAddress == null) return null;
+
+                SpineCmdPayloadBase? readPayload = GetClass(function)?.CreateRead(connection);
+                DataMessage readMessage = DataMessage.CreateRead(featureSourceAddress, featureDestinationAddress, readPayload);
+                DataMessage readResult = await connection.PushDataMessageAsync(readMessage);
+
+                //We cannot use SpineDatagramPayload.DeserializePayload() here because it internally calls ToJsonNode, which returns a SpineCmdPayload<T>, which cannot be cast be cast into this method's T
+                //Example: for a loadControlLimitListData message, SpineDatagramPayload.DeserializePayload() will return a SpineCmdPayload<LoadControlLimitListData>, but this method expects a LoadControlLimitListData, so we need to deserialize the payload directly into T
+                return readResult.SpineDatagramPayload.datagram.payload?.Deserialize<T>();
+            }
+        }
 
 		static protected Dictionary<string, Class> commands = new Dictionary<string, Class>();
 

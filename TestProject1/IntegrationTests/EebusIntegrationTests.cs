@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Xunit.Abstractions;
 
@@ -12,17 +13,19 @@ namespace TestProject1.IntegrationTests
     public class EebusIntegrationTests
     {
         private readonly ITestOutputHelper _output;
+        private readonly ILogger _defaultLogger;
 
         public EebusIntegrationTests(ITestOutputHelper output)
         {
             _output = output;
+            _defaultLogger = GetLogger("Log");
         }
 
         protected void Log(string message)
         {
             Debug.WriteLine(message);
-            _output.WriteLine(message);
-
+            //_output.WriteLine(message);
+            _defaultLogger.LogTrace(message);
         }
 
         protected ILogger GetLogger(string categoryName)

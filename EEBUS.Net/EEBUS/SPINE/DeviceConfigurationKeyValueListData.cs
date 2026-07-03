@@ -255,12 +255,12 @@ namespace EEBUS.SPINE.Commands
 					}
 				}
 
-				if (deviceData.FailSafeLimitDuration != null)
+				if (deviceData.FailSafe?.LimitDuration != null)
 				{
 					FailsafeDurationMinimumKeyValue? failsafeDurationKeyValue = localDevice.GetKeyValue<FailsafeDurationMinimumKeyValue>();
 					if (failsafeDurationKeyValue != null)
 					{
-						failsafeDurationKeyValue.Duration = XmlConvert.ToString(deviceData.FailSafeLimitDuration.Value);
+						failsafeDurationKeyValue.Duration = XmlConvert.ToString(deviceData.FailSafe.LimitDuration.Value);
 						didChange = true;
 					}
 				}
@@ -274,6 +274,54 @@ namespace EEBUS.SPINE.Commands
 					}
 				}
 			}
+
+            public override async Task ReadDataAsync(Connection connection, DeviceData deviceData)
+            {
+				if (connection.Remote == null) return;
+
+                AddressType? featureSourceAddress = connection.Local.GetFeatureAddress("DeviceConfiguration", false);
+                AddressType? featureDestinationAddress = connection.Remote.GetFeatureAddress("DeviceConfiguration", true);
+
+                if (featureSourceAddress == null || featureDestinationAddress == null) return;
+
+                if (deviceData.Lpc != null || deviceData.Lpp != null || deviceData.FailSafe != null)
+				{
+                    SpineCmdPayloadBase? readPayload = CreateRead(connection);
+                    DataMessage readMessage = DataMessage.CreateRead(featureSourceAddress, featureDestinationAddress, readPayload);
+                    DataMessage readResult = await connection.PushDataMessageAsync(readMessage);
+                    DeviceConfigurationKeyValueListData? readResultPayload = readResult.SpineDatagramPayload.DeserializePayload() as DeviceConfigurationKeyValueListData;
+
+                    SpineCmdPayloadBase? readDescriptionPayload = GetClass("deviceConfigurationKeyValueDescriptionListData")?.CreateRead(connection);
+                    DataMessage readDescriptionMessage = DataMessage.CreateRead(featureSourceAddress, featureDestinationAddress, readDescriptionPayload);
+                    DataMessage readDescriptionResult = await connection.PushDataMessageAsync(readDescriptionMessage);
+                    DeviceConfigurationKeyValueDescriptionListData? readDescriptionResultPayload = readDescriptionResult.SpineDatagramPayload.DeserializePayload() as DeviceConfigurationKeyValueDescriptionListData;
+
+                    if (readResultPayload != null && readDescriptionResultPayload != null)
+					{
+						var lpcFailSafeLimitKeyId = readDescriptionResultPayload.cmd.First().deviceConfigurationKeyValueDescriptionListData.deviceConfigurationKeyValueDescriptionData?.FirstOrDefault(d => d.keyName == "failsafeConsumptionActivePowerLimit")?.keyId;
+						var lppFailSafeLimitKeyId = readDescriptionResultPayload.cmd.First().deviceConfigurationKeyValueDescriptionListData.deviceConfigurationKeyValueDescriptionData?.FirstOrDefault(d => d.keyName == "failsafeProductionActivePowerLimit")?.keyId;
+						var failsafeDurationKeyId = readDescriptionResultPayload.cmd.First().deviceConfigurationKeyValueDescriptionListData.deviceConfigurationKeyValueDescriptionData?.FirstOrDefault(d => d.keyName == "failsafeDurationMinimum")?.keyId;
+
+						if (lpcFailSafeLimitKeyId.HasValue && deviceData.Lpc != null)
+						{
+							var lpcFailSafeLimitKeyValue = readResultPayload.cmd.First().deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData?.FirstOrDefault(d => d.keyId == lpcFailSafeLimitKeyId.Value);
+                            deviceData.Lpc.FailSafeLimit = lpcFailSafeLimitKeyValue?.value?.scaledNumber?.ToLong();
+						}
+
+                        if (lppFailSafeLimitKeyId.HasValue && deviceData.Lpp != null)
+                        {
+                            var lppFailSafeLimitKeyValue = readResultPayload.cmd.First().deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData?.FirstOrDefault(d => d.keyId == lppFailSafeLimitKeyId.Value);
+                            deviceData.Lpp.FailSafeLimit = lppFailSafeLimitKeyValue?.value?.scaledNumber?.ToLong();
+                        }
+
+                        if (failsafeDurationKeyId.HasValue && deviceData.FailSafe != null)
+                        {
+                            var failsafeDurationKeyValue = readResultPayload.cmd.First().deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData?.FirstOrDefault(d => d.keyId == failsafeDurationKeyId.Value);
+                            deviceData.FailSafe.LimitDuration = (int?)failsafeDurationKeyValue?.value?.scaledNumber?.ToLong();
+                        }
+                    }
+                }
+            }
 		}
 	}
 
@@ -281,8 +329,7 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class CmdDeviceConfigurationKeyValueListDataType : CmdType
 	{
-
-		public DeviceConfigurationKeyValueListDataType deviceConfigurationKeyValueListData { get; set; } = new();
+        public DeviceConfigurationKeyValueListDataType deviceConfigurationKeyValueListData { get; set; } = new();
 	}
 
 	[System.SerializableAttribute()]

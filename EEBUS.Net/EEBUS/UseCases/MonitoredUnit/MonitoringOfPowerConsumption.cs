@@ -50,7 +50,7 @@ namespace EEBUS.UseCases.MonitoredUnit
                     {
                         measurementId = 0,
                         valueType = "value",
-                        value = new() { number = 0, scale = 0 },
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcPowerTotal ?? 0, scale = 0 },
                         valueSource = "measuredValue"
                     }
                 });
@@ -81,7 +81,7 @@ namespace EEBUS.UseCases.MonitoredUnit
                     {
                         measurementId = 1,
                         valueType = "value",
-                        value = new() { number = 0, scale = 0 },
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcPowerPhaseA ?? 0, scale = 0 },
                         valueSource = "measuredValue"
                     }
                 });
@@ -112,7 +112,7 @@ namespace EEBUS.UseCases.MonitoredUnit
                     {
                         measurementId = 2,
                         valueType = "value",
-                        value = new() { number = 0, scale = 0 },
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcPowerPhaseB ?? 0, scale = 0 },
                         valueSource = "measuredValue"
                     }
                 });
@@ -143,7 +143,7 @@ namespace EEBUS.UseCases.MonitoredUnit
                     {
                         measurementId = 3,
                         valueType = "value",
-                        value = new() { number = 0, scale = 0 },
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcPowerPhaseC ?? 0, scale = 0 },
                         valueSource = "measuredValue"
                     }
                 });
@@ -172,7 +172,7 @@ namespace EEBUS.UseCases.MonitoredUnit
                     {
                         measurementId = 4,
                         valueType = "value",
-                        value = new() { number = 0, scale = 0 },
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcEnergyConsumed ?? 0, scale = 0 },
                         valueSource = "measuredValue"
                     }
                 });
@@ -201,7 +201,7 @@ namespace EEBUS.UseCases.MonitoredUnit
                     {
                         measurementId = 5,
                         valueType = "value",
-                        value = new() { number = 0, scale = 0 },
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcEnergyProduced ?? 0, scale = 0 },
                         valueSource = "measuredValue"
                     }
                 });
@@ -229,7 +229,7 @@ namespace EEBUS.UseCases.MonitoredUnit
                     {
                         measurementId = 6,
                         valueType = "value",
-                        value = new() { number = 0, scale = 0 },
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcCurrentPhaseA ?? 0, scale = 0 },
                         valueSource = "measuredValue"
                     }
                 });
@@ -257,7 +257,7 @@ namespace EEBUS.UseCases.MonitoredUnit
                     {
                         measurementId = 7,
                         valueType = "value",
-                        value = new() { number = 0, scale = 0 },
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcCurrentPhaseB ?? 0, scale = 0 },
                         valueSource = "measuredValue"
                     }
                 });
@@ -285,7 +285,7 @@ namespace EEBUS.UseCases.MonitoredUnit
                     {
                         measurementId = 8,
                         valueType = "value",
-                        value = new() { number = 0, scale = 0 },
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcCurrentPhaseC ?? 0, scale = 0 },
                         valueSource = "measuredValue"
                     }
                 });
@@ -316,7 +316,7 @@ namespace EEBUS.UseCases.MonitoredUnit
                     {
                         measurementId = 9,
                         valueType = "value",
-                        value = new() { number = 0, scale = 0 },
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcVoltagePhaseA ?? 0, scale = 0 },
                         valueSource = "measuredValue"
                     }
                 });
@@ -347,7 +347,7 @@ namespace EEBUS.UseCases.MonitoredUnit
                     {
                         measurementId = 10,
                         valueType = "value",
-                        value = new() { number = 0, scale = 0 },
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcVoltagePhaseB ?? 0, scale = 0 },
                         valueSource = "measuredValue"
                     }
                 });
@@ -378,7 +378,7 @@ namespace EEBUS.UseCases.MonitoredUnit
                     {
                         measurementId = 11,
                         valueType = "value",
-                        value = new() { number = 0, scale = 0 },
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcVoltagePhaseC ?? 0, scale = 0 },
                         valueSource = "measuredValue"
                     }
                 });
@@ -405,7 +405,7 @@ namespace EEBUS.UseCases.MonitoredUnit
                     {
                         measurementId = 12,
                         valueType = "value",
-                        value = new() { number = 0, scale = 0 },
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcFrequency ?? 0, scale = 0 },
                         valueSource = "measuredValue"
                     }
                 });

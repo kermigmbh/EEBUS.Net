@@ -130,6 +130,106 @@ namespace TestProject1.IntegrationTests
             Assert.True(connected, "Connection should succeed after SKI is registered as trusted.");
         }
 
+        [Fact]
+        public async Task ReadMeasurementsTest()
+        {
+            ILogger eMeterMonitorLogger = GetLogger("E-MeterMonitor");
+            ILogger eMeterLogger = GetLogger("E-Meter");
+
+            MeasurementSettings initMeasurements = new MeasurementSettings
+            {
+                AcEnergyConsumed = 225
+            };
+
+            using EEBUSManager eMeterMonitorManager = new EEBUSManager(Setup.GetEMeterMonitorSettings(), logger: eMeterMonitorLogger);
+            using EEBUSManager eMeterManager = new EEBUSManager(Setup.GetEMeterSettings(initMeasurements), logger: eMeterLogger);
+            string emeterMonitorSki = eMeterMonitorManager.GetLocalData().SKI;
+            string emeterSki = eMeterManager.GetLocalData().SKI;
+
+            eMeterMonitorManager.AddTrustedSki(emeterSki);
+            eMeterManager.AddTrustedSki(emeterMonitorSki);
+
+            await StartManagersAsync(eMeterMonitorManager, eMeterManager);
+
+            using var emeterManagerReadyWaiter = new TestWaiter<RemoteDevice, DeviceConnectionStatus>(
+                subscribe: handler => eMeterManager.OnDeviceConnectionStatusChanged += handler,
+                unsubscribe: handler => eMeterManager.OnDeviceConnectionStatusChanged -= handler);
+            using var emeterMonitorManagerReadyWaiter = new TestWaiter<RemoteDevice, DeviceConnectionStatus>(
+                subscribe: handler => eMeterMonitorManager.OnDeviceConnectionStatusChanged += handler,
+                unsubscribe: handler => eMeterMonitorManager.OnDeviceConnectionStatusChanged -= handler);
+
+            bool connected = await eMeterMonitorManager.TryConnectAsync(emeterSki);
+            Assert.True(connected, "Connection should succeed.");
+
+            await emeterMonitorManagerReadyWaiter.Match((remoteDevice, status) => remoteDevice.SKI.ToString() == emeterSki && status == DeviceConnectionStatus.UseCaseDiscoveryCompleted);
+            Log("Manager2 connection to manager1 is ready (UseCaseDiscoveryCompleted).");
+
+            await emeterManagerReadyWaiter.Match((remoteDevice, status) => remoteDevice.SKI.ToString() == emeterMonitorSki && status == DeviceConnectionStatus.UseCaseDiscoveryCompleted);
+            Log("Manager1 is ready (UseCaseDiscoveryCompleted).");
+
+            var data = new DeviceData
+            {
+                Measurements = new MeasurementsData()
+            };
+
+            Log("Reading data from E-Meter...");
+            await eMeterMonitorManager.ReadDataAsync(data, eMeterManager.GetLocalData().SKI);
+
+            Assert.Equal(225, data?.Measurements?.AcEnergyConsumed);
+        }
+
+        [Fact]
+        public async Task ReadLimitTest()
+        {
+            ILogger cemLogger = GetLogger("CEM");
+            ILogger controlBoxLogger = GetLogger("ControlBox");
+
+            LimitSettings initLimits = new LimitSettings
+            {
+                Active = true,
+                Duration = TimeSpan.FromHours(2),
+                Limit = 2000,
+                FailsafeDurationMinimum = TimeSpan.FromHours(2),
+                FailsafeLimit = 1000,
+                NominalMax = 3000
+            };
+
+            using EEBUSManager cemManager = new EEBUSManager(Setup.GetCEMSettings(initLimits), logger: cemLogger);
+            using EEBUSManager controlBoxManager = new EEBUSManager(Setup.GetControlBoxSettings(), logger: controlBoxLogger);
+            string cemSki = cemManager.GetLocalData().SKI;
+            string controlBoxSki = controlBoxManager.GetLocalData().SKI;
+
+            cemManager.AddTrustedSki(controlBoxSki);
+            controlBoxManager.AddTrustedSki(cemSki);
+
+            await StartManagersAsync(cemManager, controlBoxManager);
+
+            using var cemMangerReadyWaiter = new TestWaiter<RemoteDevice, DeviceConnectionStatus>(
+               subscribe: handler => cemManager.OnDeviceConnectionStatusChanged += handler,
+               unsubscribe: handler => cemManager.OnDeviceConnectionStatusChanged -= handler);
+            using var controlBoxReadyWaiter = new TestWaiter<RemoteDevice, DeviceConnectionStatus>(
+                subscribe: handler => controlBoxManager.OnDeviceConnectionStatusChanged += handler,
+                unsubscribe: handler => controlBoxManager.OnDeviceConnectionStatusChanged -= handler);
+
+            bool connected = await controlBoxManager.TryConnectAsync(cemSki);
+            Assert.True(connected, "Connection should succeed.");
+
+            await controlBoxReadyWaiter.Match((remoteDevice, status) => remoteDevice.SKI.ToString() == cemSki && status == DeviceConnectionStatus.UseCaseDiscoveryCompleted);
+            Log("Manager2 connection to manager1 is ready (UseCaseDiscoveryCompleted).");
+
+            await cemMangerReadyWaiter.Match((remoteDevice, status) => remoteDevice.SKI.ToString() == controlBoxSki && status == DeviceConnectionStatus.UseCaseDiscoveryCompleted);
+            Log("Manager1 is ready (UseCaseDiscoveryCompleted).");
+
+            var data = new DeviceData
+            {
+                Lpc = new LpcLppData()
+            };
+            Log("Reading data from CEM...");
+            await controlBoxManager.ReadDataAsync(data, cemSki);
+
+            Assert.Equal(2000, data?.Lpc.Limit);
+        }
+
         //[Fact]
         //public async Task WHEN_LimitIsUpdated_THEN_ControlBoxIsNotified()
         //{

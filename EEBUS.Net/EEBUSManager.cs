@@ -639,7 +639,10 @@ namespace EEBUS.Net
                     ContractualNominalMax = lppContractualNominalMax
                 },
                 Measurements = measurements,
-                FailSafeLimitDuration = (int)failsafeDuration.TotalSeconds,
+                FailSafe = new FailSafeData
+                {
+                    LimitDuration = (int)failsafeDuration.TotalSeconds
+                },
                 UseCaseSupport = local.GetUseCaseSupport(),
                 ShipId = local.ShipID
             };
@@ -732,6 +735,12 @@ namespace EEBUS.Net
                 {
                     await loadControlLimitListData.WriteDataAsync(connection, deviceData);
                 }
+
+                var electricalConnectionCharacteristicListData = SpineCmdPayloadBase.GetClass("electricalConnectionCharacteristicListData");
+                if (electricalConnectionCharacteristicListData != null)
+                {
+                    await electricalConnectionCharacteristicListData.WriteDataAsync(connection, deviceData);
+                }
             }
 
             var deviceConfigurationKeyValueListData = SpineCmdPayloadBase.GetClass("deviceConfigurationKeyValueListData");
@@ -746,6 +755,41 @@ namespace EEBUS.Net
                 if (measurementListData != null)
                 {
                     await measurementListData.WriteDataAsync(connection, deviceData);
+                }
+            }
+        }
+
+        public async Task ReadDataAsync(DeviceData deviceData, string remoteSki)
+        {
+            if (!_connections.TryGetValue(remoteSki, out Connection? connection))
+            {
+                throw new Exception("No active connection for ski " + remoteSki);
+            }
+            if (deviceData.Lpc != null || deviceData.Lpp != null)
+            {
+                var loadControlLimitListData = SpineCmdPayloadBase.GetClass("loadControlLimitListData");
+                if (loadControlLimitListData != null)
+                {
+                    await loadControlLimitListData.ReadDataAsync(connection, deviceData);
+                }
+
+                var electricalConnectionCharacteristicListData = SpineCmdPayloadBase.GetClass("electricalConnectionCharacteristicListData");
+                if (electricalConnectionCharacteristicListData != null)
+                {
+                    await electricalConnectionCharacteristicListData.ReadDataAsync(connection, deviceData);
+                }
+            }
+            var deviceConfigurationKeyValueListData = SpineCmdPayloadBase.GetClass("deviceConfigurationKeyValueListData");
+            if (deviceConfigurationKeyValueListData != null)
+            {
+                await deviceConfigurationKeyValueListData.ReadDataAsync(connection, deviceData);
+            }
+            if (deviceData.Measurements != null)
+            {
+                var measurementListData = SpineCmdPayloadBase.GetClass("measurementListData");
+                if (measurementListData != null)
+                {
+                    await measurementListData.ReadDataAsync(connection, deviceData);
                 }
             }
         }

@@ -14,9 +14,17 @@ namespace EEBUS.SPINE.Commands
 
 		public new class Class : SpineCmdPayload<CmdLoadControlLimitDescriptionListDataType>.Class
 		{
+            public override SpineCmdPayloadBase? CreateRead(Connection connection)
+            {
+				return new LoadControlLimitDescriptionListData();
+            }
+
 			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
-				LoadControlLimitDescriptionListData	    payload = new LoadControlLimitDescriptionListData();
+                if (datagram.header.cmdClassifier != "read")
+                    return null;
+
+                LoadControlLimitDescriptionListData	    payload = new LoadControlLimitDescriptionListData();
 				LoadControlLimitDescriptionListDataType data	= payload.cmd[0].loadControlLimitDescriptionListData;
 
 				List<LoadControlLimitDescriptionDataType> datas = new();
@@ -33,7 +41,7 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class CmdLoadControlLimitDescriptionListDataType : CmdType
 	{
-		public LoadControlLimitDescriptionListDataType loadControlLimitDescriptionListData { get; set; } = new();
+        public LoadControlLimitDescriptionListDataType loadControlLimitDescriptionListData { get; set; } = new();
 	}
 
 	[System.SerializableAttribute()]

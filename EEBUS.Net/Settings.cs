@@ -76,6 +76,7 @@ namespace EEBUS
         public string Type { get; set; } = string.Empty;
         public string Actor { get; set; } = string.Empty;
         public LimitSettings? InitLimits { get; set; }
+        public MeasurementSettings? InitMeasurements { get; set; }
         public int? PvCurtailmentLimitFactor { get; set; }
         public IEnumerable<uint>? SupportedScenarios { get; set; }
 
@@ -104,5 +105,22 @@ namespace EEBUS
         public long NominalMax { get; set; }
     }
 
-
+    public class MeasurementSettings
+    {
+        public long AcPowerTotal { get; set; }
+        public long GridFeedIn { get; set; }
+        public long GridConsumption { get; set; }
+        public long AcPowerPhaseA { get; set; }
+        public long AcPowerPhaseB { get; set; }
+        public long AcPowerPhaseC { get; set; }
+        public long AcEnergyConsumed { get; set; }
+        public long AcEnergyProduced { get; set; }
+        public long AcCurrentPhaseA { get; set; }
+        public long AcCurrentPhaseB { get; set; }
+        public long AcCurrentPhaseC { get; set; }
+        public long AcVoltagePhaseA { get; set; }
+        public long AcVoltagePhaseB { get; set; }
+        public long AcVoltagePhaseC { get; set; }
+        public long AcFrequency { get; set; }
+    }
 }

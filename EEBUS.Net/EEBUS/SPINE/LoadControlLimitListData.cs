@@ -23,6 +23,11 @@ namespace EEBUS.SPINE.Commands
 
         public new class Class : SpineCmdPayload<CmdLoadControlLimitListDataType>.Class
         {
+            public override SpineCmdPayloadBase? CreateRead(Connection connection)
+            {
+                return new LoadControlLimitListData();
+            }
+
             public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync(DatagramType datagram, HeaderType header, Connection connection)
             {
                 if (datagram.header.cmdClassifier == "read")
@@ -204,17 +209,10 @@ namespace EEBUS.SPINE.Commands
                     }
                     await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
                 }
-                else
-                {
-
-                }
             }
-
-           
 
             public override async Task WriteDataAsync(Connection connection, DeviceData deviceData)
             {
-
                 LocalDevice localDevice = connection.Local;
                 bool didChange = false;
 
@@ -262,6 +260,50 @@ namespace EEBUS.SPINE.Commands
                     }
                 }
                 
+            }
+
+            public override async Task ReadDataAsync(Connection connection, DeviceData deviceData)
+            {
+                if (connection.Remote == null) return;
+
+                AddressType? featureSourceAddress = connection.Local.GetFeatureAddress("LoadControl", false);
+                AddressType? featureDestinationAddress = connection.Remote.GetFeatureAddress("LoadControl", true);
+
+                if (featureSourceAddress == null || featureDestinationAddress == null) return;
+
+                if (deviceData.Lpc != null || deviceData.Lpp != null)
+                {
+                    LoadControlLimitListData? loadControlLimitListData = await ReadFunctionFromRemoteAsync<LoadControlLimitListData>(connection, "LoadControl", "loadControlLimitListData");
+                    LoadControlLimitDescriptionListData? loadControlLimitDescriptionListData = await ReadFunctionFromRemoteAsync<LoadControlLimitDescriptionListData>(connection, "LoadControl", "loadControlLimitDescriptionListData");
+
+                    if (loadControlLimitListData != null && loadControlLimitDescriptionListData != null)
+                    {
+                        uint? lpcLimitId = loadControlLimitDescriptionListData.cmd.First().loadControlLimitDescriptionListData.loadControlLimitDescriptionData
+                            .FirstOrDefault(d => d.limitDirection == "consume")?.limitId;
+                        uint? lppLimitId = loadControlLimitDescriptionListData.cmd.First().loadControlLimitDescriptionListData.loadControlLimitDescriptionData
+                            .FirstOrDefault(d => d.limitDirection == "produce")?.limitId;
+
+                        if (lpcLimitId != null && deviceData.Lpc != null)
+                        {
+                            deviceData.Lpc = new LpcLppData();
+                            var lpcLimit = loadControlLimitListData.cmd.First().loadControlLimitListData.loadControlLimitData
+                                .FirstOrDefault(d => d.limitId == lpcLimitId);
+                            deviceData.Lpc.LimitActive = lpcLimit?.isLimitActive;
+                            deviceData.Lpc.LimitDuration = lpcLimit?.timePeriod?.endTime != null ? (int)XmlConvert.ToTimeSpan(lpcLimit.timePeriod.endTime).TotalSeconds : null;
+                            deviceData.Lpc.Limit = lpcLimit?.value?.ToLong();
+                        }
+
+                        if (lppLimitId != null && deviceData.Lpp != null)
+                        {
+                            deviceData.Lpp = new LpcLppData();
+                            var lppLimit = loadControlLimitListData.cmd.First().loadControlLimitListData.loadControlLimitData
+                                .FirstOrDefault(d => d.limitId == lppLimitId);
+                            deviceData.Lpp.LimitActive = lppLimit?.isLimitActive;
+                            deviceData.Lpp.LimitDuration = lppLimit?.timePeriod?.endTime != null ? (int)XmlConvert.ToTimeSpan(lppLimit.timePeriod.endTime).TotalSeconds : null;
+                            deviceData.Lpp.Limit = lppLimit?.value?.ToLong();
+                        }
+                    }
+                }
             }
 
             public override JsonNode? CreateNotifyPayload(LocalDevice localDevice)

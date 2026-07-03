@@ -8,7 +8,7 @@ namespace EEBUS.Net.EEBUS.Models.Data
     {
         public LpcLppData? Lpc { get; set; }
         public LpcLppData? Lpp { get; set; }
-        public int? FailSafeLimitDuration { get; set; }
+        public FailSafeData? FailSafe { get; set; }
         public MgcpData? Mgcp { get; set; }
         //public MpcData? Mpc { get; set; }
         public MeasurementsData? Measurements { get; set; }

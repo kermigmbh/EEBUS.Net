@@ -16,7 +16,10 @@ namespace EEBUS.SPINE.Commands
 		{
 			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
-				NodeManagementUseCaseData	  payload = new NodeManagementUseCaseData();
+                if (datagram.header.cmdClassifier != "read")
+                    return null;
+
+                NodeManagementUseCaseData	  payload = new NodeManagementUseCaseData();
 				NodeManagementUseCaseDataType data	  = payload.cmd[0].nodeManagementUseCaseData;
 
 				List<UseCaseInformationType> infos = new();

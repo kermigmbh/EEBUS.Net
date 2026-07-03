@@ -17,9 +17,13 @@ namespace EEBUS.SPINE.Commands
 		public new class Class : SpineCmdPayload<CmdDeviceDiagnosisHeartbeatDataType>.Class
 		{
             private ulong counter = 1;
+
             public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
-				DeviceDiagnosisHeartbeatData	 payload = new DeviceDiagnosisHeartbeatData();
+                if (datagram.header.cmdClassifier != "read")
+                    return null;
+
+                DeviceDiagnosisHeartbeatData payload = new DeviceDiagnosisHeartbeatData();
 				DeviceDiagnosisHeartbeatDataType data	 = payload.cmd[0].deviceDiagnosisHeartbeatData;
 
 				data.timestamp		  = DateTime.UtcNow.ToString( "s" ) + "Z";
@@ -77,7 +81,7 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class CmdDeviceDiagnosisHeartbeatDataType : CmdType
 	{
-		public DeviceDiagnosisHeartbeatDataType deviceDiagnosisHeartbeatData { get; set; } = new();
+        public DeviceDiagnosisHeartbeatDataType deviceDiagnosisHeartbeatData { get; set; } = new();
 	}
 
 	[System.SerializableAttribute()]

@@ -16,7 +16,8 @@ namespace EEBUS.SPINE.Commands
 		{
 			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
-
+                if (datagram.header.cmdClassifier != "call")
+                    return null;
 
                 bool success = false;
                 var subscriptionReq = FromJsonNode(datagram.payload);

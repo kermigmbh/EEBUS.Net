@@ -6,13 +6,13 @@ using System.Text;
 
 namespace TestProject1.IntegrationTests
 {
-    public static  class Setup
+    public static class Setup
     {
         //_nodeNumber ensures we do not create the same node multiple times, which could influence the test results
         private static int _nodeNumber = 0;
         private static object _lock = new object();
 
-        public static Settings GetCEMSettings([CallerMemberName] string methodName = "")
+        public static Settings GetCEMSettings(LimitSettings? initLimits = null)
         {
             lock (_lock)
             {
@@ -34,7 +34,7 @@ namespace TestProject1.IntegrationTests
                             new UseCaseSettings {
                                 Type = "limitationOfPowerConsumption",
                                 Actor = "ControllableSystem",
-                                InitLimits = new LimitSettings {
+                                InitLimits = initLimits ?? new LimitSettings {
                                     Active = false,
                                     Limit = 0,
                                     Duration = Timeout.InfiniteTimeSpan,
@@ -66,7 +66,7 @@ namespace TestProject1.IntegrationTests
         }
 
 
-        public static Settings GetControlBoxSettings([CallerMemberName] string methodName = "")
+        public static Settings GetControlBoxSettings(LimitSettings? initLimits = null)
         {
             lock (_lock)
             {
@@ -83,30 +83,96 @@ namespace TestProject1.IntegrationTests
                         Serial = "444444",
                         Port = (ushort)(7200 + _nodeNumber),
                         Entities = [
-                          new EntitySettings { Type = "DeviceInformation" },
-                        new EntitySettings { Type  = "GridGuard", UseCases = [
-                            new UseCaseSettings {
-                                Type = "limitationOfPowerConsumption",
-                                Actor = "EnergyGuard",
-                                InitLimits = new LimitSettings {
-                                    Active = false,
-                                    Limit = 0,
-                                    Duration = Timeout.InfiniteTimeSpan,
-                                    FailsafeLimit = 7200,
-                                    FailsafeDurationMinimum = TimeSpan.FromHours(2),
-                                    NominalMax = 40000
+                            new EntitySettings { Type = "DeviceInformation" },
+                            new EntitySettings { Type  = "GridGuard", UseCases = [
+                                new UseCaseSettings {
+                                    Type = "limitationOfPowerConsumption",
+                                    Actor = "EnergyGuard",
+                                    InitLimits = initLimits ?? new LimitSettings {
+                                        Active = false,
+                                        Limit = 0,
+                                        Duration = Timeout.InfiniteTimeSpan,
+                                        FailsafeLimit = 7200,
+                                        FailsafeDurationMinimum = TimeSpan.FromHours(2),
+                                        NominalMax = 40000
+                                    }
                                 }
-                            }
 
                             ]}
-                              ]
+                        ]
                     },
                     //Certificate = "XCenterEEBUS"
-                    Certificate = "EEBUS" + (_nodeNumber) + ".net"
+                    Certificate = "EEBUS" + _nodeNumber + ".net"
                 };
                 return settings2;
             }
         }
 
+        public static Settings GetEMeterSettings(MeasurementSettings? initMeasurements = null)
+        {
+            lock (_lock)
+            {
+                _nodeNumber++;
+                var settings = new Settings()
+                {
+                    Device = new DeviceSettings()
+                    {
+                        Name = "EMeter",
+                        Id = "EMeter-" + _nodeNumber,
+                        Model = "Demo EMeter",
+                        Brand = "Kermi",
+                        Type = "EnergyMeter",
+                        Serial = "555555",
+                        Port = (ushort)(7300 + _nodeNumber),
+                        Entities = [
+                            new EntitySettings { Type = "DeviceInformation" },
+                            new EntitySettings { Type = "SmartEnergyAppliance", UseCases = [
+                                new UseCaseSettings {
+                                    Type = "monitoringOfPowerConsumption",
+                                    Actor = "MonitoredUnit",
+                                    InitMeasurements = initMeasurements
+                                }
+                            ]}
+                        ]
+                    },
+                    Certificate = "EEBUS" + _nodeNumber + ".net"
+                };
+                return settings;
+            }
+        }
+
+        public static Settings GetEMeterMonitorSettings(MeasurementSettings? initMeasurements = null)
+        {
+            lock (_lock)
+            {
+                _nodeNumber++;
+                var settings = new Settings()
+                {
+                    Device = new DeviceSettings()
+                    {
+                        Name = "EMeter Monitor",
+                        Id = "EMeterMonitor-" + _nodeNumber,
+                        Model = "Demo EMeter Monitor",
+                        Brand = "Kermi",
+                        Type = "EnergyManagementSystem",
+                        Serial = "555555",
+                        Port = (ushort)(7300 + _nodeNumber),
+                        Entities = [
+                            new EntitySettings { Type = "DeviceInformation" },
+                            new EntitySettings { Type = "CEM", UseCases = [
+                                new UseCaseSettings {
+                                    Type = "monitoringOfPowerConsumption",
+                                    Actor = "MonitoringAppliance",
+                                    InitMeasurements = initMeasurements
+                                }
+                            ]}
+                        ]
+                    },
+                    
+                    Certificate = "EEBUS" + _nodeNumber + ".net"
+                };
+                return settings;
+            }
+        }
     }
 }

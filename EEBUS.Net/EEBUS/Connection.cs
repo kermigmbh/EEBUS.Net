@@ -159,7 +159,6 @@ namespace EEBUS
         }
         public async Task<DataMessage> PushDataMessageAsync(DataMessage message) 
         {
-
             uint timeout = 5000;
             string messageId = message.GetId();
             TaskCompletionSource<ShipMessageBase?> tcs = new TaskCompletionSource<ShipMessageBase?>(TaskCreationOptions.RunContinuationsAsynchronously);
