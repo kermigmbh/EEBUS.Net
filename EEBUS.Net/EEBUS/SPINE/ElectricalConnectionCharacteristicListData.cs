@@ -1,4 +1,5 @@
-﻿using EEBUS.Messages;
+﻿using EEBUS.Features;
+using EEBUS.Messages;
 using EEBUS.Models;
 using EEBUS.Net.EEBUS.Data.DataStructures;
 using EEBUS.Net.EEBUS.Models.Data;
@@ -59,6 +60,43 @@ namespace EEBUS.SPINE.Commands
                 List<ElectricalConnectionCharacteristicDataStructure> structures = localDevice.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>();
                 payload.cmd[0].electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData = structures.Select(s => s.Data).ToArray();
                 return payload.ToJsonNode();
+            }
+
+            public override async ValueTask EvaluateAsync(Connection connection, DatagramType datagram)
+            {
+                if (datagram.header.cmdClassifier != "notify" || datagram.header.cmdClassifier != "reply")
+                    return;
+
+                ElectricalConnectionCharacteristicListData? command = datagram.payload == null
+                    ? null
+                    : System.Text.Json.JsonSerializer.Deserialize<ElectricalConnectionCharacteristicListData>(datagram.payload);
+
+                if (command == null || command.cmd == null || command.cmd.Length == 0 || connection.Remote == null)
+                    return;
+
+                List<ElectricalConnectionCharacteristicDataStructure> structures = connection.Remote.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>();
+                foreach (ElectricalConnectionCharacteristicDataType item in command.cmd.First().electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData)
+                {
+                    var structure = structures.FirstOrDefault(s =>
+                        s.Data.characteristicType == item.characteristicType &&
+                        s.Data.electricalConnectionId == item.electricalConnectionId &&
+                        s.Data.characteristicId == item.characteristicId &&
+                        s.Data.parameterId == item.parameterId
+                    );
+
+                    if (structure == null)
+                    {
+                        structure = new ElectricalConnectionCharacteristicDataStructure(item.characteristicType, item.value.number, item.value.scale ?? 0);
+                        connection.Remote.Add(structure);
+                        structure.Id = item.characteristicId;
+                        structure.ElectricalConnectionId = item.electricalConnectionId;
+                        structure.ParameterId = item.parameterId;
+                    } else
+                    {
+                        structure.Number = item.value.number;
+                        structure.Scale = item.value.scale ?? 0;
+                    }
+                }
             }
 
             public override async Task WriteDataAsync(Connection connection, DeviceData deviceData)

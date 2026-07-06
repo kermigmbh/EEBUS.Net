@@ -1,4 +1,5 @@
 ﻿using EEBUS.Messages;
+using EEBUS.Net.EEBUS.Data.DataStructures;
 using System.Text.Json.Serialization;
 
 namespace EEBUS.SPINE.Commands
@@ -21,7 +22,7 @@ namespace EEBUS.SPINE.Commands
 
 			public override async ValueTask<SpineCmdPayloadBase?> CreateAnswerAsync( DatagramType datagram, HeaderType header, Connection connection )
 			{
-				if ( datagram.header.cmdClassifier == "read" )
+				if ( datagram.header.cmdClassifier == "read")
 				{
 					ElectricalConnectionDescriptionListData payload = new ElectricalConnectionDescriptionListData();
 					payload.cmd = [new()];

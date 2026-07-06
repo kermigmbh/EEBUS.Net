@@ -92,122 +92,151 @@ namespace EEBUS.SPINE.Commands
 
             public override async ValueTask EvaluateAsync(Connection connection, DatagramType datagram)
             {
-                if (datagram.header.cmdClassifier != "write")
-                    return;
-
-                if (!connection.BindingAndSubscriptionManager.HasBinding(datagram.header.addressSource, datagram.header.addressDestination))
+                if (datagram.header.cmdClassifier == "write")
                 {
-                    //Reject
-                    return;
-                }
 
-                var command = datagram.payload == null
-                    ? null
-                    : System.Text.Json.JsonSerializer.Deserialize<LoadControlLimitListData>(datagram.payload);
-                if (command == null || command.cmd == null || command.cmd.Length == 0)
-                    return;
-
-                LoadControlLimitListDataFilterType[]? filter = command.cmd[0].filter;
-
-                if (filter != null)
-                {
-                    foreach (LoadControlLimitListDataFilterType filterValue in filter)
+                    if (!connection.BindingAndSubscriptionManager.HasBinding(datagram.header.addressSource, datagram.header.addressDestination))
                     {
-                        if (filterValue.cmdControl?.delete != null && filterValue.loadControlLimitListDataSelectors?.limitId != null)
+                        //Reject
+                        return;
+                    }
+
+                    var command = datagram.payload == null
+                        ? null
+                        : System.Text.Json.JsonSerializer.Deserialize<LoadControlLimitListData>(datagram.payload);
+                    if (command == null || command.cmd == null || command.cmd.Length == 0)
+                        return;
+
+                    LoadControlLimitListDataFilterType[]? filter = command.cmd[0].filter;
+
+                    if (filter != null)
+                    {
+                        foreach (LoadControlLimitListDataFilterType filterValue in filter)
                         {
-                            LoadControlLimitDataStructure? filterSelectorData = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(filterValue.loadControlLimitListDataSelectors.limitId);
-
-                            JsonObject? filterSelectorDataJson = JsonSerializer.SerializeToNode(filterSelectorData?.Data)?.AsObject();
-                            JsonObject? filterElementDataJson = JsonSerializer.SerializeToNode(filterValue.loadControlLimitDataElements)?.AsObject();
-
-                            if (filterSelectorDataJson != null && filterElementDataJson != null)
+                            if (filterValue.cmdControl?.delete != null && filterValue.loadControlLimitListDataSelectors?.limitId != null)
                             {
-                                foreach (var item in filterElementDataJson)
-                                {
-                                    //remove every property that is set in the filter data elements
-                                    if (item.Value != null)
-                                    {
-                                        filterSelectorDataJson.Remove(item.Key);
-                                    }
-                                }
+                                LoadControlLimitDataStructure? filterSelectorData = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(filterValue.loadControlLimitListDataSelectors.limitId);
 
-                                LoadControlLimitDataType newData = JsonSerializer.Deserialize<LoadControlLimitDataType>(filterSelectorDataJson) ?? throw new Exception("Error parsing data structure");
-                                filterSelectorData?.ProcessDelete(newData);
+                                JsonObject? filterSelectorDataJson = JsonSerializer.SerializeToNode(filterSelectorData?.Data)?.AsObject();
+                                JsonObject? filterElementDataJson = JsonSerializer.SerializeToNode(filterValue.loadControlLimitDataElements)?.AsObject();
+
+                                if (filterSelectorDataJson != null && filterElementDataJson != null)
+                                {
+                                    foreach (var item in filterElementDataJson)
+                                    {
+                                        //remove every property that is set in the filter data elements
+                                        if (item.Value != null)
+                                        {
+                                            filterSelectorDataJson.Remove(item.Key);
+                                        }
+                                    }
+
+                                    LoadControlLimitDataType newData = JsonSerializer.Deserialize<LoadControlLimitDataType>(filterSelectorDataJson) ?? throw new Exception("Error parsing data structure");
+                                    filterSelectorData?.ProcessDelete(newData);
+                                }
                             }
                         }
                     }
-                }
 
-                WriteApprovalResult approvalResult = WriteApprovalResult.Accept();
-                foreach (LoadControlLimitDataType loadControlLimitData in command.cmd[0].loadControlLimitListData.loadControlLimitData)
-                {
-                    if (loadControlLimitData.limitId == null)
-                    {
-                        datagram.ApprovalResult = WriteApprovalResult.Deny("Invalid limit ID");
-                        return;
-                    }
-
-                    LoadControlLimitDataStructure? data = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(loadControlLimitData.limitId.Value);
-                    if (data == null)
-                    {
-                        datagram.ApprovalResult = WriteApprovalResult.Deny("Unknown limit ID");
-                        return;
-                    }
-
-                    PowerDirection direction = data.LimitDirection == "consume"
-                        ? PowerDirection.Consumption
-                        : PowerDirection.Production;
-
-                    TimeSpan? duration = null;
-                    if (!string.IsNullOrEmpty(loadControlLimitData.timePeriod?.endTime))
-                    {
-                        try { duration = XmlConvert.ToTimeSpan(loadControlLimitData.timePeriod.endTime); }
-                        catch
-                        {
-                            /* return error for parsing errors */
-                            datagram.ApprovalResult = WriteApprovalResult.Deny("invalid timePeriod.endTime");
-                            return;
-                        }
-                    }
-
-                    var request = new ActiveLimitWriteRequest(
-                        direction,
-                        loadControlLimitData.isLimitActive ?? false,
-                        loadControlLimitData.value?.ToLong() ?? 0,
-                        duration,
-                        connection.Remote?.DeviceId,
-                        connection.Remote?.SKI?.ToString()
-                    );
-                    // User-Callback aufrufen
-                    if (approvalResult.Approved)
-                    {
-                        approvalResult = await GetApprovalAsync(connection, data.LimitDirection, request);
-                    }
-                }
-
-                datagram.ApprovalResult = approvalResult;
-                if (approvalResult.Approved)
-                {
-                    // Only update data if all limits are approved
+                    WriteApprovalResult approvalResult = WriteApprovalResult.Accept();
                     foreach (LoadControlLimitDataType loadControlLimitData in command.cmd[0].loadControlLimitListData.loadControlLimitData)
                     {
                         if (loadControlLimitData.limitId == null)
                         {
-                            // checked above, cannot occur
+                            datagram.ApprovalResult = WriteApprovalResult.Deny("Invalid limit ID");
                             return;
                         }
 
                         LoadControlLimitDataStructure? data = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(loadControlLimitData.limitId.Value);
                         if (data == null)
                         {
-                            // checked above, cannot occur
+                            datagram.ApprovalResult = WriteApprovalResult.Deny("Unknown limit ID");
                             return;
                         }
-                        data.Update(loadControlLimitData);
 
-                        await data.SendEventAsync(connection);
+                        PowerDirection direction = data.LimitDirection == "consume"
+                            ? PowerDirection.Consumption
+                            : PowerDirection.Production;
+
+                        TimeSpan? duration = null;
+                        if (!string.IsNullOrEmpty(loadControlLimitData.timePeriod?.endTime))
+                        {
+                            try { duration = XmlConvert.ToTimeSpan(loadControlLimitData.timePeriod.endTime); }
+                            catch
+                            {
+                                /* return error for parsing errors */
+                                datagram.ApprovalResult = WriteApprovalResult.Deny("invalid timePeriod.endTime");
+                                return;
+                            }
+                        }
+
+                        var request = new ActiveLimitWriteRequest(
+                            direction,
+                            loadControlLimitData.isLimitActive ?? false,
+                            loadControlLimitData.value?.ToLong() ?? 0,
+                            duration,
+                            connection.Remote?.DeviceId,
+                            connection.Remote?.SKI?.ToString()
+                        );
+                        // User-Callback aufrufen
+                        if (approvalResult.Approved)
+                        {
+                            approvalResult = await GetApprovalAsync(connection, data.LimitDirection, request);
+                        }
                     }
-                    await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
+
+                    datagram.ApprovalResult = approvalResult;
+                    if (approvalResult.Approved)
+                    {
+                        // Only update data if all limits are approved
+                        foreach (LoadControlLimitDataType loadControlLimitData in command.cmd[0].loadControlLimitListData.loadControlLimitData)
+                        {
+                            if (loadControlLimitData.limitId == null)
+                            {
+                                // checked above, cannot occur
+                                return;
+                            }
+
+                            LoadControlLimitDataStructure? data = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(loadControlLimitData.limitId.Value);
+                            if (data == null)
+                            {
+                                // checked above, cannot occur
+                                return;
+                            }
+                            data.Update(loadControlLimitData);
+
+                            await data.SendEventAsync(connection);
+                        }
+                        await SendNotifyAsync(connection.Local, datagram.header.addressDestination);
+                    }
+                }
+
+                if (datagram.header.cmdClassifier == "reply" || datagram.header.cmdClassifier == "notify")
+                {
+                    if (datagram.payload == null || connection.Remote == null)
+                        return;
+
+                    var command = System.Text.Json.JsonSerializer.Deserialize<LoadControlLimitListData>(datagram.payload);
+                    if (command == null || command.cmd == null || command.cmd.Length == 0)
+                        return;
+
+                    foreach (LoadControlLimitDataType loadControlLimitData in command.cmd.First().loadControlLimitListData.loadControlLimitData)
+                    {
+                        if (loadControlLimitData.limitId == null)
+                            continue;
+
+                        LoadControlLimitDataStructure? data = connection.Remote.GetDataStructure<LoadControlLimitDataStructure>(loadControlLimitData.limitId.Value);
+
+                        if (data == null)
+                        {
+                            var structure = new LoadControlLimitDataStructure(string.Empty, loadControlLimitData.value?.number ?? 0, loadControlLimitData.value?.scale ?? 0, loadControlLimitData.timePeriod?.endTime ?? string.Empty, loadControlLimitData.isLimitActive ?? false);
+                            connection.Remote.Add(structure);
+                            structure.Id = loadControlLimitData.limitId.Value;
+                        } else
+                        {
+                            data.Update(loadControlLimitData);
+                        }
+                    }
                 }
             }
 

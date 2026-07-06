@@ -1,7 +1,7 @@
-﻿using System.Text.Json.Serialization;
-
-using EEBUS.DataStructures;
+﻿using EEBUS.DataStructures;
 using EEBUS.Messages;
+using EEBUS.Net.EEBUS.Data.DataStructures;
+using System.Text.Json.Serialization;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -35,7 +35,37 @@ namespace EEBUS.SPINE.Commands
 
 				return payload;
 			}
-		}
+
+            public override async ValueTask EvaluateAsync(Connection connection, DatagramType datagram)
+            {
+                if (datagram.header.cmdClassifier != "notify" || datagram.header.cmdClassifier != "reply")
+                    return;
+
+                LoadControlLimitDescriptionListData? command = datagram.payload == null
+                    ? null
+                    : System.Text.Json.JsonSerializer.Deserialize<LoadControlLimitDescriptionListData>(datagram.payload);
+
+                if (command == null || command.cmd == null || command.cmd.Length == 0 || connection.Remote == null)
+                    return;
+
+                List<LoadControlLimitDataStructure> structures = connection.Remote.GetDataStructures<LoadControlLimitDataStructure>();
+                foreach (LoadControlLimitDescriptionDataType item in command.cmd.First().loadControlLimitDescriptionListData.loadControlLimitDescriptionData)
+                {
+                    var structure = structures.FirstOrDefault(s => s.DescriptionData.limitId == item.limitId);
+
+                    if (structure == null)
+                    {
+                        structure = new LoadControlLimitDataStructure(item.limitDirection, 0, 0, string.Empty, false);
+                        connection.Remote.Add(structure);
+						structure.Id = item.limitId;
+                    }
+                    else
+                    {
+						structure.LimitDirection = item.limitDirection;
+                    }
+                }
+            }
+        }
 	}
 
 	[System.SerializableAttribute()]
