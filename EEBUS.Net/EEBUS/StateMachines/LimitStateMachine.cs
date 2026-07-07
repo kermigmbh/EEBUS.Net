@@ -3,6 +3,7 @@ using System.Diagnostics.Eventing.Reader;
 using EEBUS.Models;
 using EEBUS.UseCases;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.Extensions.Logging;
 
 namespace EEBUS.StateMachines
 {
@@ -41,15 +42,18 @@ namespace EEBUS.StateMachines
         public static readonly TimeSpan DefaultFailsafeDurationMinimum = TimeSpan.FromHours(2);
         public static readonly TimeSpan HeartbeatStateTimeout = TimeSpan.FromSeconds(120);
         public static readonly TimeSpan HeartbeatAcceptTimeout = TimeSpan.FromSeconds(60);
+
+        protected ILogger? Logger { get; private set; }
         public static readonly TimeSpan InitTimeout = TimeSpan.FromSeconds(120);
 
-        protected LimitStateMachine(TimeProvider timeProvider, PowerDirection direction, long failsafeLimit, TimeSpan failsafeDurationMinimum)
+        protected LimitStateMachine(TimeProvider timeProvider, PowerDirection direction, long failsafeLimit, TimeSpan failsafeDurationMinimum, ILogger? logger = null)
         {
             _timeProvider = timeProvider;
             _direction = direction;
             _failsafeLimit = failsafeLimit;
             _failsafeDurationMinimum = failsafeDurationMinimum;
             _initStartTime = _timeProvider.GetUtcNow();
+            Logger = logger;
 
             // Start init timeout timer (Transition 3: Init -> UnlimitedAutonomous after 120s without HB+Write)
             _initTimeoutTimer = _timeProvider.CreateTimer(OnInitTimeout, null, InitTimeout, Timeout.InfiniteTimeSpan);
@@ -57,19 +61,19 @@ namespace EEBUS.StateMachines
             Debug.WriteLine($"[LimitStateMachine:{_direction}] Initialized in Init state with failsafe limit {_failsafeLimit}W");
         }
 
-        protected LimitStateMachine(TimeProvider timeProvider, PowerDirection direction, long failsafeLimit) : this(timeProvider, direction, failsafeLimit, DefaultFailsafeDurationMinimum)
+        protected LimitStateMachine(TimeProvider timeProvider, PowerDirection direction, long failsafeLimit, ILogger? logger = null) : this(timeProvider, direction, failsafeLimit, DefaultFailsafeDurationMinimum, logger)
         {
         }
 
-        protected LimitStateMachine(PowerDirection direction, long failsafeLimit, TimeSpan failsafeDurationMinimum) : this(TimeProvider.System, direction, failsafeLimit, failsafeDurationMinimum)
+        protected LimitStateMachine(PowerDirection direction, long failsafeLimit, TimeSpan failsafeDurationMinimum, ILogger? logger = null) : this(TimeProvider.System, direction, failsafeLimit, failsafeDurationMinimum, logger)
         {
         }
 
-        protected LimitStateMachine(PowerDirection direction, long failsafeLimit) : this(TimeProvider.System, direction, failsafeLimit, DefaultFailsafeDurationMinimum)
+        protected LimitStateMachine(PowerDirection direction, long failsafeLimit, ILogger? logger = null) : this(TimeProvider.System, direction, failsafeLimit, DefaultFailsafeDurationMinimum, logger)
         {
         }
 
-        protected LimitStateMachine(PowerDirection direction, LocalDevice localDevice) : this(direction, localDevice.GetFailsafeLimit(direction), localDevice.GetFailsafeDurationMinimum())
+        protected LimitStateMachine(PowerDirection direction, LocalDevice localDevice, ILogger? logger = null) : this(direction, localDevice.GetFailsafeLimit(direction), localDevice.GetFailsafeDurationMinimum(), logger)
         {
         }
 
@@ -184,7 +188,7 @@ namespace EEBUS.StateMachines
                 _hasReceivedHeartbeat = true;
                 _lastHeartbeatTime = _timeProvider.GetUtcNow();
 
-                Debug.WriteLine($"[LimitStateMachine:{_direction}] Heartbeat received in state {_currentState}");
+                Logger?.LogTrace($"[LimitStateMachine:{_direction}] Heartbeat received in state {_currentState}");
 
                 // Handle state transitions based on current state
                 string reason = "received heartbeat";
@@ -346,7 +350,7 @@ namespace EEBUS.StateMachines
             {
                 _hasReceivedLimitWrite = true;
 
-                Debug.WriteLine($"[LimitStateMachine:{_direction}] Limit write accepted: active={active}, value={limit}W, state={_currentState}");
+                Logger?.LogTrace($"[LimitStateMachine:{_direction}] Limit write accepted: active={active}, value={limit}W, state={_currentState}");
 
                 // Calculate expiry time if duration is specified
                 DateTimeOffset? expiresAt = null;
@@ -516,7 +520,7 @@ namespace EEBUS.StateMachines
 
                 lock (_lock)
                 {
-                    Debug.WriteLine($"[LimitStateMachine:{_direction}] Heartbeat timeout in state {_currentState}");
+                    Logger?.LogTrace($"[LimitStateMachine:{_direction}] Heartbeat timeout in state {_currentState}");
 
                     switch (_currentState)
                     {
@@ -556,7 +560,7 @@ namespace EEBUS.StateMachines
 
                 lock (_lock)
                 {
-                    Debug.WriteLine($"[LimitStateMachine:{_direction}] Limit duration expired in state {_currentState}");
+                    Logger?.LogTrace($"[LimitStateMachine:{_direction}] Limit duration expired in state {_currentState}");
 
                     // Transition 6: Limited -> UnlimitedControlled (duration expired)
                     if (_currentState == LimitState.Limited)
@@ -583,7 +587,7 @@ namespace EEBUS.StateMachines
 
                 lock (_lock)
                 {
-                    Debug.WriteLine($"[LimitStateMachine:{_direction}] Failsafe duration expired in state {_currentState}");
+                    Logger?.LogTrace($"[LimitStateMachine:{_direction}] Failsafe duration expired in state {_currentState}");
 
                     // Transition 10: Failsafe -> UnlimitedAutonomous (failsafe duration expired)
                     if (_currentState == LimitState.Failsafe || _currentState == LimitState.FailsafePlusHeartbeat)
@@ -608,7 +612,7 @@ namespace EEBUS.StateMachines
 
                 lock (_lock)
                 {
-                    Debug.WriteLine($"[LimitStateMachine:{_direction}] Init timeout in state {_currentState}");
+                    Logger?.LogTrace($"[LimitStateMachine:{_direction}] Init timeout in state {_currentState}");
 
                     switch (_currentState)
                     {
@@ -647,7 +651,7 @@ namespace EEBUS.StateMachines
                 var oldState = _currentState;
                 _currentState = newState;
 
-                Debug.WriteLine($"[LimitStateMachine:{_direction}] State transition: {oldState} -> {newState} ({reason})");
+                Logger?.LogTrace($"[LimitStateMachine:{_direction}] State transition: {oldState} -> {newState} ({reason})");
 
                 var oldEffectiveLimit = GetEffectiveLimitForState(oldState);
                 var newEffectiveLimit = GetEffectiveLimit();

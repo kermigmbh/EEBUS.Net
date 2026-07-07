@@ -307,9 +307,9 @@ namespace EEBUS.SPINE.Commands
 
                     if (loadControlLimitListData != null && loadControlLimitDescriptionListData != null)
                     {
-                        uint? lpcLimitId = loadControlLimitDescriptionListData.cmd.First().loadControlLimitDescriptionListData.loadControlLimitDescriptionData
+                        uint? lpcLimitId = loadControlLimitDescriptionListData.cmd.First().loadControlLimitDescriptionListData.loadControlLimitDescriptionData?
                             .FirstOrDefault(d => d.limitDirection == "consume")?.limitId;
-                        uint? lppLimitId = loadControlLimitDescriptionListData.cmd.First().loadControlLimitDescriptionListData.loadControlLimitDescriptionData
+                        uint? lppLimitId = loadControlLimitDescriptionListData.cmd.First().loadControlLimitDescriptionListData.loadControlLimitDescriptionData?
                             .FirstOrDefault(d => d.limitDirection == "produce")?.limitId;
 
                         if (lpcLimitId != null && deviceData.Lpc != null)

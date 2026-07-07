@@ -1,6 +1,7 @@
 using EEBUS.Models;
 using EEBUS.UseCases;
 using EEBUS.UseCases.ControllableSystem;
+using Microsoft.Extensions.Logging;
 
 namespace EEBUS.StateMachines
 {
@@ -11,7 +12,7 @@ namespace EEBUS.StateMachines
     /// </summary>
     public class LpcLimitStateMachine : LimitStateMachine, LPCEvents, LPCorLPPEvents
     {
-        public LpcLimitStateMachine(LocalDevice localDevice) : base(PowerDirection.Consumption, localDevice)
+        public LpcLimitStateMachine(LocalDevice localDevice, ILogger? logger = null) : base(PowerDirection.Consumption, localDevice, logger)
         {
         }
 

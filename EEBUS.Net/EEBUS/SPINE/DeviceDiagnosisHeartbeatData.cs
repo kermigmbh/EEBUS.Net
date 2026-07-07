@@ -49,10 +49,10 @@ namespace EEBUS.SPINE.Commands
 			{
 				return new DeviceDiagnosisHeartbeatData();
 			}
-
+			 
 			public override async ValueTask EvaluateAsync( Connection connection, DatagramType datagram )
 			{
-				if ( datagram.header.cmdClassifier != "notify" || datagram.header.cmdClassifier != "reply")
+				if ( datagram.header.cmdClassifier != "notify" && datagram.header.cmdClassifier != "reply")
 					return;
 
 				DeviceDiagnosisHeartbeatData? payload = datagram.payload == null

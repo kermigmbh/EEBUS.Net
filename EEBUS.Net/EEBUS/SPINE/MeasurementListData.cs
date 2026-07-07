@@ -139,7 +139,7 @@ namespace EEBUS.SPINE.Commands
                         List<MeasurementData.MeasurementData> measurementDataList = [];
                         foreach (var measurement in measurementListData.cmd.First().measurementListData.measurementData)
                         {
-                            var description = measurementDescriptionListData?.cmd.First().measurementDescriptionListData.measurementDescriptionData.FirstOrDefault(d => d.measurementId == measurement.measurementId);
+                            var description = measurementDescriptionListData?.cmd.First().measurementDescriptionListData.measurementDescriptionData?.FirstOrDefault(d => d.measurementId == measurement.measurementId);
                             var electricalConnectionParameter = electricalConnectionParameterDescriptionListData?.cmd.First().electricalConnectionParameterDescriptionListData?.electricalConnectionParameterDescriptionData?.FirstOrDefault(e => e.measurementId == measurement.measurementId);
                             var measurementData = new MeasurementData.MeasurementData
                             {

@@ -126,7 +126,7 @@ namespace TestProject1.IntegrationTests
                         Port = (ushort)(7300 + _nodeNumber),
                         Entities = [
                             new EntitySettings { Type = "DeviceInformation" },
-                            new EntitySettings { Type = "SmartEnergyAppliance", UseCases = [
+                            new EntitySettings { Type = "SubMeterElectricity", UseCases = [
                                 new UseCaseSettings {
                                     Type = "monitoringOfPowerConsumption",
                                     Actor = "MonitoredUnit",

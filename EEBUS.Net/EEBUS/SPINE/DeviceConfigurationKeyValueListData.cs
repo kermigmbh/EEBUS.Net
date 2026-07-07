@@ -145,10 +145,10 @@ namespace EEBUS.SPINE.Commands
 						? null
 						: System.Text.Json.JsonSerializer.Deserialize<DeviceConfigurationKeyValueListData>(datagram.payload);
 
-					if (payload == null)
+                    if (payload == null || payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData == null)
 						return;
 
-					int keyId = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].keyId;
+                    int keyId = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].keyId;
 					ValueType value = payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData[0].value;
 
 					KeyValue? keyValue = connection.Local.KeyValues.FirstOrDefault(kv => kv.Data.keyId == keyId);
@@ -187,7 +187,7 @@ namespace EEBUS.SPINE.Commands
 
 					if (payload == null || connection.Remote == null) return;
 
-					foreach (var kvp in payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData)
+					foreach (var kvp in payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData ?? [])
 					{
 						RemoteKeyValue? existing = connection.Remote.KeyValues.FirstOrDefault(kv => kv is RemoteKeyValue rkv && rkv.KeyId == kvp.keyId) as RemoteKeyValue;
 						if (existing != null)
@@ -335,7 +335,7 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class DeviceConfigurationKeyValueListDataType
 	{
-		public DeviceConfigurationKeyValueDataType[] deviceConfigurationKeyValueData { get; set; }
+		public DeviceConfigurationKeyValueDataType[]? deviceConfigurationKeyValueData { get; set; }
 	}
 
 	[System.SerializableAttribute()]

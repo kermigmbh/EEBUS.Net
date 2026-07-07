@@ -38,7 +38,7 @@ namespace EEBUS.SPINE.Commands
 
             public override async ValueTask EvaluateAsync(Connection connection, DatagramType datagram)
             {
-                if (datagram.header.cmdClassifier != "notify" || datagram.header.cmdClassifier != "reply")
+                if (datagram.header.cmdClassifier != "notify" && datagram.header.cmdClassifier != "reply")
                     return;
 
                 LoadControlLimitDescriptionListData? command = datagram.payload == null
@@ -49,7 +49,7 @@ namespace EEBUS.SPINE.Commands
                     return;
 
                 List<LoadControlLimitDataStructure> structures = connection.Remote.GetDataStructures<LoadControlLimitDataStructure>();
-                foreach (LoadControlLimitDescriptionDataType item in command.cmd.First().loadControlLimitDescriptionListData.loadControlLimitDescriptionData)
+                foreach (LoadControlLimitDescriptionDataType item in command.cmd.First().loadControlLimitDescriptionListData.loadControlLimitDescriptionData ?? [])
                 {
                     var structure = structures.FirstOrDefault(s => s.DescriptionData.limitId == item.limitId);
 
@@ -77,7 +77,7 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class LoadControlLimitDescriptionListDataType
 	{
-		public LoadControlLimitDescriptionDataType[] loadControlLimitDescriptionData { get; set; }
+		public LoadControlLimitDescriptionDataType[]? loadControlLimitDescriptionData { get; set; }
 	}
 
 	[System.SerializableAttribute()]

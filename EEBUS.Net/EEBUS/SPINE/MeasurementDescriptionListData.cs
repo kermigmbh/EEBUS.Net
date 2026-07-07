@@ -149,7 +149,7 @@ namespace EEBUS.SPINE.Commands
 					MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == datagram.header.addressSource.feature) as MeasurementServerFeature;
 					if (measurementFeature == null) return;
 
-					foreach (MeasurementDescriptionDataType measurementDescription in command.cmd.First().measurementDescriptionListData.measurementDescriptionData)
+					foreach (MeasurementDescriptionDataType measurementDescription in command.cmd.First().measurementDescriptionListData.measurementDescriptionData ?? [])
 					{
 						MeasurementData.MeasurementData? corresponding = measurementFeature.measurementData.FirstOrDefault(data => data.measurementId == measurementDescription.measurementId);
 						if (corresponding == null)
@@ -192,7 +192,7 @@ namespace EEBUS.SPINE.Commands
 	[System.SerializableAttribute()]
 	public class MeasurementDescriptionListDataType
 	{
-        public MeasurementDescriptionDataType[] measurementDescriptionData { get; set; }
+        public MeasurementDescriptionDataType[]? measurementDescriptionData { get; set; }
 	}
 
 	[System.SerializableAttribute()]

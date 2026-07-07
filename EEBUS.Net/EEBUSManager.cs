@@ -92,7 +92,7 @@ namespace EEBUS.Net
             _devices.ServerStateChanged += OnServerStateChanged;
             _devices.ClientStateChanged += OnClientStateChanged;
 
-            lpcStateMachine = new LpcLimitStateMachine(localDevice);
+            lpcStateMachine = new LpcLimitStateMachine(localDevice, logger);
             lpcStateMachine.RegisterEventHandler(new LPCEventHandler(this));
             lppStateMachine = new LppLimitStateMachine(localDevice);
             lppStateMachine.RegisterEventHandler(new LPPEventHandler(this));

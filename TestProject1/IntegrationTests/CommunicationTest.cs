@@ -27,39 +27,7 @@ namespace TestProject1.IntegrationTests
             using EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(), logger: manager1Logger);
             using EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings(), logger: manager2Logger);
 
-            manager1.OnDeviceDataChanged += deviceData =>
-            {
-                Log($"Manager1 new data: {deviceData.Lpc?.Limit}");
-                return Task.CompletedTask;
-            };
-            manager2.OnDeviceDataChanged += deviceData =>
-            {
-                if (deviceData.Lpc != null)
-                    Log($"Manager2 new data: {deviceData.Lpc?.Limit}");
-                return Task.CompletedTask;
-            };
-            manager1.OnDeviceFound += (sender, device) =>
-            {
-                Log($"Manager1 found device: {device.Name}");
-            };
-
-            manager2.OnDeviceFound += (sender, device) =>
-            {
-                Log($"Manager2 found device: {device.Name}");
-            };
-
-            manager1.OnDeviceConnectionStatusChanged += (remoteDevice, status) =>
-            {
-                Log($"Manager1 connection status changed: {remoteDevice.Name} is now {status}");
-                return Task.CompletedTask;
-            };
             
-            manager2.OnDeviceConnectionStatusChanged += (remoteDevice, status) =>
-            {
-                Log($"Manager2 connection status changed: {remoteDevice.Name} is now {status}");
-                return Task.CompletedTask;
-            };
-
             string manager2Ski = manager2.GetLocalData().SKI;
             string manager1Ski = manager1.GetLocalData().SKI;
             manager1.AddTrustedSki(manager2Ski);

@@ -48,8 +48,10 @@ namespace EEBUS.SPINE.Commands
                 ElectricalConnectionCharacteristicListData payload = new ElectricalConnectionCharacteristicListData();
                 payload.cmd[0].electricalConnectionCharacteristicListData = new();
                 List<ElectricalConnectionCharacteristicDataStructure> structures = connection.Local.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>();
-                payload.cmd[0].electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData = structures.Select(structure => structure.Data).ToArray();
-
+                if (structures.Count > 0)
+                {
+                    payload.cmd[0].electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData = structures.Select(structure => structure.Data).ToArray();
+                }
                 return payload;
             }
 
@@ -64,7 +66,7 @@ namespace EEBUS.SPINE.Commands
 
             public override async ValueTask EvaluateAsync(Connection connection, DatagramType datagram)
             {
-                if (datagram.header.cmdClassifier != "notify" || datagram.header.cmdClassifier != "reply")
+                if (datagram.header.cmdClassifier != "notify" && datagram.header.cmdClassifier != "reply")
                     return;
 
                 ElectricalConnectionCharacteristicListData? command = datagram.payload == null
@@ -75,7 +77,7 @@ namespace EEBUS.SPINE.Commands
                     return;
 
                 List<ElectricalConnectionCharacteristicDataStructure> structures = connection.Remote.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>();
-                foreach (ElectricalConnectionCharacteristicDataType item in command.cmd.First().electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData)
+                foreach (ElectricalConnectionCharacteristicDataType item in command.cmd.First().electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData ?? [])
                 {
                     var structure = structures.FirstOrDefault(s =>
                         s.Data.characteristicType == item.characteristicType &&
@@ -149,8 +151,8 @@ namespace EEBUS.SPINE.Commands
                     var electricalConnectionCharacteristicListData = await ReadFunctionFromRemoteAsync<ElectricalConnectionCharacteristicListData>(connection, "ElectricalConnection", "electricalConnectionCharacteristicListData");
                     if (electricalConnectionCharacteristicListData != null)
                     {
-                        var contractualConsumptionNominalMax = electricalConnectionCharacteristicListData.cmd.First().electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData.FirstOrDefault(d => d.characteristicType == "contractualConsumptionNominalMax")?.value.ToLong();
-                        var contractualProductionNominalMax = electricalConnectionCharacteristicListData.cmd.First().electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData.FirstOrDefault(d => d.characteristicType == "contractualProductionNominalMax")?.value.ToLong();
+                        var contractualConsumptionNominalMax = electricalConnectionCharacteristicListData.cmd.First().electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData?.FirstOrDefault(d => d.characteristicType == "contractualConsumptionNominalMax")?.value.ToLong();
+                        var contractualProductionNominalMax = electricalConnectionCharacteristicListData.cmd.First().electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData?.FirstOrDefault(d => d.characteristicType == "contractualProductionNominalMax")?.value.ToLong();
 
                         deviceData.Lpc?.ContractualNominalMax = contractualConsumptionNominalMax;
                         deviceData.Lpp?.ContractualNominalMax = contractualProductionNominalMax;
@@ -177,7 +179,7 @@ namespace EEBUS.SPINE.Commands
     [System.SerializableAttribute()]
     public class ElectricalConnectionCharacteristicListDataType
     {
-        public ElectricalConnectionCharacteristicDataType[] electricalConnectionCharacteristicData { get; set; }
+        public ElectricalConnectionCharacteristicDataType[]? electricalConnectionCharacteristicData { get; set; }
     }
 
     [System.SerializableAttribute()]
