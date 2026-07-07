@@ -7,7 +7,7 @@ using EEBUS.MeasurementData;
 using EEBUS.Models;
 using EEBUS.Net.EEBUS.Data.DataStructures;
 
-namespace TestProject1.IntegrationTests
+namespace TestProject1.ConsistencyTests
 {
     /// <summary>
     /// Integrationstests für die ID-Konsistenz zwischen LPC (Limitation of Power Consumption)

@@ -2,7 +2,7 @@ using EEBUS;
 using EEBUS.Models;
 using EEBUS.Net.EEBUS.Data.DataStructures;
 
-namespace TestProject1.IntegrationTests;
+namespace TestProject1.ConsistencyTests;
 
 public class LppLpcConsistencyTests : EebusTests
 {
