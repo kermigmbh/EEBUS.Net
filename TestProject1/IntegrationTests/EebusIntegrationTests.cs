@@ -82,5 +82,31 @@ namespace TestProject1.IntegrationTests
             await Task.WhenAll(t1, t2);
             Log("Manager1 found manager2.");
         }
+
+        protected async Task StartAndConnectManagersAsync(EEBUSManager manager1, EEBUSManager manager2)
+        {
+            string manager1Ski = manager1.GetLocalData().SKI;
+            string manager2Ski = manager2.GetLocalData().SKI;
+
+            manager1.AddTrustedSki(manager2Ski);
+            manager2.AddTrustedSki(manager1Ski);
+            await StartManagersAsync(manager1, manager2);
+
+            using var manager2ReadyWaiter = new TestWaiter<RemoteDevice, DeviceConnectionStatus>(
+               subscribe: handler => manager2.OnDeviceConnectionStatusChanged += handler,
+               unsubscribe: handler => manager2.OnDeviceConnectionStatusChanged -= handler);
+            using var manager1ReadyWaiter = new TestWaiter<RemoteDevice, DeviceConnectionStatus>(
+                subscribe: handler => manager1.OnDeviceConnectionStatusChanged += handler,
+                unsubscribe: handler => manager1.OnDeviceConnectionStatusChanged -= handler);
+
+            bool connected = await manager1.TryConnectAsync(manager2.GetLocalData().SKI);
+            if (connected == false)
+            {
+                throw new Exception("Failed to establish connection after multiple attempts.");
+            }
+
+            await manager2ReadyWaiter.Match((remoteDevice, status) => remoteDevice.SKI.ToString() == manager1Ski && status == DeviceConnectionStatus.UseCaseDiscoveryCompleted);
+            await manager1ReadyWaiter.Match((remoteDevice, status) => remoteDevice.SKI.ToString() == manager2Ski && status == DeviceConnectionStatus.UseCaseDiscoveryCompleted);
+        }
     }
 }

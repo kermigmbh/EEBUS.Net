@@ -27,35 +27,7 @@ namespace TestProject1.IntegrationTests
             using EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(), logger: manager1Logger);
             using EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings(), logger: manager2Logger);
 
-            
-            string manager2Ski = manager2.GetLocalData().SKI;
-            string manager1Ski = manager1.GetLocalData().SKI;
-            manager1.AddTrustedSki(manager2Ski);
-            manager2.AddTrustedSki(manager1Ski);
-
-            await StartManagersAsync(manager1, manager2);
-
-            using var manager2ReadyWaiter = new TestWaiter<RemoteDevice, DeviceConnectionStatus>(
-                subscribe: handler => manager2.OnDeviceConnectionStatusChanged += handler,
-                unsubscribe: handler => manager2.OnDeviceConnectionStatusChanged -= handler);
-            using var manager1ReadyWaiter = new TestWaiter<RemoteDevice, DeviceConnectionStatus>(
-                subscribe: handler => manager1.OnDeviceConnectionStatusChanged += handler,
-                unsubscribe: handler => manager1.OnDeviceConnectionStatusChanged -= handler);
-
-            bool connected = await manager1.TryConnectAsync(manager2.GetLocalData().SKI);
-            if (connected == false)
-            {
-                Log("Failed to establish connection after multiple attempts.");
-                throw new Exception("Failed to establish connection after multiple attempts.");
-            }
-            Log("manager1 -> manager2: connection OK");
-
-            await manager2ReadyWaiter.Match((remoteDevice, status) => remoteDevice.SKI.ToString() == manager1Ski);
-            Log("Manager2 connection to manager1 is ready (UseCaseDiscoveryCompleted).");
-
-            await manager1ReadyWaiter.Match((remoteDevice, status) => remoteDevice.SKI.ToString() == manager2Ski);
-            Log("Manager1 is ready (UseCaseDiscoveryCompleted).");
-
+            await StartAndConnectManagersAsync(manager1, manager2);
 
             using var dataChangedWaiter = new TestWaiter<DeviceData>(
                 subscribe: handler => manager1.OnDeviceDataChanged += handler,
@@ -111,29 +83,8 @@ namespace TestProject1.IntegrationTests
 
             using EEBUSManager eMeterMonitorManager = new EEBUSManager(Setup.GetEMeterMonitorSettings(), logger: eMeterMonitorLogger);
             using EEBUSManager eMeterManager = new EEBUSManager(Setup.GetEMeterSettings(initMeasurements), logger: eMeterLogger);
-            string emeterMonitorSki = eMeterMonitorManager.GetLocalData().SKI;
-            string emeterSki = eMeterManager.GetLocalData().SKI;
 
-            eMeterMonitorManager.AddTrustedSki(emeterSki);
-            eMeterManager.AddTrustedSki(emeterMonitorSki);
-
-            await StartManagersAsync(eMeterMonitorManager, eMeterManager);
-
-            using var emeterManagerReadyWaiter = new TestWaiter<RemoteDevice, DeviceConnectionStatus>(
-                subscribe: handler => eMeterManager.OnDeviceConnectionStatusChanged += handler,
-                unsubscribe: handler => eMeterManager.OnDeviceConnectionStatusChanged -= handler);
-            using var emeterMonitorManagerReadyWaiter = new TestWaiter<RemoteDevice, DeviceConnectionStatus>(
-                subscribe: handler => eMeterMonitorManager.OnDeviceConnectionStatusChanged += handler,
-                unsubscribe: handler => eMeterMonitorManager.OnDeviceConnectionStatusChanged -= handler);
-
-            bool connected = await eMeterMonitorManager.TryConnectAsync(emeterSki);
-            Assert.True(connected, "Connection should succeed.");
-
-            await emeterMonitorManagerReadyWaiter.Match((remoteDevice, status) => remoteDevice.SKI.ToString() == emeterSki && status == DeviceConnectionStatus.UseCaseDiscoveryCompleted);
-            Log("Manager2 connection to manager1 is ready (UseCaseDiscoveryCompleted).");
-
-            await emeterManagerReadyWaiter.Match((remoteDevice, status) => remoteDevice.SKI.ToString() == emeterMonitorSki && status == DeviceConnectionStatus.UseCaseDiscoveryCompleted);
-            Log("Manager1 is ready (UseCaseDiscoveryCompleted).");
+            await StartAndConnectManagersAsync(eMeterMonitorManager, eMeterManager);
 
             var data = new DeviceData
             {
@@ -167,26 +118,7 @@ namespace TestProject1.IntegrationTests
             string cemSki = cemManager.GetLocalData().SKI;
             string controlBoxSki = controlBoxManager.GetLocalData().SKI;
 
-            cemManager.AddTrustedSki(controlBoxSki);
-            controlBoxManager.AddTrustedSki(cemSki);
-
-            await StartManagersAsync(cemManager, controlBoxManager);
-
-            using var cemMangerReadyWaiter = new TestWaiter<RemoteDevice, DeviceConnectionStatus>(
-               subscribe: handler => cemManager.OnDeviceConnectionStatusChanged += handler,
-               unsubscribe: handler => cemManager.OnDeviceConnectionStatusChanged -= handler);
-            using var controlBoxReadyWaiter = new TestWaiter<RemoteDevice, DeviceConnectionStatus>(
-                subscribe: handler => controlBoxManager.OnDeviceConnectionStatusChanged += handler,
-                unsubscribe: handler => controlBoxManager.OnDeviceConnectionStatusChanged -= handler);
-
-            bool connected = await controlBoxManager.TryConnectAsync(cemSki);
-            Assert.True(connected, "Connection should succeed.");
-
-            await controlBoxReadyWaiter.Match((remoteDevice, status) => remoteDevice.SKI.ToString() == cemSki && status == DeviceConnectionStatus.UseCaseDiscoveryCompleted);
-            Log("Manager2 connection to manager1 is ready (UseCaseDiscoveryCompleted).");
-
-            await cemMangerReadyWaiter.Match((remoteDevice, status) => remoteDevice.SKI.ToString() == controlBoxSki && status == DeviceConnectionStatus.UseCaseDiscoveryCompleted);
-            Log("Manager1 is ready (UseCaseDiscoveryCompleted).");
+            await StartAndConnectManagersAsync(cemManager, controlBoxManager);
 
             var data = new DeviceData
             {

@@ -141,6 +141,39 @@ namespace TestProject1.IntegrationTests
             }
         }
 
+        public static Settings GetGridConnectionPointSettings(MeasurementSettings? initMeasurements = null)
+        {
+            lock (_lock)
+            {
+                _nodeNumber++;
+                var settings = new Settings()
+                {
+                    Device = new DeviceSettings()
+                    {
+                        Name = "Grid Connection Point",
+                        Id = "GridConnectionPoint-" + _nodeNumber,
+                        Model = "Demo Grid Connection Point",
+                        Brand = "Kermi",
+                        Type = "GCP",
+                        Serial = "555555",
+                        Port = (ushort)(7300 + _nodeNumber),
+                        Entities = [
+                            new EntitySettings { Type = "DeviceInformation" },
+                            new EntitySettings { Type = "GridConnectionPointOfPremises", UseCases = [
+                                new UseCaseSettings {
+                                    Type = "monitoringOfGridConnectionPoint",
+                                    Actor = "GridConnectionPoint",
+                                    InitMeasurements = initMeasurements
+                                }
+                            ]}
+                        ]
+                    },
+                    Certificate = "EEBUS" + _nodeNumber + ".net"
+                };
+                return settings;
+            }
+        }
+
         public static Settings GetEMeterMonitorSettings(MeasurementSettings? initMeasurements = null)
         {
             lock (_lock)
@@ -162,6 +195,11 @@ namespace TestProject1.IntegrationTests
                             new EntitySettings { Type = "CEM", UseCases = [
                                 new UseCaseSettings {
                                     Type = "monitoringOfPowerConsumption",
+                                    Actor = "MonitoringAppliance",
+                                    InitMeasurements = initMeasurements
+                                },
+                                new UseCaseSettings {
+                                    Type = "monitoringOfGridConnectionPoint",
                                     Actor = "MonitoringAppliance",
                                     InitMeasurements = initMeasurements
                                 }
