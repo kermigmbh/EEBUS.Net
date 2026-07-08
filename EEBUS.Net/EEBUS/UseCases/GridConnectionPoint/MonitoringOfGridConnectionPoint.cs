@@ -20,6 +20,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 			: base( usecaseSettings, entity )
 		{
 			entity.GetOrAdd( Feature.Create( "ElectricalConnection", "server", entity ) );
+			entity.GetOrAdd( Feature.Create( "DeviceConfiguration", "server", entity ) );
 
 			if (usecaseSettings.PvCurtailmentLimitFactor.HasValue)
 			{
