@@ -759,6 +759,16 @@ namespace EEBUS.Net
             }
         }
 
+        /// <summary>
+        /// Fills the provided <paramref name="deviceData"/> with data read from the remote device identified by <paramref name="remoteSki"/>.
+        /// Example: if one wants to read the lpc data, provide a deviceData object where every property is set to null, except the "Lpc" property:
+        /// DeviceData dataToRead = new DeviceData {
+        ///     Lpc = new LpcLppData() // other properties are null
+        /// }
+        /// </summary>
+        /// <param name="deviceData">The device data object to populate.</param>
+        /// <param name="remoteSki">The SKI of the remote device to read data from.</param>
+        /// <exception cref="Exception">Thrown if no active connection exists for the specified SKI.</exception>
         public async Task ReadDataAsync(DeviceData deviceData, string remoteSki)
         {
             if (!_connections.TryGetValue(remoteSki, out Connection? connection))
