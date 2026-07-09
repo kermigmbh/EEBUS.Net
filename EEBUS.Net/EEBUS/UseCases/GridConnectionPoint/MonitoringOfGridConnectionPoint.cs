@@ -35,6 +35,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				measurementId = 0,
 				electricalConnectionParameterDescriptionData = new()
 				{
+					measurementId			= 0,
 					electricalConnectionId	= 0,
 					voltageType				= "ac",
 					acMeasuredPhases		= "abc",
@@ -44,6 +45,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				},
 				measurementDescriptionDataType = new()
 				{
+					measurementId	= 0,
 					measurementType	= "power",
 					commodityType	= "electricity",
 					unit			= "W",
@@ -51,6 +53,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				},
 				measurementDataType= new()
 				{
+					measurementId = 0,
 					valueType	= "value",
 					value		= new() { number = usecaseSettings.InitMeasurements?.AcPowerTotal ?? 0, scale = 0 },
 					valueSource = "measuredValue"
@@ -62,12 +65,14 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				measurementId = 1,
 				electricalConnectionParameterDescriptionData = new()
 				{
+					measurementId			= 1,
 					electricalConnectionId	= 0,
 					voltageType				= "ac",
 					acMeasurementType		= "real",
 				},
 				measurementDescriptionDataType = new()
 				{
+					measurementId	= 1,
 					measurementType	= "energy",
 					commodityType	= "electricity",
 					unit			= "Wh",
@@ -75,6 +80,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				},
 				measurementDataType= new()
 				{
+					measurementId = 1,
 					valueType	= "value",
 					value		= new() { number = usecaseSettings.InitMeasurements?.GridFeedIn ?? 0, scale = 0 },
 					valueSource = "measuredValue"
@@ -86,12 +92,14 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				measurementId = 2,
 				electricalConnectionParameterDescriptionData = new()
 				{
+					measurementId			= 2,
 					electricalConnectionId	= 0,
 					voltageType				= "ac",
 					acMeasurementType		= "real",
 				},
 				measurementDescriptionDataType = new()
 				{
+					measurementId	= 2,
 					measurementType	= "energy",
 					commodityType	= "electricity",
 					unit			= "Wh",
@@ -99,6 +107,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				},
 				measurementDataType= new()
 				{
+					measurementId = 2,
 					valueType	= "value",
 					value		= new() { number = usecaseSettings.InitMeasurements?.GridConsumption ?? 0, scale = 0 },
 					valueSource = "measuredValue"
@@ -110,12 +119,14 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				measurementId = 3,
 				electricalConnectionParameterDescriptionData = new()
 				{
+					measurementId			= 3,
 					electricalConnectionId	= 0,
 					voltageType				= "ac",
 					acMeasuredPhases		= "a",
 				},
 				measurementDescriptionDataType = new()
 				{
+					measurementId	= 3,
 					measurementType	= "current",
 					commodityType	= "electricity",
 					unit			= "A",
@@ -123,6 +134,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				},
 				measurementDataType= new()
 				{
+					measurementId = 3,
 					valueType	= "value",
 					value		= new() { number = usecaseSettings.InitMeasurements?.AcCurrentPhaseA ?? 0, scale = 0 },
 					valueSource = "measuredValue"
@@ -134,12 +146,14 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				measurementId = 4,
 				electricalConnectionParameterDescriptionData = new()
 				{
+					measurementId			= 4,
 					electricalConnectionId	= 0,
 					voltageType				= "ac",
 					acMeasuredPhases		= "b",
 				},
 				measurementDescriptionDataType = new()
 				{
+					measurementId	= 4,
 					measurementType	= "current",
 					commodityType	= "electricity",
 					unit			= "A",
@@ -147,6 +161,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				},
 				measurementDataType= new()
 				{
+					measurementId = 4,
 					valueType	= "value",
 					value		= new() { number = usecaseSettings.InitMeasurements?.AcCurrentPhaseB ?? 0, scale = 0 },
 					valueSource = "measuredValue"
@@ -158,12 +173,14 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				measurementId = 5,
 				electricalConnectionParameterDescriptionData = new()
 				{
+					measurementId			= 5,
 					electricalConnectionId	= 0,
 					voltageType				= "ac",
 					acMeasuredPhases		= "c",
 				},
 				measurementDescriptionDataType = new()
 				{
+					measurementId	= 5,
 					measurementType	= "current",
 					commodityType	= "electricity",
 					unit			= "A",
@@ -171,6 +188,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				},
 				measurementDataType= new()
 				{
+					measurementId = 5,
 					valueType	= "value",
 					value		= new() { number = usecaseSettings.InitMeasurements?.AcCurrentPhaseC ?? 0, scale = 0 },
 					valueSource = "measuredValue"
@@ -182,6 +200,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				measurementId = 6,
 				electricalConnectionParameterDescriptionData = new()
 				{
+					measurementId			= 6,
 					electricalConnectionId	= 0,
 					voltageType				= "ac",
 					acMeasuredPhases		= "a",
@@ -191,6 +210,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				},
 				measurementDescriptionDataType = new()
 				{
+					measurementId	= 6,
 					measurementType	= "voltage",
 					commodityType	= "electricity",
 					unit			= "V",
@@ -198,6 +218,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				},
 				measurementDataType= new()
 				{
+					measurementId = 6,
 					valueType	= "value",
 					value		= new() { number = usecaseSettings.InitMeasurements?.AcVoltagePhaseA ?? 0, scale = 0 },
 					valueSource = "measuredValue"
@@ -209,6 +230,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				measurementId = 7,
 				electricalConnectionParameterDescriptionData = new()
 				{
+					measurementId			= 7,
 					electricalConnectionId	= 0,
 					voltageType				= "ac",
 					acMeasuredPhases		= "b",
@@ -218,6 +240,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				},
 				measurementDescriptionDataType = new()
 				{
+					measurementId	= 7,
 					measurementType	= "voltage",
 					commodityType	= "electricity",
 					unit			= "V",
@@ -225,6 +248,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				},
 				measurementDataType= new()
 				{
+					measurementId = 7,
 					valueType	= "value",
 					value		= new() { number = usecaseSettings.InitMeasurements?.AcVoltagePhaseB ?? 0, scale = 0 },
 					valueSource = "measuredValue"
@@ -236,6 +260,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				measurementId = 8,
 				electricalConnectionParameterDescriptionData = new()
 				{
+					measurementId			= 8,
 					electricalConnectionId	= 0,
 					voltageType				= "ac",
 					acMeasuredPhases		= "c",
@@ -245,6 +270,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				},
 				measurementDescriptionDataType = new()
 				{
+					measurementId	= 8,
 					measurementType	= "voltage",
 					commodityType	= "electricity",
 					unit			= "V",
@@ -252,6 +278,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				},
 				measurementDataType= new()
 				{
+					measurementId = 8,
 					valueType	= "value",
 					value		= new() { number = usecaseSettings.InitMeasurements?.AcVoltagePhaseC ?? 0, scale = 0 },
 					valueSource = "measuredValue"
@@ -263,11 +290,13 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				measurementId = 9,
 				electricalConnectionParameterDescriptionData = new()
 				{
+					measurementId			= 9,
 					electricalConnectionId	= 0,
 					voltageType				= "ac",
 				},
 				measurementDescriptionDataType = new()
 				{
+					measurementId	= 9,
 					measurementType	= "frequency",
 					commodityType	= "electricity",
 					unit			= "Hz",
@@ -275,6 +304,7 @@ namespace EEBUS.UseCases.GridConnectionPoint
 				},
 				measurementDataType= new()
 				{
+					measurementId = 9,
 					valueType	= "value",
 					value		= new() { number = usecaseSettings.InitMeasurements?.AcFrequency ?? 0, scale = 0 },
 					valueSource = "measuredValue"

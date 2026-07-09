@@ -22,12 +22,9 @@ namespace EEBUS.UseCases.MonitoringAppliance
 			entity.GetOrAdd( Feature.Create( "ElectricalConnection", "client", entity ) );
             entity.GetOrAdd(Feature.Create("DeviceConfiguration", "client", entity));
 
-            //if (usecaseSettings.PvCurtailmentLimitFactor.HasValue)
-            //{
-            //	entity.Local.AddUnique(new PvCurtailmentLimitFactorKeyValue(entity.Local, usecaseSettings.PvCurtailmentLimitFactor.Value, 0, true));
-            //}
+			
 
-            MeasurementClientFeature? measurementClient = entity.GetOrAdd( Feature.Create( "Measurement", "client", entity ) ) as MeasurementClientFeature;
+			MeasurementClientFeature? measurementClient = entity.GetOrAdd( Feature.Create( "Measurement", "client", entity ) ) as MeasurementClientFeature;
             entity.GetOrAdd(Feature.Create("ElectricalConnection", "client", entity));
 
             if (measurementClient != null)
@@ -37,7 +34,8 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					measurementId = 0,
 					electricalConnectionParameterDescriptionData = new()
 					{
-						electricalConnectionId = 0,
+						measurementId = 0,
+                        electricalConnectionId = 0,
 						voltageType = "ac",
 						acMeasuredPhases = "abc",
 						acMeasuredInReferenceTo = "neutral",
@@ -46,14 +44,16 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					},
 					measurementDescriptionDataType = new()
 					{
-						measurementType = "power",
+                        measurementId = 0,
+                        measurementType = "power",
 						commodityType = "electricity",
 						unit = "W",
 						scopeType = "acPowerTotal"
 					},
 					measurementDataType = new()
 					{
-						valueType = "value",
+                        measurementId = 0,
+                        valueType = "value",
 						value = new() { number = usecaseSettings.InitMeasurements?.AcPowerTotal ?? 0, scale = 0 },
 						valueSource = "measuredValue"
 					}
@@ -64,12 +64,14 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					measurementId = 1,
 					electricalConnectionParameterDescriptionData = new()
 					{
-						electricalConnectionId = 0,
+                        measurementId = 1,
+                        electricalConnectionId = 0,
 						voltageType = "ac",
 						acMeasurementType = "real",
 					},
 					measurementDescriptionDataType = new()
 					{
+                        measurementId = 1,
 						measurementType = "energy",
 						commodityType = "electricity",
 						unit = "Wh",
@@ -77,6 +79,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					},
 					measurementDataType = new()
 					{
+                        measurementId = 1,
 						valueType = "value",
 						value = new() { number = usecaseSettings.InitMeasurements?.GridFeedIn ?? 0, scale = 0 },
 						valueSource = "measuredValue"
@@ -88,12 +91,14 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					measurementId = 2,
 					electricalConnectionParameterDescriptionData = new()
 					{
-						electricalConnectionId = 0,
+                        measurementId = 2,
+                        electricalConnectionId = 0,
 						voltageType = "ac",
 						acMeasurementType = "real",
 					},
 					measurementDescriptionDataType = new()
 					{
+                        measurementId = 2,
 						measurementType = "energy",
 						commodityType = "electricity",
 						unit = "Wh",
@@ -101,6 +106,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					},
 					measurementDataType = new()
 					{
+                        measurementId = 2,
 						valueType = "value",
 						value = new() { number = usecaseSettings.InitMeasurements?.GridConsumption ?? 0, scale = 0 },
 						valueSource = "measuredValue"
@@ -112,12 +118,14 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					measurementId = 3,
 					electricalConnectionParameterDescriptionData = new()
 					{
+						measurementId = 3,
 						electricalConnectionId = 0,
 						voltageType = "ac",
 						acMeasuredPhases = "a",
 					},
 					measurementDescriptionDataType = new()
 					{
+						measurementId = 3,
 						measurementType = "current",
 						commodityType = "electricity",
 						unit = "A",
@@ -125,6 +133,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					},
 					measurementDataType = new()
 					{
+						measurementId = 3,
 						valueType = "value",
 						value = new() { number = usecaseSettings.InitMeasurements?.AcCurrentPhaseA ?? 0, scale = 0 },
 						valueSource = "measuredValue"
@@ -136,12 +145,14 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					measurementId = 4,
 					electricalConnectionParameterDescriptionData = new()
 					{
+						measurementId = 4,
 						electricalConnectionId = 0,
 						voltageType = "ac",
 						acMeasuredPhases = "b",
 					},
 					measurementDescriptionDataType = new()
 					{
+						measurementId = 4,
 						measurementType = "current",
 						commodityType = "electricity",
 						unit = "A",
@@ -149,6 +160,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					},
 					measurementDataType = new()
 					{
+						measurementId = 4,
 						valueType = "value",
 						value = new() { number = usecaseSettings.InitMeasurements?.AcCurrentPhaseB ?? 0, scale = 0 },
 						valueSource = "measuredValue"
@@ -160,12 +172,14 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					measurementId = 5,
 					electricalConnectionParameterDescriptionData = new()
 					{
+						measurementId = 5,
 						electricalConnectionId = 0,
 						voltageType = "ac",
 						acMeasuredPhases = "c",
 					},
 					measurementDescriptionDataType = new()
 					{
+						measurementId = 5,
 						measurementType = "current",
 						commodityType = "electricity",
 						unit = "A",
@@ -173,6 +187,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					},
 					measurementDataType = new()
 					{
+						measurementId = 5,
 						valueType = "value",
 						value = new() { number = usecaseSettings.InitMeasurements?.AcCurrentPhaseC ?? 0, scale = 0 },
 						valueSource = "measuredValue"
@@ -184,6 +199,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					measurementId = 6,
 					electricalConnectionParameterDescriptionData = new()
 					{
+						measurementId = 6,
 						electricalConnectionId = 0,
 						voltageType = "ac",
 						acMeasuredPhases = "a",
@@ -193,6 +209,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					},
 					measurementDescriptionDataType = new()
 					{
+						measurementId = 6,
 						measurementType = "voltage",
 						commodityType = "electricity",
 						unit = "V",
@@ -200,6 +217,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					},
 					measurementDataType = new()
 					{
+						measurementId = 6,
 						valueType = "value",
 						value = new() { number = usecaseSettings.InitMeasurements?.AcVoltagePhaseA ?? 0, scale = 0 },
 						valueSource = "measuredValue"
@@ -211,6 +229,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					measurementId = 7,
 					electricalConnectionParameterDescriptionData = new()
 					{
+						measurementId = 7,
 						electricalConnectionId = 0,
 						voltageType = "ac",
 						acMeasuredPhases = "b",
@@ -220,6 +239,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					},
 					measurementDescriptionDataType = new()
 					{
+						measurementId = 7,
 						measurementType = "voltage",
 						commodityType = "electricity",
 						unit = "V",
@@ -227,6 +247,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					},
 					measurementDataType = new()
 					{
+						measurementId = 7,
 						valueType = "value",
 						value = new() { number = usecaseSettings.InitMeasurements?.AcVoltagePhaseB ?? 0, scale = 0 },
 						valueSource = "measuredValue"
@@ -238,6 +259,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					measurementId = 8,
 					electricalConnectionParameterDescriptionData = new()
 					{
+						measurementId = 8,
 						electricalConnectionId = 0,
 						voltageType = "ac",
 						acMeasuredPhases = "c",
@@ -247,6 +269,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					},
 					measurementDescriptionDataType = new()
 					{
+						measurementId = 8,
 						measurementType = "voltage",
 						commodityType = "electricity",
 						unit = "V",
@@ -254,6 +277,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					},
 					measurementDataType = new()
 					{
+						measurementId = 8,
 						valueType = "value",
 						value = new() { number = usecaseSettings.InitMeasurements?.AcVoltagePhaseC ?? 0, scale = 0 },
 						valueSource = "measuredValue"
@@ -265,11 +289,13 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					measurementId = 9,
 					electricalConnectionParameterDescriptionData = new()
 					{
+						measurementId = 9,
 						electricalConnectionId = 0,
 						voltageType = "ac",
 					},
 					measurementDescriptionDataType = new()
 					{
+						measurementId = 9,
 						measurementType = "frequency",
 						commodityType = "electricity",
 						unit = "Hz",
@@ -277,6 +303,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
 					},
 					measurementDataType = new()
 					{
+						measurementId = 9,
 						valueType = "value",
 						value = new() { number = usecaseSettings.InitMeasurements?.AcFrequency ?? 0, scale = 0 },
 						valueSource = "measuredValue"

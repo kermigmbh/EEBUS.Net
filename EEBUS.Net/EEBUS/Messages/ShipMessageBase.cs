@@ -98,7 +98,7 @@ namespace EEBUS.Messages
 			json = json.Replace( "[{", "{" );
 			json = json.Replace( "},{", "," );
 			json = json.Replace( "}]", "}" );
-			json = json.Replace( "[]", "{}" );
+			//json = json.Replace( "[]", "{}" );
 
 			return json;
 		}

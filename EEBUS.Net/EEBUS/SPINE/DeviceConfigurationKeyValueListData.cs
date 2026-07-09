@@ -265,6 +265,16 @@ namespace EEBUS.SPINE.Commands
 					}
 				}
 
+				if (deviceData.Mgcp?.PvCurtailmentLimitFactor != null)
+				{
+					PvCurtailmentLimitFactorKeyValue? pvCurtailmentLimitFactorKeyValue = localDevice.GetKeyValue<PvCurtailmentLimitFactorKeyValue>();
+                    if (pvCurtailmentLimitFactorKeyValue != null)
+                    {
+                        pvCurtailmentLimitFactorKeyValue.Value = deviceData.Mgcp.PvCurtailmentLimitFactor.Value;
+                        didChange = true;
+                    }
+                }
+
 				if (didChange)
 				{
 					var featureAddress = localDevice.GetFeatureAddress("DeviceConfiguration", true);
@@ -284,40 +294,39 @@ namespace EEBUS.SPINE.Commands
 
                 if (featureSourceAddress == null || featureDestinationAddress == null) return;
 
-                if (deviceData.Lpc != null || deviceData.Lpp != null || deviceData.FailSafe != null)
+                if (deviceData.Lpc != null || deviceData.Lpp != null || deviceData.FailSafe != null || deviceData.Mgcp != null)
 				{
-                    SpineCmdPayloadBase? readPayload = CreateRead(connection);
-                    DataMessage readMessage = DataMessage.CreateRead(featureSourceAddress, featureDestinationAddress, readPayload);
-                    DataMessage readResult = await connection.PushDataMessageAsync(readMessage);
-                    DeviceConfigurationKeyValueListData? readResultPayload = readResult.SpineDatagramPayload.DeserializePayload() as DeviceConfigurationKeyValueListData;
-
-                    SpineCmdPayloadBase? readDescriptionPayload = GetClass("deviceConfigurationKeyValueDescriptionListData")?.CreateRead(connection);
-                    DataMessage readDescriptionMessage = DataMessage.CreateRead(featureSourceAddress, featureDestinationAddress, readDescriptionPayload);
-                    DataMessage readDescriptionResult = await connection.PushDataMessageAsync(readDescriptionMessage);
-                    DeviceConfigurationKeyValueDescriptionListData? readDescriptionResultPayload = readDescriptionResult.SpineDatagramPayload.DeserializePayload() as DeviceConfigurationKeyValueDescriptionListData;
-
-                    if (readResultPayload != null && readDescriptionResultPayload != null)
+                    var deviceConfigurationKeyValueListData = await ReadFunctionFromRemoteAsync<DeviceConfigurationKeyValueListData>(connection, "DeviceConfiguration", "deviceConfigurationKeyValueListData");
+					var deviceConfigurationKeyValueDescriptionListData = await ReadFunctionFromRemoteAsync<DeviceConfigurationKeyValueDescriptionListData>(connection, "DeviceConfiguration", "deviceConfigurationKeyValueDescriptionListData");
+                    if (deviceConfigurationKeyValueListData != null && deviceConfigurationKeyValueDescriptionListData != null)
 					{
-						var lpcFailSafeLimitKeyId = readDescriptionResultPayload.cmd.First().deviceConfigurationKeyValueDescriptionListData.deviceConfigurationKeyValueDescriptionData?.FirstOrDefault(d => d.keyName == "failsafeConsumptionActivePowerLimit")?.keyId;
-						var lppFailSafeLimitKeyId = readDescriptionResultPayload.cmd.First().deviceConfigurationKeyValueDescriptionListData.deviceConfigurationKeyValueDescriptionData?.FirstOrDefault(d => d.keyName == "failsafeProductionActivePowerLimit")?.keyId;
-						var failsafeDurationKeyId = readDescriptionResultPayload.cmd.First().deviceConfigurationKeyValueDescriptionListData.deviceConfigurationKeyValueDescriptionData?.FirstOrDefault(d => d.keyName == "failsafeDurationMinimum")?.keyId;
+						var lpcFailSafeLimitKeyId = deviceConfigurationKeyValueDescriptionListData.cmd.First().deviceConfigurationKeyValueDescriptionListData.deviceConfigurationKeyValueDescriptionData?.FirstOrDefault(d => d.keyName == "failsafeConsumptionActivePowerLimit")?.keyId;
+						var lppFailSafeLimitKeyId = deviceConfigurationKeyValueDescriptionListData.cmd.First().deviceConfigurationKeyValueDescriptionListData.deviceConfigurationKeyValueDescriptionData?.FirstOrDefault(d => d.keyName == "failsafeProductionActivePowerLimit")?.keyId;
+						var failsafeDurationKeyId = deviceConfigurationKeyValueDescriptionListData.cmd.First().deviceConfigurationKeyValueDescriptionListData.deviceConfigurationKeyValueDescriptionData?.FirstOrDefault(d => d.keyName == "failsafeDurationMinimum")?.keyId;
+						var pvCurtailmentLimitFactorKeyId = deviceConfigurationKeyValueDescriptionListData.cmd.First().deviceConfigurationKeyValueDescriptionListData.deviceConfigurationKeyValueDescriptionData?.FirstOrDefault(d => d.keyName == "pvCurtailmentLimitFactor")?.keyId;
 
 						if (lpcFailSafeLimitKeyId.HasValue && deviceData.Lpc != null)
 						{
-							var lpcFailSafeLimitKeyValue = readResultPayload.cmd.First().deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData?.FirstOrDefault(d => d.keyId == lpcFailSafeLimitKeyId.Value);
+							var lpcFailSafeLimitKeyValue = deviceConfigurationKeyValueListData.cmd.First().deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData?.FirstOrDefault(d => d.keyId == lpcFailSafeLimitKeyId.Value);
                             deviceData.Lpc.FailSafeLimit = lpcFailSafeLimitKeyValue?.value?.scaledNumber?.ToLong();
 						}
 
                         if (lppFailSafeLimitKeyId.HasValue && deviceData.Lpp != null)
                         {
-                            var lppFailSafeLimitKeyValue = readResultPayload.cmd.First().deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData?.FirstOrDefault(d => d.keyId == lppFailSafeLimitKeyId.Value);
+                            var lppFailSafeLimitKeyValue = deviceConfigurationKeyValueListData.cmd.First().deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData?.FirstOrDefault(d => d.keyId == lppFailSafeLimitKeyId.Value);
                             deviceData.Lpp.FailSafeLimit = lppFailSafeLimitKeyValue?.value?.scaledNumber?.ToLong();
                         }
 
                         if (failsafeDurationKeyId.HasValue && deviceData.FailSafe != null)
                         {
-                            var failsafeDurationKeyValue = readResultPayload.cmd.First().deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData?.FirstOrDefault(d => d.keyId == failsafeDurationKeyId.Value);
+                            var failsafeDurationKeyValue = deviceConfigurationKeyValueListData.cmd.First().deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData?.FirstOrDefault(d => d.keyId == failsafeDurationKeyId.Value);
                             deviceData.FailSafe.LimitDuration = (int?)failsafeDurationKeyValue?.value?.scaledNumber?.ToLong();
+                        }
+
+						if (pvCurtailmentLimitFactorKeyId.HasValue && deviceData.Mgcp != null)
+						{
+							var pvCurtailmentLimitFactorKeyValue = deviceConfigurationKeyValueListData.cmd.First().deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData?.FirstOrDefault(d => d.keyId == pvCurtailmentLimitFactorKeyId.Value);
+                            deviceData.Mgcp.PvCurtailmentLimitFactor = pvCurtailmentLimitFactorKeyValue?.value?.scaledNumber?.ToLong();
                         }
                     }
                 }

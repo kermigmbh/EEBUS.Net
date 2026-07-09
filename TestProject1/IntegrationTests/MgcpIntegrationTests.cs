@@ -23,17 +23,9 @@ namespace TestProject1.IntegrationTests
             ILogger gcpLogger = GetLogger("GridConnectionPoint");
 
             using EEBUSManager eMeterMonitorManager = new EEBUSManager(Setup.GetEMeterMonitorSettings(), logger: eMeterMonitorLogger);
-            using EEBUSManager gcpManager = new EEBUSManager(Setup.GetGridConnectionPointSettings(), logger: gcpLogger);
+            using EEBUSManager gcpManager = new EEBUSManager(Setup.GetGridConnectionPointSettings(pvCurtailmentLimitFactor: 100), logger: gcpLogger);
 
             await StartAndConnectManagersAsync(eMeterMonitorManager, gcpManager);
-
-            await gcpManager.WriteDataAsync(new DeviceData
-            {
-                Mgcp = new()
-                {
-                    PvCurtailmentLimitFactor = 100
-                }
-            }, eMeterMonitorManager.GetLocalData().SKI.ToString());
 
             var readData = new DeviceData
             {
@@ -65,7 +57,7 @@ namespace TestProject1.IntegrationTests
             };
 
             using EEBUSManager eMeterMonitorManager = new EEBUSManager(Setup.GetEMeterMonitorSettings(), logger: eMeterMonitorLogger);
-            using EEBUSManager gcpManager = new EEBUSManager(Setup.GetGridConnectionPointSettings(), logger: gcpLogger);
+            using EEBUSManager gcpManager = new EEBUSManager(Setup.GetGridConnectionPointSettings(initMeasurements), logger: gcpLogger);
 
             await StartAndConnectManagersAsync(eMeterMonitorManager, gcpManager);
 
@@ -77,7 +69,7 @@ namespace TestProject1.IntegrationTests
 
             Assert.Equal(initMeasurements.AcPowerTotal, data.Measurements.AcPowerTotal);
             Assert.Equal(initMeasurements.GridFeedIn, data.Measurements.GridFeedIn);
-            Assert.Equal(initMeasurements.GridFeedIn, data.Measurements.GridConsumption);
+            Assert.Equal(initMeasurements.GridConsumption, data.Measurements.GridConsumption);
             Assert.Equal(initMeasurements.AcCurrentPhaseA, data.Measurements.AcCurrent?.PhaseA);
             Assert.Equal(initMeasurements.AcCurrentPhaseB, data.Measurements.AcCurrent?.PhaseB);
             Assert.Equal(initMeasurements.AcCurrentPhaseC, data.Measurements.AcCurrent?.PhaseC);

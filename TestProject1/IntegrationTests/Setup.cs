@@ -141,7 +141,7 @@ namespace TestProject1.IntegrationTests
             }
         }
 
-        public static Settings GetGridConnectionPointSettings(MeasurementSettings? initMeasurements = null)
+        public static Settings GetGridConnectionPointSettings(MeasurementSettings? initMeasurements = null, int? pvCurtailmentLimitFactor = null)
         {
             lock (_lock)
             {
@@ -163,7 +163,8 @@ namespace TestProject1.IntegrationTests
                                 new UseCaseSettings {
                                     Type = "monitoringOfGridConnectionPoint",
                                     Actor = "GridConnectionPoint",
-                                    InitMeasurements = initMeasurements
+                                    InitMeasurements = initMeasurements,
+                                    PvCurtailmentLimitFactor = pvCurtailmentLimitFactor ?? 0
                                 }
                             ]}
                         ]
