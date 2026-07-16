@@ -102,7 +102,7 @@ namespace EEBUS
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Exception: " + ex.Message);
+                Console.WriteLine($"{DateTime.UtcNow} - {ex.ToString()}");
             }
 
             // Only remove from the map if we are still the registered Server for

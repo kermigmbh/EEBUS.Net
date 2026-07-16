@@ -75,7 +75,7 @@ namespace EEBUS
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex.Message);
+                    Console.WriteLine($"{DateTime.UtcNow} - {ex.ToString()}");
                 }
                 finally
                 {

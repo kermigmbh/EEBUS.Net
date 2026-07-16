@@ -70,7 +70,7 @@ namespace EEBUS
                 catch (Exception ex)
                 {
                     await StopAsync();
-                    Console.WriteLine("Exception in SHIPListener: " + ex.ToString());
+                    Console.WriteLine($"{DateTime.UtcNow} - {ex.ToString()}");
                     throw;
                 }
             });
@@ -86,7 +86,7 @@ namespace EEBUS
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine("SHIPListener.StopAsync: app stop failed: " + ex.Message);
+                    Debug.WriteLine($"{DateTime.UtcNow} - SHIPListener.StopAsync: app stop failed: {DateTime.UtcNow} - {ex.ToString()}");
                 }
 
                 try
