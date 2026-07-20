@@ -548,7 +548,7 @@ namespace EEBUS.StateMachines
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[LimitStateMachine:{_direction}] Error in heartbeat timeout handler: {ex.ToString()}");
+                Logger?.LogError(ex, $"[LimitStateMachine:{_direction}] Error in heartbeat timeout handler");
             }
         }
 
@@ -573,7 +573,7 @@ namespace EEBUS.StateMachines
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[LimitStateMachine:{_direction}] Error in limit duration expired handler: {ex.ToString()}");
+                Logger?.LogError(ex, $"[LimitStateMachine:{_direction}] Error in limit duration expired handler");
             }
         }
 
@@ -599,7 +599,7 @@ namespace EEBUS.StateMachines
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[LimitStateMachine:{_direction}] Error in failsafe duration expired handler: {ex.ToString()}");
+                Logger?.LogError(ex, $"[LimitStateMachine:{_direction}] Error in failsafe duration expired handler");
             }
         }
 
@@ -631,10 +631,10 @@ namespace EEBUS.StateMachines
 
                 }
                 await task;
-            }
+            }   
             catch (Exception ex)
             {
-                Console.WriteLine($"[LimitStateMachine:{_direction}] Error in init timeout handler: {ex.ToString()}");
+                Logger?.LogError(ex, $"[LimitStateMachine:{_direction}] Error in init timeout handler");
             }
         }
 
@@ -684,7 +684,7 @@ namespace EEBUS.StateMachines
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"[LimitStateMachine:{_direction}] Error in event handler: {ex.ToString()}");
+                        Logger?.LogError(ex, $"[LimitStateMachine:{_direction}] Error in event handler");
                     }
                 }
                 

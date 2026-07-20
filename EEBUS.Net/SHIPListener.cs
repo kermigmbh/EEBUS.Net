@@ -70,7 +70,7 @@ namespace EEBUS
                 catch (Exception ex)
                 {
                     await StopAsync();
-                    Console.WriteLine($"{DateTime.UtcNow} - {ex.ToString()}");
+                    _logger?.LogError(ex, "Error in StartStandaloneInternalAsync");
                     throw;
                 }
             });
@@ -86,7 +86,7 @@ namespace EEBUS
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"{DateTime.UtcNow} - SHIPListener.StopAsync: app stop failed: {DateTime.UtcNow} - {ex.ToString()}");
+                    _logger?.LogError(ex, "SHIPListener.StopAsync: app stop failed");
                 }
 
                 try
@@ -95,7 +95,7 @@ namespace EEBUS
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine("SHIPListener.StopAsync: app dispose failed: " + ex.Message);
+                    _logger?.LogError(ex, "SHIPListener.StopAsync: app dispose failed");
                 }
 
                 _app = null;
@@ -247,7 +247,7 @@ namespace EEBUS
                     var socket = await httpContext.WebSockets.AcceptWebSocketAsync("ship").ConfigureAwait(false);
                     if (socket == null || socket.State != WebSocketState.Open)
                     {
-                        Console.WriteLine("Failed to accept socket from " + httpContext.Request.Host.ToUriComponent());
+                        _logger?.LogError("Failed to accept socket from " + httpContext.Request.Host.ToUriComponent());
                         return;
                     }
 
@@ -263,7 +263,6 @@ namespace EEBUS
                 catch (Exception ex)
                 {
                     _logger?.LogError(ex, "Error while processing EEBUS websocket request.");
-                    Console.WriteLine("Exception: " + ex.Message);
 
                     httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
                     await httpContext.Response.WriteAsync("Error while processing websocket: " + ex.Message).ConfigureAwait(false);

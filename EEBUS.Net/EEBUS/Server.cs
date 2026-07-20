@@ -46,7 +46,7 @@ namespace EEBUS
                     if (this.state == EState.Stopped && error != null)
                         throw new Exception(error);
                     if (error != null)
-                        Console.WriteLine(error);
+                        Logger?.LogError(error);
 
                     EState oldState = this.state;
                     (this.state, this.subState) = await message.NextServerState(this, Logger).ConfigureAwait(false);
@@ -102,7 +102,7 @@ namespace EEBUS
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{DateTime.UtcNow} - {ex.ToString()}");
+                Logger?.LogError(ex, "Server.CloseAsync: CloseOutputAsync failed.");
             }
 
             // Only remove from the map if we are still the registered Server for

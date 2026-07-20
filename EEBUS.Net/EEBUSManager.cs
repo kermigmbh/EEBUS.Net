@@ -419,7 +419,7 @@ namespace EEBUS.Net
 
             public async Task OnEffectiveLimitChanged(EffectiveLimit limit)
             {
-                Console.WriteLine("UpdateLimit");
+                EEBusManager._logger?.LogTrace("UpdateLimit");
 
                 var changedCallback = EEBusManager.OnDeviceDataChanged;
                 if (changedCallback != null)
@@ -852,7 +852,7 @@ namespace EEBUS.Net
 
                         if (device.SKI.ToString() != skiString)
                         {
-                            Console.WriteLine($"Certificate SKI {skiString} does not match device SKI {device.SKI.ToString()}");
+                            _logger?.LogError($"Certificate SKI {skiString} does not match device SKI {device.SKI.ToString()}");
                             return false;
                         }
                     }
@@ -872,7 +872,7 @@ namespace EEBUS.Net
                         string fingerprint = Convert.ToHexString(fpHash);
                         if (fingerprint != paired.TrustPar)
                         {
-                            Console.WriteLine($"Certificate fingerprint for id {device.Id} does not match persisted trustPar");
+                            _logger?.LogError($"Certificate fingerprint for id {device.Id} does not match persisted trustPar");
                             return false;
                         }
                     }
@@ -1017,7 +1017,7 @@ namespace EEBUS.Net
                 RemoteDevice? device = _devices.GetRemotes().FirstOrDefault(rd => rd.SKI.ToString() == args.Ski);
                 if (null == device)
                 {
-                    Console.WriteLine($"remote device with SKI {args.Ski} has no mDNS advertisements");
+                    _logger?.LogError($"remote device with SKI {args.Ski} has no mDNS advertisements");
                     return false;
                 }
 
@@ -1029,7 +1029,7 @@ namespace EEBUS.Net
                     string fingerprint = Convert.ToHexString(fpHash);
                     if (fingerprint != paired.TrustPar)
                     {
-                        Console.WriteLine($"Certificate fingerprint for id {device.Id} does not match persisted trustPar");
+                        _logger?.LogError($"Certificate fingerprint for id {device.Id} does not match persisted trustPar");
                         return false;
                     }
                 }
@@ -1041,7 +1041,7 @@ namespace EEBUS.Net
 
                     if (device.SKI.ToString() != skiString)
                     {
-                        Console.WriteLine($"Certificate SKI {skiString} does not match device SKI {device.SKI.ToString()}");
+                        _logger?.LogError($"Certificate SKI {skiString} does not match device SKI {device.SKI.ToString()}");
                         return false;
                     }
                 }

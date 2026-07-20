@@ -137,7 +137,7 @@ namespace EEBUS
 					if (this.state == EState.Stopped && error != null)
 						throw new Exception(error);
 					if (error != null)
-						Console.WriteLine(error);
+                        Logger?.LogError(error);
 
 					EState oldState = this.state;
 					(this.state, this.subState) = await message.NextClientState(this, Logger).ConfigureAwait(false);
