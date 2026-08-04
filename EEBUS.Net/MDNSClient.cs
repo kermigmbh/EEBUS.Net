@@ -7,6 +7,7 @@ using System.Diagnostics;
 using EEBUS.Net.EEBUS.Models.Data;
 using System.Text;
 using System.Security.Cryptography;
+using Microsoft.Extensions.Logging;
 
 namespace EEBUS
 {
@@ -20,12 +21,14 @@ namespace EEBUS
         private object _lock = new object();
 
         private bool _serviceDiscoveryNeedsDispose = false;
+        private readonly ILogger _logger;
 
-        public MDNSClient(ServiceDiscovery? serviceDiscovery = null, Func<bool>? allowShipPairingEvaluation = null)
+        public MDNSClient(ServiceDiscovery? serviceDiscovery = null, Func<bool>? allowShipPairingEvaluation = null, ILogger? logger = null)
         {
             _serviceDiscoveryNeedsDispose = serviceDiscovery == null;
             this._serviceDiscovery = serviceDiscovery ?? new ServiceDiscovery();
             _allowShipPairingEvaluation = allowShipPairingEvaluation;
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
         }
 
         public void Run(Devices devices)
@@ -71,7 +74,7 @@ namespace EEBUS
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{DateTime.UtcNow} - {ex.ToString()}");
+                _logger.LogError(ex, "[MDNS] An error occurred in MDNSClient.");
             }
             finally
             {
@@ -92,7 +95,6 @@ namespace EEBUS
         }
         private void Sd_ServiceDiscovered(object? sender, DomainName e)
         {
-
             if (e?.ToString().StartsWith("_ship") == true)
             {
                 _serviceDiscovery.Mdns.SendQuery(e);
@@ -116,13 +118,13 @@ namespace EEBUS
 
             if (instanceName.Contains("._ship."))
             {
-                Debug.WriteLine($"EEBUS service instance '{ev.ServiceInstanceName}' discovered.");
+                _logger.LogTrace("[MDNS] EEBUS service instance '{instanceName}' discovered.", ev.ServiceInstanceName);
                 ProcessShipRequest(ev.Message, instanceName);
 
             }
             else if (instanceName.Contains("._shippairing.") && _allowShipPairingEvaluation?.Invoke() == true)
             {
-                Debug.WriteLine($"EEBUS service instance '{ev.ServiceInstanceName}' discovered.");
+                _logger.LogTrace("[MDNS] EEBUS service instance '{instanceName}' discovered.", ev.ServiceInstanceName);
                 ProcessShipPairingRequest(ev.Message, instanceName);
             }
         }
@@ -169,12 +171,18 @@ namespace EEBUS
                                 }
                                 else
                                 {
-
+                                    _logger.LogWarning("[MDNS] EEBUS service instance '{instanceName}' discovered but missing required TXT records.", instanceName);
                                 }
                             }
                         }
+                    } else
+                    {
+                        _logger.LogWarning("[MDNS] No server addresses found for EEBUS service instance '{instanceName}'.", instanceName);
                     }
                 }
+            } else
+            {
+                _logger.LogWarning("[MDNS] EEBUS service instance '{instanceName}' discovered but missing required records.", instanceName);
             }
         }
 

@@ -82,7 +82,7 @@ namespace EEBUS.Net
             _cert = CertificateGenerator.GenerateCert(settings.BasePath, settings.Certificate);
             byte[] hash = SHA1.HashData(_cert.GetPublicKey());
 
-            _mDNSClient = new MDNSClient(serviceDiscovery, CanEvaluateShipPairingRequests);
+            _mDNSClient = new MDNSClient(serviceDiscovery, CanEvaluateShipPairingRequests, logger);
             _mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port, serviceDiscovery);
 
             LocalDevice localDevice = _devices.GetOrCreateLocal(hash, settings.Device);
@@ -217,6 +217,7 @@ namespace EEBUS.Net
         private void OnRemoteDeviceFound(RemoteDevice device)
         {
             //using var _ = Push(new RemoteDeviceFound(device));
+            _logger?.LogInformation("Remote device found: {deviceName} ({deviceSki})", device.Name, device.SKI.ToString());
             OnDeviceFound?.Invoke(this, device);
         }
 
