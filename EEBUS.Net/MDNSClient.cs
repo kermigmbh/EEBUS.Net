@@ -131,16 +131,22 @@ namespace EEBUS
 
         private void ProcessShipRequest(Message mdnsMessage, string instanceName)
         {
-            IEnumerable<SRVRecord> servers = mdnsMessage.AdditionalRecords.OfType<SRVRecord>();
-            IEnumerable<AddressRecord> addresses = mdnsMessage.AdditionalRecords.OfType<AddressRecord>();
-            IEnumerable<string>? txtRecords = mdnsMessage.AdditionalRecords.OfType<TXTRecord>()?.SelectMany(s => s.Strings);
+            //This is not enough! Some devices send all of their records in the AdditionalRecords section, some send them in the Answers section, and some send them in both. So we need to check both sections for the records we need.
+            //IEnumerable<SRVRecord> servers = mdnsMessage.AdditionalRecords.OfType<SRVRecord>();
+            //IEnumerable<AddressRecord> addresses = mdnsMessage.AdditionalRecords.OfType<AddressRecord>();
+            //IEnumerable<string>? txtRecords = mdnsMessage.AdditionalRecords.OfType<TXTRecord>()?.SelectMany(s => s.Strings);
 
-            if (servers?.Count() > 0 && addresses?.Count() > 0 && txtRecords?.Count() > 0)
+            IEnumerable<SRVRecord> srvRecords = mdnsMessage.Answers.OfType<SRVRecord>().Concat(mdnsMessage.AdditionalRecords.OfType<SRVRecord>());
+            IEnumerable<AddressRecord> addressRecords = mdnsMessage.Answers.OfType<AddressRecord>().Concat(mdnsMessage.AdditionalRecords.OfType<AddressRecord>());
+            IEnumerable<TXTRecord> txtRecords = mdnsMessage.Answers.OfType<TXTRecord>().Concat(mdnsMessage.AdditionalRecords.OfType<TXTRecord>());
+            IEnumerable<string> txtRecordStrings = txtRecords.SelectMany(s => s.Strings);
+            
+            if (srvRecords.Any() && addressRecords.Any() && txtRecordStrings.Any())
             {
-                foreach (SRVRecord server in servers)
+                foreach (SRVRecord server in srvRecords)
                 {
-                    IEnumerable<AddressRecord> serverAddresses = addresses.Where(w => w.Name == server.Target);
-                    if (serverAddresses?.Count() > 0)
+                    IEnumerable<AddressRecord> serverAddresses = addressRecords.Where(w => w.Name == server.Target);
+                    if (serverAddresses.Any())
                     {
                         foreach (AddressRecord serverAddress in serverAddresses)
                         {
@@ -151,7 +157,7 @@ namespace EEBUS
                                 string path = string.Empty;
                                 string ski = string.Empty;
 
-                                foreach (string textRecord in txtRecords)
+                                foreach (string textRecord in txtRecordStrings)
                                 {
                                     if (textRecord.StartsWith("id"))
                                         id = GetTxtRecordValue(textRecord);
@@ -188,19 +194,25 @@ namespace EEBUS
 
         private void ProcessShipPairingRequest(Message mdnsMessage, string instanceName)
         {
-            IEnumerable<SRVRecord> servers = mdnsMessage.AdditionalRecords.OfType<SRVRecord>();
-            IEnumerable<AddressRecord> addresses = mdnsMessage.AdditionalRecords.OfType<AddressRecord>();
-            IEnumerable<string>? txtRecords = mdnsMessage.AdditionalRecords.OfType<TXTRecord>()?.SelectMany(s => s.Strings);
+            //This is not enough! Some devices send all of their records in the AdditionalRecords section, some send them in the Answers section, and some send them in both. So we need to check both sections for the records we need.
+            //IEnumerable<SRVRecord> servers = mdnsMessage.AdditionalRecords.OfType<SRVRecord>();
+            //IEnumerable<AddressRecord> addresses = mdnsMessage.AdditionalRecords.OfType<AddressRecord>();
+            //IEnumerable<string>? txtRecords = mdnsMessage.AdditionalRecords.OfType<TXTRecord>()?.SelectMany(s => s.Strings);
+
+            IEnumerable<SRVRecord> srvRecords = mdnsMessage.Answers.OfType<SRVRecord>().Concat(mdnsMessage.AdditionalRecords.OfType<SRVRecord>());
+            IEnumerable<AddressRecord> addressRecords = mdnsMessage.Answers.OfType<AddressRecord>().Concat(mdnsMessage.AdditionalRecords.OfType<AddressRecord>());
+            IEnumerable<TXTRecord> txtRecords = mdnsMessage.Answers.OfType<TXTRecord>().Concat(mdnsMessage.AdditionalRecords.OfType<TXTRecord>());
+            IEnumerable<string> txtRecordStrings = txtRecords.SelectMany(s => s.Strings);
 
 
-            if (servers?.Count() > 0 && addresses?.Count() > 0 && txtRecords?.Count() > 0)
+            if (srvRecords.Any() && addressRecords.Any() && txtRecordStrings.Any())
             {
-                if (!ValidateShipPairingRecords(txtRecords)) return;
+                if (!ValidateShipPairingRecords(txtRecordStrings)) return;
 
-                foreach (SRVRecord server in servers)
+                foreach (SRVRecord server in srvRecords)
                 {
-                    IEnumerable<AddressRecord> serverAddresses = addresses.Where(w => w.Name == server.Target);
-                    if (serverAddresses?.Count() > 0)
+                    IEnumerable<AddressRecord> serverAddresses = addressRecords.Where(w => w.Name == server.Target);
+                    if (serverAddresses.Any())
                     {
                         foreach (AddressRecord serverAddress in serverAddresses)
                         {
@@ -213,7 +225,7 @@ namespace EEBUS
                                 string digest = string.Empty;
                                 string trustNonce = string.Empty;
 
-                                foreach (string textRecord in txtRecords)
+                                foreach (string textRecord in txtRecordStrings)
                                 {
                                     if (textRecord.StartsWith("trustId"))
                                         trustId = GetTxtRecordValue(textRecord);
@@ -240,7 +252,7 @@ namespace EEBUS
                                 }
                                 if (alreadyPaired) continue;
 
-                                if (!ValidateDigest(alg, trustNonce, digest, txtRecords)) continue;
+                                if (!ValidateDigest(alg, trustNonce, digest, txtRecordStrings)) continue;
 
                                 if (!string.IsNullOrEmpty(trustId) && !string.IsNullOrEmpty(trustPar) && !string.IsNullOrEmpty(alg) && !string.IsNullOrEmpty(digest))
                                 {
