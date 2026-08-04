@@ -16,6 +16,12 @@ namespace EEBUS
 			//	.Trim(new char[1] { '_' })
 			//	.Replace("_", "-"));
 			//HostName = DomainName.Join(InstanceName, domainName, Domain);
+
+			if (!hostName.EndsWith(".local"))
+			{
+                hostName += ".local";	//hostname needs to end in .local for mdns
+            }
+
 			HostName = hostName;
 			Resources.Add( new SRVRecord
 			{
