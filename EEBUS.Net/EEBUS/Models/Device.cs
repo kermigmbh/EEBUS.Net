@@ -162,7 +162,7 @@ namespace EEBUS.Models
 
             foreach (EntityInformationType entityInfo in payload.cmd[0].nodeManagementDetailedDiscoveryData.entityInformation)
             {
-                Entity entity = Entity.Create(connection.Local, entityInfo, featureInfos);
+                Entity? entity = Entity.Create(connection.Local, entityInfo, featureInfos);
 
                 if (null != entity && !this.Entities.Any(e => e.EqualIndex(entity.Index)))
                     this.Entities.Add(entity);

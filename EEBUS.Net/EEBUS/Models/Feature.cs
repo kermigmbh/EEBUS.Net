@@ -43,7 +43,7 @@ namespace EEBUS.Models
 			public abstract Feature Create( int index, Entity owner, FeatureInformationType featureInfo );
 		}
 
-		static public Feature Create( string type, string role, Entity owner )
+		static public Feature? Create( string type, string role, Entity owner )
 		{
 			if ( featureClasses.TryGetValue( type + "-" + role, out Class cls ) )
 				return cls.Create( owner );
@@ -51,7 +51,7 @@ namespace EEBUS.Models
 			return null;
 		}
 
-		static public Feature Create( FeatureInformationType featureInfo, Entity owner )
+		static public Feature? Create( FeatureInformationType featureInfo, Entity owner )
 		{
 			int    index = featureInfo.description.featureAddress.feature;
 			string type  = featureInfo.description.featureType;

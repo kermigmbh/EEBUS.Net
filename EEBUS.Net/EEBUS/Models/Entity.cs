@@ -13,7 +13,11 @@ namespace EEBUS.Models
 
             foreach (UseCaseSettings usecaseSettings in entitySettings.UseCases)
             {
-                UseCases.Add(UseCase.Create(usecaseSettings, this));
+                var useCase = UseCase.Create(usecaseSettings, this);
+                if (useCase != null)
+                {
+                    UseCases.Add(useCase);
+                }
             }
         }
 
@@ -27,7 +31,11 @@ namespace EEBUS.Models
             {
                 if (EqualIndex(featureInfo.description.featureAddress.entity))
                 {
-                    this.Features.Add(Feature.Create(featureInfo, this));
+                    var feature = Feature.Create(featureInfo, this);
+                    if (feature != null)
+                    {
+                        this.Features.Add(feature);
+                    }
                 }
             }
         }
@@ -39,7 +47,7 @@ namespace EEBUS.Models
             public abstract Entity Create(int index, LocalDevice local, EntityInformationType entityInfo, FeatureInformationType[] featureInfos);
         }
 
-        static public Entity Create(int index, LocalDevice local, EntitySettings entitySettings)
+        static public Entity? Create(int index, LocalDevice local, EntitySettings entitySettings)
         {
             if (entityClasses.TryGetValue(entitySettings.Type, out Class cls))
             {
@@ -55,7 +63,7 @@ namespace EEBUS.Models
             return null;
         }
 
-        static public Entity Create(LocalDevice local, EntityInformationType entityInfo, FeatureInformationType[] featureInfos)
+        static public Entity? Create(LocalDevice local, EntityInformationType entityInfo, FeatureInformationType[] featureInfos)
         {
             // Missing: if (1 < Index.Length) => this is a child of another entity. Look for it and set it as owner
 
@@ -178,7 +186,7 @@ namespace EEBUS.Models
 
         public Feature GetOrAdd(Feature feature)
         {
-            Feature found = this.Features.FirstOrDefault(f => f.Type == feature.Type && f.Role == feature.Role);
+            Feature? found = this.Features.FirstOrDefault(f => f.Type == feature.Type && f.Role == feature.Role);
 
             if (null != found)
                 return found;

@@ -23,7 +23,11 @@ namespace EEBUS.Models
 			int index = 0;
 			foreach (EntitySettings entitySettings in settings.Entities)
 			{
-				this.Entities.Add(Entity.Create(index++, this, entitySettings));
+				var entity = Entity.Create(index++, this, entitySettings);
+				if (entity != null)
+				{
+					this.Entities.Add(entity);
+				}
 			}
 
 			this.settings = settings;
