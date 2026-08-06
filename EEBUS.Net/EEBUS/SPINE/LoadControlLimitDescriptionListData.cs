@@ -1,5 +1,6 @@
 ﻿using EEBUS.DataStructures;
 using EEBUS.Messages;
+using EEBUS.Net;
 using EEBUS.Net.EEBUS.Data.DataStructures;
 using System.Text.Json.Serialization;
 
@@ -43,7 +44,7 @@ namespace EEBUS.SPINE.Commands
 
                 LoadControlLimitDescriptionListData? command = datagram.payload == null
                     ? null
-                    : System.Text.Json.JsonSerializer.Deserialize<LoadControlLimitDescriptionListData>(datagram.payload);
+                    : JsonHelper.FromJsonNode<LoadControlLimitDescriptionListData>(datagram.payload);
 
                 if (command == null || command.cmd == null || command.cmd.Length == 0 || connection.Remote == null)
                     return;

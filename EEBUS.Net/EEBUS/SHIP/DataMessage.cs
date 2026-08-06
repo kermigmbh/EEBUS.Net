@@ -1,5 +1,6 @@
 ﻿using EEBUS.Messages;
 using EEBUS.Models;
+using EEBUS.Net;
 using EEBUS.Net.EEBUS.Models;
 using EEBUS.SPINE.Commands;
 using Microsoft.Extensions.Logging;
@@ -42,7 +43,7 @@ namespace EEBUS.SHIP.Messages
 
             messagePayload.datagram.payload = payload?.ToJsonNode();
             DataMessage message = new DataMessage();
-            message.SetPayload(JsonSerializer.SerializeToNode(messagePayload) ?? throw new Exception("Failed to serialize data message"));
+            message.SetPayload(JsonHelper.ToJsonNode(messagePayload) ?? throw new Exception("Failed to serialize data message"));
             return message;
         }
 
@@ -102,7 +103,7 @@ namespace EEBUS.SHIP.Messages
 
         public DataMessage(SpineDatagramPayload datagram)
         {
-            this.data.payload = JsonSerializer.SerializeToNode(datagram);
+            this.data.payload = JsonHelper.ToJsonNode(datagram);
         }
 
 

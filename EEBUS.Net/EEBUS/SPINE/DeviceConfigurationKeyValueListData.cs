@@ -1,6 +1,7 @@
 using EEBUS.KeyValues;
 using EEBUS.Messages;
 using EEBUS.Models;
+using EEBUS.Net;
 using EEBUS.Net.EEBUS.Data.KeyValues;
 using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.SHIP.Messages;
@@ -143,7 +144,7 @@ namespace EEBUS.SPINE.Commands
 
 					DeviceConfigurationKeyValueListData? payload = datagram.payload == null
 						? null
-						: System.Text.Json.JsonSerializer.Deserialize<DeviceConfigurationKeyValueListData>(datagram.payload);
+						: JsonHelper.FromJsonNode<DeviceConfigurationKeyValueListData>(datagram.payload);
 
                     if (payload == null || payload.cmd[0].deviceConfigurationKeyValueListData.deviceConfigurationKeyValueData == null)
 						return;
@@ -183,7 +184,7 @@ namespace EEBUS.SPINE.Commands
 				{
 					DeviceConfigurationKeyValueListData? payload = datagram.payload == null
 						? null
-						: System.Text.Json.JsonSerializer.Deserialize<DeviceConfigurationKeyValueListData>(datagram.payload);
+						: JsonHelper.FromJsonNode<DeviceConfigurationKeyValueListData>(datagram.payload);
 
 					if (payload == null || connection.Remote == null) return;
 

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.WebSockets;
+using System.Text;
 using System.Text.Json;
 
 
@@ -101,10 +102,10 @@ namespace EEBUS
 
                     SpineCmdPayloadBase? heartbeat = heartbeatClass.CreateNotify(connection);
                     // serialize heartbeat into a JsonNode payload
-                    reply.datagram.payload = heartbeat?.ToJsonNode();// JsonSerializer.SerializeToNode(heartbeat);
+                    reply.datagram.payload = heartbeat?.ToJsonNode();
 
                     DataMessage heartbeatMessage = new DataMessage();
-                    heartbeatMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize heartbeat message"));
+                    heartbeatMessage.SetPayload(JsonHelper.ToJsonNode(reply) ?? throw new Exception("Failed to serialize heartbeat message"));
 
                     connection.PushDataMessage(heartbeatMessage);
                 }
@@ -288,7 +289,7 @@ namespace EEBUS
                 throw new Exception("Message couldn't be recognized");
             }
 
-            Logger?.LogTrace(DateTime.Now.ToString("HH:mm:ss.fff") + " <--- " + message.ToString() + "\n");
+            Logger?.LogTrace(DateTime.Now.ToString("HH:mm:ss.fff") + " <--- " + Encoding.UTF8.GetString(messageSpan) + "\n");
 
             return message;
         }
@@ -315,10 +316,10 @@ namespace EEBUS
             read.datagram.header.cmdClassifier = "read";
 
             var discoveryPayload = new NodeManagementDetailedDiscoveryData.Class().CreateRead(this);
-            read.datagram.payload = discoveryPayload.ToJsonNode();// JsonSerializer.SerializeToNode(discoveryPayload);
+            read.datagram.payload = discoveryPayload.ToJsonNode();
 
             DataMessage message = new DataMessage();
-            message.SetPayload(JsonSerializer.SerializeToNode(read) ?? throw new Exception("Failed to serialize discovery read message"));
+            message.SetPayload(JsonHelper.ToJsonNode(read) ?? throw new Exception("Failed to serialize discovery read message"));
 
             PushDataMessage(message);
         }
@@ -337,10 +338,10 @@ namespace EEBUS
             read.datagram.header.cmdClassifier = "read";
 
             var discoveryPayload = new NodeManagementUseCaseData.Class().CreateRead(this);
-            read.datagram.payload = discoveryPayload?.ToJsonNode();// JsonSerializer.SerializeToNode(discoveryPayload);
+            read.datagram.payload = discoveryPayload?.ToJsonNode();
 
             DataMessage message = new DataMessage();
-            message.SetPayload(JsonSerializer.SerializeToNode(read) ?? throw new Exception("Failed to serialize use case discovery read message"));
+            message.SetPayload(JsonHelper.ToJsonNode(read) ?? throw new Exception("Failed to serialize use case discovery read message"));
 
             PushDataMessage(message);
         }
@@ -365,10 +366,10 @@ namespace EEBUS
             subscriptionRequest.serverAddress = this.Remote.GetHeartbeatAddress(true);
             subscriptionRequest.serverFeatureType = "DeviceDiagnosis";
 
-            call.datagram.payload = payload.ToJsonNode();//JsonSerializer.SerializeToNode(payload);
+            call.datagram.payload = payload.ToJsonNode();
 
             DataMessage message = new DataMessage();
-            message.SetPayload(JsonSerializer.SerializeToNode(call) ?? throw new Exception("Failed to serialize heartbeat subscription message"));
+            message.SetPayload(JsonHelper.ToJsonNode(call) ?? throw new Exception("Failed to serialize heartbeat subscription message"));
 
             PushDataMessage(message);
         }
@@ -388,7 +389,7 @@ namespace EEBUS
             read.datagram.payload = heartbeatReadPayload.ToJsonNode();// JsonSerializer.SerializeToNode(heartbeatReadPayload);
 
             DataMessage message = new DataMessage();
-            message.SetPayload(JsonSerializer.SerializeToNode(read) ?? throw new Exception("Failed to serialize heartbeat read message"));
+            message.SetPayload(JsonHelper.ToJsonNode(read) ?? throw new Exception("Failed to serialize heartbeat read message"));
 
             PushDataMessage(message);
         }

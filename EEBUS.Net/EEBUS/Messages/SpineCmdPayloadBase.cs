@@ -1,4 +1,5 @@
 ﻿using EEBUS.Models;
+using EEBUS.Net;
 using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.SHIP.Messages;
 using EEBUS.SPINE.Commands;
@@ -89,10 +90,8 @@ namespace EEBUS.Messages
 
                 reply.datagram.payload = CreateWritePayload(connection.Local); ;
                 DataMessage dataMessage = new DataMessage();
-                dataMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize data message"));
+                dataMessage.SetPayload(JsonHelper.ToJsonNode(reply) ?? throw new Exception("Failed to serialize data message"));
                 connection.PushDataMessage(dataMessage);
-                //var resp = await connection.PushDataMessageAsync(dataMessage);
-				//return resp;
             }
 
             protected async Task SendConnectionStatusUpdatedEvent(Connection connection)

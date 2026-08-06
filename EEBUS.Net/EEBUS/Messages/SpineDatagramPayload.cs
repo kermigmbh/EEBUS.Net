@@ -80,7 +80,7 @@ namespace EEBUS.Messages
 			if ( null == payload )
 				return null;
 
-			reply.datagram.payload = payload.ToJsonNode();//JsonSerializer.SerializeToNode(payload);
+			reply.datagram.payload = payload.ToJsonNode();
 
 			return reply;
 		}

@@ -1,11 +1,8 @@
 ﻿using EEBUS.Enums;
-using Makaretu.Dns;
+using EEBUS.Net;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace EEBUS.Messages
 {
@@ -31,11 +28,7 @@ namespace EEBUS.Messages
 
         public override string ToString()
         {
-            var options = new JsonSerializerOptions
-            {
-                Converters = { new JsonStringEnumConverter() }
-            };
-            return JsonSerializer.Serialize((T)this, options);
+            return JsonHelper.Serialize((T)this);
         }
 
         protected virtual byte[] ToJson()
@@ -60,12 +53,7 @@ namespace EEBUS.Messages
             string dataStr = Encoding.UTF8.GetString(data);
             dataStr = JsonFromEEBUSJson(data[0] == template.GetDataType() ? dataStr.Substring(1) : dataStr);
 
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
-            T obj = JsonSerializer.Deserialize<T>(dataStr, options);
-            //obj.connection = connection;
+            T obj = JsonHelper.Deserialize<T>(dataStr);
 
             return obj;
         }
@@ -83,13 +71,12 @@ namespace EEBUS.Messages
         private async Task SendInternalAsync(WebSocket ws, ILogger? logger = null, int timeoutMilliseconds = SHIPMessageTimeout.CMI_TIMEOUT)
         {
             byte[] msg = ToJson();
-            string msgStr = Encoding.Default.GetString(msg);
             this.sentData = new byte[msg.Length + 1];
 
             this.sentData[0] = GetDataType();
             Buffer.BlockCopy(msg, 0, this.sentData, 1, msg.Length);
 
-            logger?.LogTrace(DateTime.Now.ToString("HH:mm:ss.fff") + " ---> " + this.ToString() + "\n");
+            logger?.LogTrace(DateTime.Now.ToString("HH:mm:ss.fff") + " ---> " + this.ToEEBUSJson() + "\n");
             await ws.SendAsync(this.sentData, WebSocketMessageType.Binary, true, new CancellationTokenSource(timeoutMilliseconds).Token).ConfigureAwait(false);
         }
 
@@ -104,8 +91,9 @@ namespace EEBUS.Messages
                 throw new Exception($"Expected message of type {template.GetDataType()}!");
 
             var ret = template.FromJsonVirtual(msg/*, null*/ );
-            logger?.LogTrace(DateTime.Now.ToString("HH:mm:ss.fff") + "<---" + ret.ToString() + "\n");
+            logger?.LogTrace(DateTime.Now.ToString("HH:mm:ss.fff") + "<---" + Encoding.UTF8.GetString(msg) + "\n");
             return ret;
         }
+
     }
 }

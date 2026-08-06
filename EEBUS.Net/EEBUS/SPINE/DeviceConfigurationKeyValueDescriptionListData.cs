@@ -1,4 +1,5 @@
 ﻿using EEBUS.Messages;
+using EEBUS.Net;
 using EEBUS.Net.EEBUS.Data.KeyValues;
 using EEBUS.UseCases.ControllableSystem;
 using System.Text.Json.Serialization;
@@ -41,7 +42,7 @@ namespace EEBUS.SPINE.Commands
 				{
                     DeviceConfigurationKeyValueDescriptionListData? payload = datagram.payload == null
                         ? null
-                        : System.Text.Json.JsonSerializer.Deserialize<DeviceConfigurationKeyValueDescriptionListData>(datagram.payload);
+                        : JsonHelper.FromJsonNode<DeviceConfigurationKeyValueDescriptionListData>(datagram.payload);
 
                     if (payload == null || connection.Remote == null) return;
 

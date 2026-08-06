@@ -1,16 +1,16 @@
-using System.Text.Json.Serialization;
-using System.Xml;
-
 using EEBUS.DataStructures;
 using EEBUS.Messages;
+using EEBUS.Models;
+using EEBUS.Net;
+using EEBUS.Net.EEBUS.Models.Data;
+using EEBUS.Net.EEBUS.SPINE.Types;
 using EEBUS.SHIP.Messages;
 using EEBUS.UseCases;
 using EEBUS.UseCases.ControllableSystem;
-using System.Text.Json.Nodes;
 using System.Text.Json;
-using EEBUS.Models;
-using EEBUS.Net.EEBUS.Models.Data;
-using EEBUS.Net.EEBUS.SPINE.Types;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
+using System.Xml;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -103,7 +103,7 @@ namespace EEBUS.SPINE.Commands
 
                     var command = datagram.payload == null
                         ? null
-                        : System.Text.Json.JsonSerializer.Deserialize<LoadControlLimitListData>(datagram.payload);
+                        : JsonHelper.FromJsonNode<LoadControlLimitListData>(datagram.payload);
                     if (command == null || command.cmd == null || command.cmd.Length == 0)
                         return;
 
@@ -117,8 +117,8 @@ namespace EEBUS.SPINE.Commands
                             {
                                 LoadControlLimitDataStructure? filterSelectorData = connection.Local.GetDataStructure<LoadControlLimitDataStructure>(filterValue.loadControlLimitListDataSelectors.limitId);
 
-                                JsonObject? filterSelectorDataJson = JsonSerializer.SerializeToNode(filterSelectorData?.Data)?.AsObject();
-                                JsonObject? filterElementDataJson = JsonSerializer.SerializeToNode(filterValue.loadControlLimitDataElements)?.AsObject();
+                                JsonObject? filterSelectorDataJson = JsonHelper.ToJsonNode(filterSelectorData?.Data)?.AsObject();
+                                JsonObject? filterElementDataJson = JsonHelper.ToJsonNode(filterValue.loadControlLimitDataElements)?.AsObject();
 
                                 if (filterSelectorDataJson != null && filterElementDataJson != null)
                                 {
@@ -131,7 +131,7 @@ namespace EEBUS.SPINE.Commands
                                         }
                                     }
 
-                                    LoadControlLimitDataType newData = JsonSerializer.Deserialize<LoadControlLimitDataType>(filterSelectorDataJson) ?? throw new Exception("Error parsing data structure");
+                                    LoadControlLimitDataType newData = JsonHelper.FromJsonNode<LoadControlLimitDataType>(filterSelectorDataJson) ?? throw new Exception("Error parsing data structure");
                                     filterSelectorData?.ProcessDelete(newData);
                                 }
                             }
@@ -216,7 +216,7 @@ namespace EEBUS.SPINE.Commands
                     if (datagram.payload == null || connection.Remote == null)
                         return;
 
-                    var command = System.Text.Json.JsonSerializer.Deserialize<LoadControlLimitListData>(datagram.payload);
+                    var command = JsonHelper.FromJsonNode<LoadControlLimitListData>(datagram.payload);
                     if (command == null || command.cmd == null || command.cmd.Length == 0)
                         return;
 

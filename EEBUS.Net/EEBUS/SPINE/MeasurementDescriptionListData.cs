@@ -1,6 +1,7 @@
 ﻿using EEBUS.Features;
 using EEBUS.Messages;
 using EEBUS.Models;
+using EEBUS.Net;
 using EEBUS.UseCases.ControllableSystem;
 using System.Text.Json.Serialization;
 
@@ -141,7 +142,7 @@ namespace EEBUS.SPINE.Commands
 				{
 					MeasurementDescriptionListData? command = datagram.payload == null
 						? null
-						: System.Text.Json.JsonSerializer.Deserialize<MeasurementDescriptionListData>(datagram.payload);
+						: JsonHelper.FromJsonNode<MeasurementDescriptionListData>(datagram.payload);
 					if (command == null || command.cmd == null || command.cmd.Length == 0)
 						return;
 

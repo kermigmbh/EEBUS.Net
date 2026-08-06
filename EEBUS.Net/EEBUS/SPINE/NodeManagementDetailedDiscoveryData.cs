@@ -1,7 +1,7 @@
-﻿using System.Text.Json.Serialization;
-
-using EEBUS.Messages;
+﻿using EEBUS.Messages;
 using EEBUS.Models;
+using EEBUS.Net;
+using System.Text.Json.Serialization;
 
 namespace EEBUS.SPINE.Commands
 {
@@ -48,7 +48,7 @@ namespace EEBUS.SPINE.Commands
 
 				NodeManagementDetailedDiscoveryData? payload = datagram.payload == null
 					? null
-					: System.Text.Json.JsonSerializer.Deserialize<NodeManagementDetailedDiscoveryData>(datagram.payload);
+					: JsonHelper.FromJsonNode<NodeManagementDetailedDiscoveryData>(datagram.payload);
 
 				if (payload != null && connection.Remote != null)
 				{

@@ -1,6 +1,7 @@
 ﻿
 using EEBUS.Messages;
 using EEBUS.Models;
+using EEBUS.Net;
 using System.Text.Json;
 
 namespace EEBUS.SPINE.Commands
@@ -37,7 +38,7 @@ namespace EEBUS.SPINE.Commands
                 if (datagram.header.cmdClassifier != "reply")
                     return;
 
-				NodeManagementUseCaseData? payload = datagram.payload == null ? null : JsonSerializer.Deserialize<NodeManagementUseCaseData>(datagram.payload);
+				NodeManagementUseCaseData? payload = datagram.payload == null ? null : JsonHelper.FromJsonNode<NodeManagementUseCaseData>(datagram.payload);
 
 				if (payload != null && connection.Remote != null)
 				{

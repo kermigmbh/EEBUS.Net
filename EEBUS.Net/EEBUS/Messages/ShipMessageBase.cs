@@ -127,7 +127,10 @@ namespace EEBUS.Messages
 							{
 								obj[prop.Key] = replacement;
 							}
-						}
+						} else
+						{
+							obj[prop.Key] = new JsonArray();	//empty objects are represented as empty arrays in EEBUS json
+                        }
 					}
 					else if (val is JsonArray arr)
 					{
@@ -147,8 +150,16 @@ namespace EEBUS.Messages
 			}
 			return node;
 		}
-		
-		static JsonArray ConvertToArray( JsonObject jo )
+
+        public string ToEEBUSJson()
+        {
+			string? messageString = this.ToString();
+			if (string.IsNullOrEmpty(messageString)) return string.Empty;
+
+            return JsonIntoEEBUSJson(messageString);
+        }
+
+        static JsonArray ConvertToArray( JsonObject jo )
 		{
 			JsonArray replacement = new JsonArray();
 			

@@ -1,4 +1,5 @@
 ﻿using EEBUS.Models;
+using EEBUS.Net;
 using EEBUS.SPINE.Commands;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -17,8 +18,7 @@ namespace EEBUS.Messages
 
         public override JsonNode? ToJsonNode()
         {
-
-            var res = JsonSerializer.SerializeToNode(this);
+            var res = JsonHelper.ToJsonNode(this);
             return res;
         }
 
@@ -28,7 +28,7 @@ namespace EEBUS.Messages
             public override SpineCmdPayload<T>? FromJsonNode(JsonNode? node)
             {
                 if (node == null) return null;
-                return JsonSerializer.Deserialize<SpineCmdPayload<T>>(node);
+                return JsonHelper.FromJsonNode<SpineCmdPayload<T>>(node);
             }
         }
     }

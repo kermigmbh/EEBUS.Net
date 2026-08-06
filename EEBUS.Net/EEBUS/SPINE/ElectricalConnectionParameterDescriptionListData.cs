@@ -1,6 +1,7 @@
 ﻿using EEBUS.Features;
 using EEBUS.Messages;
 using EEBUS.Models;
+using EEBUS.Net;
 using System.Text.Json.Serialization;
 
 namespace EEBUS.SPINE.Commands
@@ -64,7 +65,7 @@ namespace EEBUS.SPINE.Commands
 
                 ElectricalConnectionParameterDescriptionListData? command = datagram.payload == null
                     ? null
-                    : System.Text.Json.JsonSerializer.Deserialize<ElectricalConnectionParameterDescriptionListData>(datagram.payload);
+                    : JsonHelper.FromJsonNode<ElectricalConnectionParameterDescriptionListData>(datagram.payload);
                 if (command == null || command.cmd == null || command.cmd.Length == 0)
                     return;
 

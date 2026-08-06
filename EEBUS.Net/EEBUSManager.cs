@@ -291,7 +291,7 @@ namespace EEBUS.Net
 
                         reply.datagram.payload = payload;
                         DataMessage dataMessage = new DataMessage();
-                        dataMessage.SetPayload(JsonSerializer.SerializeToNode(reply) ?? throw new Exception("Failed to serialize data message"));
+                        dataMessage.SetPayload(JsonHelper.ToJsonNode(reply) ?? throw new Exception("Failed to serialize data message"));
                         connection.PushDataMessage(dataMessage);
                     }
                 }

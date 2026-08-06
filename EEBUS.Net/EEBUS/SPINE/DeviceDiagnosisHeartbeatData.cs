@@ -1,4 +1,5 @@
 ﻿using EEBUS.Messages;
+using EEBUS.Net;
 using EEBUS.UseCases.ControllableSystem;
 using System.Text.Json.Serialization;
 using System.Xml;
@@ -57,7 +58,7 @@ namespace EEBUS.SPINE.Commands
 
 				DeviceDiagnosisHeartbeatData? payload = datagram.payload == null
 					? null
-					: System.Text.Json.JsonSerializer.Deserialize<DeviceDiagnosisHeartbeatData>(datagram.payload);
+					: JsonHelper.FromJsonNode<DeviceDiagnosisHeartbeatData>(datagram.payload);
 				string? timeout = payload?.cmd[0].deviceDiagnosisHeartbeatData.heartbeatTimeout;
 
 
