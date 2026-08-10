@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 
 namespace EEBUS.Net
 {
-    internal static class JsonHelper
+    public static class JsonHelper
     {
         private static JsonSerializerOptions s_jsonSerializerOptions = new JsonSerializerOptions()
         {
@@ -16,25 +16,25 @@ namespace EEBUS.Net
             PropertyNameCaseInsensitive = true
         };
 
-        internal static JsonNode? ToJsonNode<T>(T obj)
+        public static JsonNode? ToJsonNode<T>(T obj)
         {
             JsonNode? res = JsonSerializer.SerializeToNode(obj, s_jsonSerializerOptions);
             return res;
         }
 
-        internal static T? FromJsonNode<T>(JsonNode node)
+        public static T? FromJsonNode<T>(JsonNode node)
         {
             T? res = JsonSerializer.Deserialize<T>(node, s_jsonSerializerOptions);
             return res;
         }
 
-        internal static string Serialize<T>(T obj)
+        public static string Serialize<T>(T obj)
         {
             string res = JsonSerializer.Serialize(obj, s_jsonSerializerOptions);
             return res;
         }
 
-        internal static T Deserialize<T>(string json)
+        public static T Deserialize<T>(string json)
         {
             T? res = JsonSerializer.Deserialize<T>(json, s_jsonSerializerOptions);
             return res;

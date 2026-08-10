@@ -14,33 +14,17 @@ namespace TestProject1.Mgcp
         private const string TestLocalSki  = "662728a479fa2fcf28e6d9e7855e996ab1d850a2";
         private const string TestRemoteSki = "c09ff4c4dc2916414714662366f968f4743af7b7";
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Hilfsmethoden
-        // ──────────────────────────────────────────────────────────────────────
-
-        private byte[] GetSkiBytes(string ski)
-            => Enumerable.Range(0, ski.Length / 2)
-                         .Select(x => Convert.ToByte(ski.Substring(x * 2, 2), 16))
-                         .ToArray();
-
-        /// <summary>
-        /// Reale Gerätekonfiguration für den GridConnectionPoint-Aktor:
-        /// GridConnectionPointOfPremises-Entity mit MGCP-UseCase.
-        /// Die Entity selbst fügt bereits DeviceConfiguration-server,
-        /// Measurement-server und ElectricalConnection-server hinzu.
-        /// </summary>
-        private Connection GetMgcpGridConnectionPointConnection()
+        protected override DeviceSettings GetDeviceSettings()
         {
-            var devices = new Devices();
-            devices.GetOrCreateLocal(GetSkiBytes(TestLocalSki), new DeviceSettings
+            return new DeviceSettings
             {
-                Name   = "TestGridMeter",
-                Id     = "Test-Grid-Meter",
-                Model  = "TestModel",
-                Brand  = "TestBrand",
-                Type   = "SubMeterElectricity",
+                Name = "TestGridMeter",
+                Id = "Test-Grid-Meter",
+                Model = "TestModel",
+                Brand = "TestBrand",
+                Type = "SubMeterElectricity",
                 Serial = "GCP001",
-                Port   = 7204,
+                Port = 7204,
                 Entities =
                 [
                     new EntitySettings { Type = "DeviceInformation" },
@@ -57,9 +41,7 @@ namespace TestProject1.Mgcp
                         ],
                     },
                 ],
-            });
-            var remoteDevice = devices.GetOrCreateRemote("TestRemote", TestRemoteSki, string.Empty, "TestRemote");
-            return new Client(default, default, devices, remoteDevice);
+            };
         }
         
         private static string GetFunctionName(Function f) => f.SupportedFunction.function;
@@ -75,7 +57,7 @@ namespace TestProject1.Mgcp
         [Fact]
         public void MgcpGridConnectionPoint_RegistersMeasurementServerFeature()
         {
-            Connection connection = GetMgcpGridConnectionPointConnection();
+            Connection connection = GetMockConnection(TestLocalSki, TestRemoteSki);
             Assert.NotNull(connection.Local.GetFeatureAddress("Measurement", server: true));
             
             var feature = connection.Local.Entities
@@ -96,7 +78,7 @@ namespace TestProject1.Mgcp
         [Fact]
         public void MgcpGridConnectionPoint_RegistersElectricalConnectionServerFeature()
         {
-            Connection connection = GetMgcpGridConnectionPointConnection();
+            Connection connection = GetMockConnection(TestLocalSki, TestRemoteSki);
             Assert.NotNull(connection.Local.GetFeatureAddress("ElectricalConnection", server: true));
             
             var feature = connection.Local.Entities
@@ -116,7 +98,7 @@ namespace TestProject1.Mgcp
         [Fact]
         public void MgcpGridConnectionPoint_RegistersDeviceConfigurationServerFeature()
         {
-            Connection connection = GetMgcpGridConnectionPointConnection();
+            Connection connection = GetMockConnection(TestLocalSki, TestRemoteSki);
             Assert.NotNull(connection.Local.GetFeatureAddress("DeviceConfiguration", server: true));
             
             var feature = connection.Local.Entities

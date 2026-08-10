@@ -10,7 +10,7 @@ namespace TestProject1.Ship
     /// <summary>
     /// Tests für die SHIP-Prolongation-Logik.
     /// </summary>
-    public class ShipProlongationTests : EebusTests
+    public class ShipProlongationTests
     {
         // ──────────────────────────────────────────────────────────────────────
         // TestClient – erlaubt manuelles Setzen von State/SubState

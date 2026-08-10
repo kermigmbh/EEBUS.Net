@@ -11,6 +11,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Xunit.Sdk;
 
 namespace TestProject1
 {
@@ -23,23 +24,24 @@ namespace TestProject1
         {
             SpineDatagramPayload payload = GetPayload(EEBusMessages.LoadControl_Write_DeleteTimePeriod_AndUpdate);
 
-            Connection testConnection = GetMockConnection();
+            Connection testConnection = GetDefaultMockConnection();
+            SetDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
             testConnection.BindingAndSubscriptionManager.TryAddOrUpdateClientBinding(payload.datagram.header.addressSource, payload.datagram.header.addressDestination, "LoadControl");
 
             await payload.EvaluateAsync(testConnection);
         }
 
-        private Connection GetMockConnection()
-        {
-            var devices = new Devices();
-            devices.GetOrCreateLocal(GetSkiBytes(DefaultLocalSki), GetDeviceSettings());
-            var remoteDevice = devices.GetOrCreateRemote("TestRemote", DefaultRemoteSki, string.Empty, "TestRemote");
-            var client = new Client(default, default, devices, remoteDevice);
-            SetDiscoveryData(remoteDevice, client);
-            return client;
-        }
+        //private Connection GetMockConnection()
+        //{
+        //    var devices = new Devices();
+        //    devices.GetOrCreateLocal(GetSkiBytes(DefaultLocalSki), GetDeviceSettings());
+        //    var remoteDevice = devices.GetOrCreateRemote("TestRemote", DefaultRemoteSki, string.Empty, "TestRemote");
+        //    var client = new Client(default, default, devices, remoteDevice);
+        //    SetDiscoveryData(remoteDevice, client);
+        //    return client;
+        //}
 
-        private DeviceSettings GetDeviceSettings()
+        protected override DeviceSettings GetDeviceSettings()
         {
             return new DeviceSettings()
             {
@@ -88,17 +90,6 @@ namespace TestProject1
             return parsedMessage?.data.payload.Deserialize<SpineDatagramPayload>() ?? throw new Exception("Failed to create payload");
         }
 
-        private void SetDiscoveryData(RemoteDevice device, Connection connection)
-        {
-            SpineDatagramPayload discoveryPayload = GetPayload(EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
-            if (discoveryPayload.datagram == null) throw new Exception("No datagram for message found");
-
-            NodeManagementDetailedDiscoveryData? discoveryData = JsonSerializer.Deserialize<NodeManagementDetailedDiscoveryData>(discoveryPayload.datagram.payload);
-            if (discoveryData == null) throw new Exception("Failed to parse discovery data");
-
-            device.SetDiscoveryData(discoveryData, connection);
-        }
-
         #region ElectricalConnectionCharacteristic SendEvent Tests
 
         private class CapturingNotifyEventHandler(Func<JsonNode?, AddressType, Task> capture) : NotifyEvents
@@ -111,7 +102,8 @@ namespace TestProject1
         public async Task SendEventAsync_WithElectricalConnectionServerFeature_SendsNotifyWithCharacteristicData()
         {
             // Arrange
-            Connection connection = GetMockConnection();
+            Connection connection = GetDefaultMockConnection();
+            SetDiscoveryData(connection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
 
             JsonNode? capturedPayload = null;
             AddressType capturedAddress = default;
@@ -143,7 +135,8 @@ namespace TestProject1
         public async Task SendEventAsync_PayloadContainsCurrentValue()
         {
             // Arrange
-            Connection connection = GetMockConnection();
+            Connection connection = GetDefaultMockConnection();
+            SetDiscoveryData(connection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
 
             JsonNode? capturedPayload = null;
             connection.Local.AddUseCaseEvents(new CapturingNotifyEventHandler(
@@ -212,7 +205,9 @@ namespace TestProject1
         public async Task PartialWrite_DeleteTimePeriod_RemovesTimePeriodButKeepsOtherFields()
         {
             // Arrange
-            Connection testConnection = GetMockConnection();
+            Connection testConnection = GetDefaultMockConnection();
+            SetDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
+
             SpineDatagramPayload payload = GetPayload(EEBusMessages.LoadControl_Write_DeleteTimePeriod_AndUpdate);
             testConnection.BindingAndSubscriptionManager.TryAddOrUpdateClientBinding(
                 payload.datagram.header.addressSource,
@@ -244,7 +239,9 @@ namespace TestProject1
         public async Task PartialWrite_UpdateOnly_UpdatesSpecifiedFieldsOnly()
         {
             // Arrange
-            Connection testConnection = GetMockConnection();
+            Connection testConnection = GetDefaultMockConnection();
+            SetDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
+
             SpineDatagramPayload payload = GetPayload(EEBusMessages.LoadControl_Write_UpdateOnly);
             testConnection.BindingAndSubscriptionManager.TryAddOrUpdateClientBinding(
                 payload.datagram.header.addressSource,
@@ -276,7 +273,9 @@ namespace TestProject1
         public async Task PartialWrite_WithDeleteFilter_PreservesNonDeletedFields()
         {
             // Arrange
-            Connection testConnection = GetMockConnection();
+            Connection testConnection = GetDefaultMockConnection();
+            SetDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
+
             SpineDatagramPayload payload = GetPayload(EEBusMessages.LoadControl_Write_DeleteTimePeriod_AndUpdate);
             testConnection.BindingAndSubscriptionManager.TryAddOrUpdateClientBinding(
                 payload.datagram.header.addressSource,
@@ -309,7 +308,9 @@ namespace TestProject1
         public async Task PartialWrite_WithoutBinding_DoesNotUpdateData()
         {
             // Arrange
-            Connection testConnection = GetMockConnection();
+            Connection testConnection = GetDefaultMockConnection();
+            SetDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
+
             SpineDatagramPayload payload = GetPayload(EEBusMessages.LoadControl_Write_DeleteTimePeriod_AndUpdate);
             // Note: NOT adding binding
 
@@ -337,7 +338,8 @@ namespace TestProject1
         public async Task PartialWrite_MultipleUpdates_AppliesAllChanges()
         {
             // Arrange
-            Connection testConnection = GetMockConnection();
+            Connection testConnection = GetDefaultMockConnection();
+            SetDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
 
             // First update - delete timePeriod and update value
             SpineDatagramPayload payload1 = GetPayload(EEBusMessages.LoadControl_Write_DeleteTimePeriod_AndUpdate);

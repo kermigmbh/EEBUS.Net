@@ -12,7 +12,7 @@ namespace TestProject1.Ship
     /// <summary>
     /// Tests für die SHIP-Hello-Phase und das Timeout-Verhalten.
     /// </summary>
-    public class ShipHelloStateTests : EebusTests
+    public class ShipHelloStateTests
     {
         private sealed class TestClient : Client
         {

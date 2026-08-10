@@ -35,22 +35,17 @@ namespace TestProject1.ConsistencyTests
                          .Select(x => Convert.ToByte(ski.Substring(x * 2, 2), 16))
                          .ToArray();
 
-        /// <summary>
-        /// Gerät mit MPC (MonitoredUnit) und LPC (ControllableSystem) auf derselben Entity.
-        /// Entspricht einer Wärmepumpe oder ähnlichem steuerbaren Verbraucher mit Eigenmetering.
-        /// </summary>
-        private Connection GetLpcMpcConnection()
+        protected override DeviceSettings GetDeviceSettings()
         {
-            var devices = new Devices();
-            devices.GetOrCreateLocal(GetSkiBytes(TestLocalSki), new DeviceSettings
+            return new DeviceSettings
             {
-                Name   = "TestHeatPump",
-                Id     = "Test-Heat-Pump",
-                Model  = "TestModel",
-                Brand  = "TestBrand",
-                Type   = "HeatPump",
+                Name = "TestHeatPump",
+                Id = "Test-Heat-Pump",
+                Model = "TestModel",
+                Brand = "TestBrand",
+                Type = "HeatPump",
                 Serial = "HP001",
-                Port   = 7206,
+                Port = 7206,
                 Entities =
                 [
                     new EntitySettings { Type = "DeviceInformation" },
@@ -81,9 +76,7 @@ namespace TestProject1.ConsistencyTests
                         ],
                     },
                 ],
-            });
-            var remote = devices.GetOrCreateRemote("TestRemote", TestRemoteSki, string.Empty, "TestRemote");
-            return new Client(default, default, devices, remote);
+            };
         }
 
         private static MeasurementServerFeature GetMeasurementFeature(Connection connection)
@@ -120,7 +113,7 @@ namespace TestProject1.ConsistencyTests
         [Fact]
         public void Lpc_Limit_MeasurementId_MatchesMpc_AcPowerTotal_MeasurementId()
         {
-            Connection connection = GetLpcMpcConnection();
+            Connection connection = GetMockConnection(TestLocalSki, TestRemoteSki);
 
             LoadControlLimitDataStructure limit = connection.Local
                 .GetDataStructures<LoadControlLimitDataStructure>()
@@ -145,7 +138,7 @@ namespace TestProject1.ConsistencyTests
         [Fact]
         public void Lpc_Characteristic_ElectricalConnectionId_MatchesMpc_AcPowerTotal_ElectricalConnectionId()
         {
-            Connection connection = GetLpcMpcConnection();
+            Connection connection = GetMockConnection(TestLocalSki, TestRemoteSki);
 
             ElectricalConnectionCharacteristicDataStructure characteristic = connection.Local
                 .GetDataStructures<ElectricalConnectionCharacteristicDataStructure>()
@@ -178,7 +171,7 @@ namespace TestProject1.ConsistencyTests
         [Fact]
         public void Lpc_Characteristic_ParameterId_CorrespondsTo_AcPowerTotal_ParameterDescription()
         {
-            Connection connection = GetLpcMpcConnection();
+            Connection connection = GetMockConnection(TestLocalSki, TestRemoteSki);
 
             ElectricalConnectionCharacteristicDataStructure characteristic = connection.Local
                 .GetDataStructures<ElectricalConnectionCharacteristicDataStructure>()

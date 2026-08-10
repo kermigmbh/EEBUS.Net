@@ -9,7 +9,7 @@ using System.Text.Json.Nodes;
 
 namespace TestProject1
 {
-    public class SpineTests : EebusTests
+    public class SpineTests
     {
         private static SpineCmdPayloadBase? GetCommand(ShipMessageBase? m)
         {

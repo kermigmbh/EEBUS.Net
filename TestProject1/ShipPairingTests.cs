@@ -10,7 +10,7 @@ using System.Text;
 
 namespace TestProject1
 {
-    public class ShipPairingTests : EebusTests
+    public class ShipPairingTests
     {
         [Fact]
         public void ShipPairing_CalculatesDigestCorrectly()

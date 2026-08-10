@@ -16,23 +16,17 @@ namespace TestProject1.Mpc
         private const string TestLocalSki  = "662728a479fa2fcf28e6d9e7855e996ab1d850a2";
         private const string TestRemoteSki = "c09ff4c4dc2916414714662366f968f4743af7b7";
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Hilfsmethoden
-        // ──────────────────────────────────────────────────────────────────────
-
-        private byte[] GetSkiBytes(string ski)
-            => Enumerable.Range(0, ski.Length / 2)
-                         .Select(x => Convert.ToByte(ski.Substring(x * 2, 2), 16))
-                         .ToArray();
-
-        private Connection GetMpcMonitoredUnitConnection()
+        protected override DeviceSettings GetDeviceSettings()
         {
-            var devices = new Devices();
-            devices.GetOrCreateLocal(GetSkiBytes(TestLocalSki), new DeviceSettings
+            return new DeviceSettings
             {
-                Name = "TestMPCDevice", Id = "Test-MPC-Device",
-                Model = "TestModel", Brand = "TestBrand",
-                Type = "EnergyManagementSystem", Serial = "MPC001", Port = 7202,
+                Name = "TestMPCDevice",
+                Id = "Test-MPC-Device",
+                Model = "TestModel",
+                Brand = "TestBrand",
+                Type = "EnergyManagementSystem",
+                Serial = "MPC001",
+                Port = 7202,
                 Entities =
                 [
                     new EntitySettings { Type = "DeviceInformation" },
@@ -46,9 +40,7 @@ namespace TestProject1.Mpc
                         }],
                     },
                 ],
-            });
-            var remoteDevice = devices.GetOrCreateRemote("TestRemote", TestRemoteSki, string.Empty, "TestRemote");
-            return new Client(default, default, devices, remoteDevice);
+            };
         }
 
         /// <summary>
@@ -68,7 +60,7 @@ namespace TestProject1.Mpc
         [Fact]
         public void MpcMonitoredUnit_MeasurementIds_AreUnique()
         {
-            MeasurementServerFeature feature = GetMeasurementFeature(GetMpcMonitoredUnitConnection())!;
+            MeasurementServerFeature feature = GetMeasurementFeature(GetMockConnection(TestLocalSki, TestRemoteSki))!;
             List<uint> ids = feature.measurementData.Select(m => m.measurementId).ToList();
 
             Assert.Equal(ids.Count, ids.Distinct().Count());
@@ -81,7 +73,7 @@ namespace TestProject1.Mpc
         [Fact]
         public void MpcMonitoredUnit_MeasurementIds_FormContiguousSequenceFromZero()
         {
-            MeasurementServerFeature feature = GetMeasurementFeature(GetMpcMonitoredUnitConnection())!;
+            MeasurementServerFeature feature = GetMeasurementFeature(GetMockConnection(TestLocalSki, TestRemoteSki))!;
             List<uint> ids = feature.measurementData
                 .Select(m => m.measurementId)
                 .OrderBy(id => id)
@@ -98,7 +90,7 @@ namespace TestProject1.Mpc
         [Fact]
         public void MpcMonitoredUnit_AllMeasurements_HaveElectricalConnectionParameterDescription()
         {
-            MeasurementServerFeature feature = GetMeasurementFeature(GetMpcMonitoredUnitConnection())!;
+            MeasurementServerFeature feature = GetMeasurementFeature(GetMockConnection(TestLocalSki, TestRemoteSki))!;
 
             Assert.All(feature.measurementData,
                 m => Assert.NotNull(m.electricalConnectionParameterDescriptionData));
@@ -112,7 +104,7 @@ namespace TestProject1.Mpc
         [Fact]
         public void MpcMonitoredUnit_ElectricalConnectionIds_AreConsistentAcrossAllMeasurements()
         {
-            MeasurementServerFeature feature = GetMeasurementFeature(GetMpcMonitoredUnitConnection())!;
+            MeasurementServerFeature feature = GetMeasurementFeature(GetMockConnection(TestLocalSki, TestRemoteSki))!;
 
             List<uint> usedConnectionIds = feature.measurementData
                 .Where(m => m.electricalConnectionParameterDescriptionData != null)
@@ -131,7 +123,7 @@ namespace TestProject1.Mpc
         [Fact]
         public void MpcMonitoredUnit_ParameterDescriptions_MeasurementIdMatchesContainingEntry()
         {
-            MeasurementServerFeature feature = GetMeasurementFeature(GetMpcMonitoredUnitConnection())!;
+            MeasurementServerFeature feature = GetMeasurementFeature(GetMockConnection(TestLocalSki, TestRemoteSki))!;
 
             Assert.All(
                 feature.measurementData.Where(m => m.electricalConnectionParameterDescriptionData != null),
@@ -148,7 +140,7 @@ namespace TestProject1.Mpc
         [Fact]
         public void MpcMonitoredUnit_ParameterDescriptions_MeasurementIdsAreUnique()
         {
-            MeasurementServerFeature feature = GetMeasurementFeature(GetMpcMonitoredUnitConnection())!;
+            MeasurementServerFeature feature = GetMeasurementFeature(GetMockConnection(TestLocalSki, TestRemoteSki))!;
 
             List<uint> innerIds = feature.measurementData
                 .Where(m => m.electricalConnectionParameterDescriptionData != null)
@@ -161,7 +153,7 @@ namespace TestProject1.Mpc
         [Fact]
         public void MpcMonitoredUnit_ElectricalConnectionIds_ReferenceRegisteredElectricalConnection()
         {
-            Connection connection = GetMpcMonitoredUnitConnection();
+            Connection connection = GetMockConnection(TestLocalSki, TestRemoteSki);
             List<MeasurementData> measurements = GetMeasurementFeature(connection)!.measurementData;
 
             var expectedByConnectionId = measurements

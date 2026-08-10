@@ -9,24 +9,17 @@ public class LppLpcConsistencyTests : EebusTests
     private const string TestLocalSki = "662728a479fa2fcf28e6d9e7855e996ab1d850a2";
     private const string TestRemoteSki = "c09ff4c4dc2916414714662366f968f4743af7b7";
 
-    private byte[] GetSkiBytes(string ski)
-        => Enumerable.Range(0, ski.Length / 2)
-            .Select(x => Convert.ToByte(ski.Substring(x * 2, 2), 16))
-            .ToArray();
-
-    /// <summary>
-    /// Wenn LPC und LPP gleichzeitig aktiv sind, müssen beide Characteristics
-    /// dieselbe electricalConnectionId und dieselbe parameterId verwenden –
-    /// sie beschreiben denselben Netzanschluss und denselben Messpunkt.
-    /// </summary>
-    [Fact]
-    public void LpcAndLpp_Characteristics_ShareElectricalConnectionIdAndParameterId()
+    protected override DeviceSettings GetDeviceSettings()
     {
-        var devices = new Devices();
-        devices.GetOrCreateLocal(GetSkiBytes(TestLocalSki), new DeviceSettings
+        return new DeviceSettings
         {
-            Name = "TestBess", Id = "Test-BESS", Model = "TestModel",
-            Brand = "TestBrand", Type = "Battery", Serial = "BESS001", Port = 7208,
+            Name = "TestBess",
+            Id = "Test-BESS",
+            Model = "TestModel",
+            Brand = "TestBrand",
+            Type = "Battery",
+            Serial = "BESS001",
+            Port = 7208,
             Entities =
             [
                 new EntitySettings { Type = "DeviceInformation" },
@@ -65,10 +58,18 @@ public class LppLpcConsistencyTests : EebusTests
                     ],
                 },
             ],
-        });
+        };
+    }
 
-        var remoteDevice = devices.GetOrCreateRemote("TestRemote", TestRemoteSki, string.Empty, "TestRemote");
-        Connection connection = new Client(default, default, devices, remoteDevice);
+    /// <summary>
+    /// Wenn LPC und LPP gleichzeitig aktiv sind, müssen beide Characteristics
+    /// dieselbe electricalConnectionId und dieselbe parameterId verwenden –
+    /// sie beschreiben denselben Netzanschluss und denselben Messpunkt.
+    /// </summary>
+    [Fact]
+    public void LpcAndLpp_Characteristics_ShareElectricalConnectionIdAndParameterId()
+    {
+        var connection = GetMockConnection(TestLocalSki, TestRemoteSki);
 
         ElectricalConnectionCharacteristicDataStructure lpcCharacteristic = connection.Local
             .GetDataStructures<ElectricalConnectionCharacteristicDataStructure>()

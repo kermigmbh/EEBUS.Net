@@ -27,31 +27,17 @@ namespace TestProject1.ConsistencyTests
         private const string TestLocalSki  = "662728a479fa2fcf28e6d9e7855e996ab1d850a2";
         private const string TestRemoteSki = "c09ff4c4dc2916414714662366f968f4743af7b7";
 
-        // ──────────────────────────────────────────────────────────────────────
-        // Hilfsmethoden
-        // ──────────────────────────────────────────────────────────────────────
-
-        private byte[] GetSkiBytes(string ski)
-            => Enumerable.Range(0, ski.Length / 2)
-                         .Select(x => Convert.ToByte(ski.Substring(x * 2, 2), 16))
-                         .ToArray();
-
-        /// <summary>
-        /// Gerät mit MPC (MonitoredUnit) und LPP (ControllableSystem) auf derselben Entity.
-        /// Entspricht z. B. einer PV-Anlage mit Eigenmetering.
-        /// </summary>
-        private Connection GetLppMpcConnection()
+        protected override DeviceSettings GetDeviceSettings()
         {
-            var devices = new Devices();
-            devices.GetOrCreateLocal(GetSkiBytes(TestLocalSki), new DeviceSettings
+            return new DeviceSettings
             {
-                Name   = "TestPvSystem",
-                Id     = "Test-PV-System",
-                Model  = "TestModel",
-                Brand  = "TestBrand",
-                Type   = "Inverter",
+                Name = "TestPvSystem",
+                Id = "Test-PV-System",
+                Model = "TestModel",
+                Brand = "TestBrand",
+                Type = "Inverter",
                 Serial = "PV001",
-                Port   = 7207,
+                Port = 7207,
                 Entities =
                 [
                     new EntitySettings { Type = "DeviceInformation" },
@@ -82,9 +68,7 @@ namespace TestProject1.ConsistencyTests
                         ],
                     },
                 ],
-            });
-            var remoteDevice = devices.GetOrCreateRemote("TestRemote", TestRemoteSki, string.Empty, "TestRemote");
-            return new Client(default, default, devices, remoteDevice);
+            };
         }
 
         private static MeasurementServerFeature GetMeasurementFeature(Connection connection)
@@ -114,7 +98,7 @@ namespace TestProject1.ConsistencyTests
         [Fact]
         public void Lpp_Limit_MeasurementId_MatchesMpc_AcPowerTotal_MeasurementId()
         {
-            Connection connection = GetLppMpcConnection();
+            Connection connection = GetMockConnection(TestLocalSki, TestRemoteSki);
 
             LoadControlLimitDataStructure limit = connection.Local
                 .GetDataStructures<LoadControlLimitDataStructure>()
@@ -137,7 +121,7 @@ namespace TestProject1.ConsistencyTests
         [Fact]
         public void Lpp_Characteristic_ElectricalConnectionId_MatchesMpc_AcPowerTotal_ElectricalConnectionId()
         {
-            Connection connection = GetLppMpcConnection();
+            Connection connection = GetMockConnection(TestLocalSki, TestRemoteSki);
 
             ElectricalConnectionCharacteristicDataStructure characteristic = connection.Local
                 .GetDataStructures<ElectricalConnectionCharacteristicDataStructure>()
@@ -162,7 +146,7 @@ namespace TestProject1.ConsistencyTests
         [Fact]
         public void Lpp_Characteristic_ParameterId_CorrespondsTo_AcPowerTotal_ParameterDescription()
         {
-            Connection connection = GetLppMpcConnection();
+            Connection connection = GetMockConnection(TestLocalSki, TestRemoteSki);
 
             ElectricalConnectionCharacteristicDataStructure characteristic = connection.Local
                 .GetDataStructures<ElectricalConnectionCharacteristicDataStructure>()

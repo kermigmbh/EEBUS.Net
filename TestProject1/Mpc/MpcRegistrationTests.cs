@@ -15,23 +15,9 @@ namespace TestProject1.Mpc
         private const string TestLocalSki = "662728a479fa2fcf28e6d9e7855e996ab1d850a2";
         private const string TestRemoteSki = "c09ff4c4dc2916414714662366f968f4743af7b7";
 
-        // ──────────────────────────────────────────────────────────────────────────
-        // Hilfsmethoden
-        // ──────────────────────────────────────────────────────────────────────────
-
-        private byte[] GetSkiBytes(string ski)
-            => Enumerable.Range(0, ski.Length / 2)
-                .Select(x => Convert.ToByte(ski.Substring(x * 2, 2), 16))
-                .ToArray();
-
-        /// <summary>
-        /// Erstellt eine Verbindung, bei der das lokale Gerät den
-        /// MPC-Use-Case mit Actor "MonitoredUnit" ausführt.
-        /// </summary>
-        private Connection GetMpcMonitoredUnitConnection()
+        protected override DeviceSettings GetDeviceSettings()
         {
-            var devices = new Devices();
-            devices.GetOrCreateLocal(GetSkiBytes(TestLocalSki), new DeviceSettings
+            return new DeviceSettings
             {
                 Name = "TestMPCDevice",
                 Id = "Test-MPC-Device",
@@ -56,48 +42,7 @@ namespace TestProject1.Mpc
                         ],
                     },
                 ],
-            });
-
-            var remoteDevice = devices.GetOrCreateRemote("TestRemote", TestRemoteSki, string.Empty, "TestRemote");
-            return new Client(default, default, devices, remoteDevice);
-        }
-
-        /// <summary>
-        /// Erstellt eine Verbindung, bei der das lokale Gerät den
-        /// MPC-Use-Case mit Actor "MonitoringAppliance" ausführt.
-        /// </summary>
-        private Connection GetMpcMonitoringApplianceConnection()
-        {
-            var devices = new Devices();
-            devices.GetOrCreateLocal(GetSkiBytes(TestLocalSki), new DeviceSettings
-            {
-                Name = "TestCEMDevice",
-                Id = "Test-CEM-Device",
-                Model = "TestModel",
-                Brand = "TestBrand",
-                Type = "EnergyManagementSystem",
-                Serial = "CEM001",
-                Port = 7203,
-                Entities =
-                [
-                    new EntitySettings { Type = "DeviceInformation" },
-                    new EntitySettings
-                    {
-                        Type = "CEM",
-                        UseCases =
-                        [
-                            new UseCaseSettings
-                            {
-                                Type = "monitoringOfPowerConsumption",
-                                Actor = "MonitoringAppliance",
-                            },
-                        ],
-                    },
-                ],
-            });
-
-            var remoteDevice = devices.GetOrCreateRemote("TestRemote", TestRemoteSki, string.Empty, "TestRemote");
-            return new Client(default, default, devices, remoteDevice);
+            };
         }
 
         /// <summary>
@@ -118,7 +63,7 @@ namespace TestProject1.Mpc
         [Fact]
         public void MpcMonitoredUnit_RegistersMeasurementServerFeature()
         {
-            Connection connection = GetMpcMonitoredUnitConnection();
+            Connection connection = GetMockConnection(TestLocalSki, TestRemoteSki);
 
             AddressType? address = connection.Local.GetFeatureAddress("Measurement", server: true);
 
@@ -134,7 +79,7 @@ namespace TestProject1.Mpc
         [Fact]
         public void MpcMonitoredUnit_RegistersElectricalConnectionServerFeature()
         {
-            Connection connection = GetMpcMonitoredUnitConnection();
+            Connection connection = GetMockConnection(TestLocalSki, TestRemoteSki);
 
             AddressType? address = connection.Local.GetFeatureAddress("ElectricalConnection", server: true);
 
@@ -152,7 +97,7 @@ namespace TestProject1.Mpc
         [Fact]
         public void MpcMonitoredUnit_MeasurementFeature_ExposesDescriptionListFunction()
         {
-            Connection connection = GetMpcMonitoredUnitConnection();
+            Connection connection = GetMockConnection(TestLocalSki, TestRemoteSki);
 
             Feature? feature = connection.Local.Entities
                 .SelectMany(e => e.Features)
@@ -169,7 +114,7 @@ namespace TestProject1.Mpc
         [Fact]
         public void MpcMonitoredUnit_MeasurementFeature_ExposesMeasurementListFunction()
         {
-            Connection connection = GetMpcMonitoredUnitConnection();
+            Connection connection = GetMockConnection(TestLocalSki, TestRemoteSki);
 
             Feature? feature = connection.Local.Entities
                 .SelectMany(e => e.Features)
@@ -192,7 +137,7 @@ namespace TestProject1.Mpc
         [Fact]
         public void MpcMonitoredUnit_ElectricalConnectionFeature_ExposesParameterDescriptionListFunction()
         {
-            Connection connection = GetMpcMonitoredUnitConnection();
+            Connection connection = GetMockConnection(TestLocalSki, TestRemoteSki);
 
             Feature? feature = connection.Local.Entities
                 .SelectMany(e => e.Features)
@@ -216,7 +161,7 @@ namespace TestProject1.Mpc
         [Fact]
         public void MpcMonitoringAppliance_RegistersMeasurementClientFeature()
         {
-            Connection connection = GetMpcMonitoringApplianceConnection();
+            Connection connection = GetMockConnection(TestLocalSki, TestRemoteSki);
 
             AddressType? address = connection.Local.GetFeatureAddress("Measurement", server: false);
 
@@ -232,7 +177,7 @@ namespace TestProject1.Mpc
         [Fact]
         public void MpcMonitoringAppliance_RegistersElectricalConnectionClientFeature()
         {
-            Connection connection = GetMpcMonitoringApplianceConnection();
+            Connection connection = GetMockConnection(TestLocalSki, TestRemoteSki);
 
             AddressType? address = connection.Local.GetFeatureAddress("ElectricalConnection", server: false);
 

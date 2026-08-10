@@ -11,7 +11,7 @@ namespace TestProject1.Ship
     /// <summary>
     /// Tests für Reconnect-Verhalten und SKI-basierte Geräteerkennung.
     /// </summary>
-    public class ShipReconnectTests : EebusTests
+    public class ShipReconnectTests
     {
         private const string LocalSki  = "662728a479fa2fcf28e6d9e7855e996ab1d850a2";
         private const string RemoteSki = "c09ff4c4dc2916414714662366f968f4743af7b7";
