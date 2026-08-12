@@ -19,13 +19,8 @@ namespace EEBUS.UseCases.MonitoringAppliance
 		public MonitoringOfGridConnectionPoint( UseCaseSettings usecaseSettings, Entity entity )
 			: base( usecaseSettings, entity )
 		{
-			entity.GetOrAdd( Feature.Create( "ElectricalConnection", "client", entity ) );
-            entity.GetOrAdd(Feature.Create("DeviceConfiguration", "client", entity));
 
-			
-
-			MeasurementClientFeature? measurementClient = entity.GetOrAdd( Feature.Create( "Measurement", "client", entity ) ) as MeasurementClientFeature;
-            entity.GetOrAdd(Feature.Create("ElectricalConnection", "client", entity));
+			MeasurementClientFeature? measurementClient = entity.Features.Find(f => f.Type == "Measurement" && f.Role == "client") as MeasurementClientFeature;
 
             if (measurementClient != null)
 			{
@@ -311,6 +306,15 @@ namespace EEBUS.UseCases.MonitoringAppliance
 				});
 			}
 		}
+
+        protected override IEnumerable<Feature?> GetFeatures(Entity entity)
+        {
+			return [
+                Feature.Create("ElectricalConnection", "client", entity),
+                Feature.Create("DeviceConfiguration", "client", entity),
+                Feature.Create("Measurement", "client", entity)
+            ];
+        }
 
         protected override List<Scenario> GetScenarios()
         {

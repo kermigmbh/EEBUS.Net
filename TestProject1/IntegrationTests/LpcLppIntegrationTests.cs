@@ -58,5 +58,17 @@ namespace TestProject1.IntegrationTests
         {
 
         }
+
+        //[Fact]
+        //public async Task WHEN_ControlBoxHasMultipleCEMEntititiesWithDeviceDiagnosis_THEN_WeOnlySubscribeToTheOneWithBinding()
+        //{
+        //    ILogger cemLogger = GetLogger("CEM");
+        //    //ILogger controlBoxLogger = GetLogger("ControlBox");
+        //    using EEBUSManager cemManager = new EEBUSManager(Setup.GetCEMSettings(), logger: cemLogger);
+        //    using EEBUSManager controlBoxManager = new EEBUSManager(Setup.GetControlBoxWithMultipleCEMEntitiesSettings()/*, logger: controlBoxLogger*/);
+
+        //    await StartAndConnectManagersAsync(cemManager, controlBoxManager);
+        //    await Task.Delay(-1);
+        //}
     }
 }

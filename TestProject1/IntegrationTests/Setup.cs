@@ -207,11 +207,141 @@ namespace TestProject1.IntegrationTests
                             ]}
                         ]
                     },
-                    
+
                     Certificate = "EEBUS" + _nodeNumber + ".net"
                 };
                 return settings;
             }
         }
+
+        public static Settings GetControlBoxWithMultipleCEMEntitiesSettings(LimitSettings? initLimits = null)
+        {
+            lock (_lock)
+            {
+                _nodeNumber++;
+                var settings = new Settings()
+                {
+                    Device = new DeviceSettings()
+                    {
+                        Name = "Controlbox CLS2",
+                        Id = "ControlboxCLS2-" + _nodeNumber,
+                        Model = "Demo Controlbox CLS2",
+                        Brand = "Kermi",
+                        Type = "EnergyManagementSystem",
+                        Serial = "555555",
+                        Port = (ushort)(7300 + _nodeNumber),
+                        Entities = [
+                            new EntitySettings { Type = "DeviceInformation" },
+                            new EntitySettings { Type = "CEM", UseCases = [
+                                new UseCaseSettings {
+                                    Type = "limitationOfPowerConsumption",
+                                    Actor = "EnergyGuard",
+                                    InitLimits = initLimits ?? new LimitSettings {
+                                        Active = false,
+                                        Limit = 0,
+                                        Duration = Timeout.InfiniteTimeSpan,
+                                        FailsafeLimit = 7200,
+                                        FailsafeDurationMinimum = TimeSpan.FromHours(2),
+                                        NominalMax = 40000
+                                    }   
+                                },
+                                new UseCaseSettings {
+                                    Type = "limitationOfPowerProduction",
+                                    Actor = "EnergyGuard",
+                                    InitLimits = initLimits ?? new LimitSettings {
+                                        Active = false,
+                                        Limit = 0,
+                                        Duration = Timeout.InfiniteTimeSpan,
+                                        FailsafeLimit = 7200,
+                                        FailsafeDurationMinimum = TimeSpan.FromHours(2),
+                                        NominalMax = 40000
+                                    }
+                                },
+                            ]},
+                            new EntitySettings { Type = "CEM", UseCases = [
+                                new UseCaseSettings {
+                                    Type = "limitationOfPowerConsumption",
+                                    Actor = "EnergyGuard",
+                                    InitLimits = initLimits ?? new LimitSettings {
+                                        Active = false,
+                                        Limit = 0,
+                                        Duration = Timeout.InfiniteTimeSpan,
+                                        FailsafeLimit = 7200,
+                                        FailsafeDurationMinimum = TimeSpan.FromHours(2),
+                                        NominalMax = 40000
+                                    }
+                                },
+                                new UseCaseSettings {
+                                    Type = "limitationOfPowerProduction",
+                                    InitLimits = initLimits ?? new LimitSettings {
+                                        Active = false,
+                                        Limit = 0,
+                                        Duration = Timeout.InfiniteTimeSpan,
+                                        FailsafeLimit = 7200,
+                                        FailsafeDurationMinimum = TimeSpan.FromHours(2),
+                                        NominalMax = 40000
+                                    }
+                                },
+                            ]},
+                            new EntitySettings { Type = "CEM", UseCases = [
+                                new UseCaseSettings {
+                                    Type = "limitationOfPowerConsumption",
+                                    Actor = "EnergyGuard",
+                                    InitLimits = initLimits ?? new LimitSettings {
+                                        Active = false,
+                                        Limit = 0,
+                                        Duration = Timeout.InfiniteTimeSpan,
+                                        FailsafeLimit = 7200,
+                                        FailsafeDurationMinimum = TimeSpan.FromHours(2),
+                                        NominalMax = 40000
+                                    }
+                                },
+                                new UseCaseSettings {
+                                    Type = "limitationOfPowerProduction",
+                                    Actor = "EnergyGuard",
+                                    InitLimits = initLimits ?? new LimitSettings {
+                                        Active = false,
+                                        Limit = 0,
+                                        Duration = Timeout.InfiniteTimeSpan,
+                                        FailsafeLimit = 7200,
+                                        FailsafeDurationMinimum = TimeSpan.FromHours(2),
+                                        NominalMax = 40000
+                                    }
+                                },
+                            ]},
+                            new EntitySettings { Type = "CEM", UseCases = [
+                                new UseCaseSettings {
+                                    Type = "limitationOfPowerConsumption",
+                                    Actor = "EnergyGuard",
+                                    InitLimits = initLimits ?? new LimitSettings {
+                                        Active = false,
+                                        Limit = 0,
+                                        Duration = Timeout.InfiniteTimeSpan,
+                                        FailsafeLimit = 7200,
+                                        FailsafeDurationMinimum = TimeSpan.FromHours(2),
+                                        NominalMax = 40000
+                                    }
+                                },
+                                new UseCaseSettings {
+                                    Type = "limitationOfPowerProduction",
+                                    Actor = "EnergyGuard",
+                                    InitLimits = initLimits ?? new LimitSettings {
+                                        Active = false,
+                                        Limit = 0,
+                                        Duration = Timeout.InfiniteTimeSpan,
+                                        FailsafeLimit = 7200,
+                                        FailsafeDurationMinimum = TimeSpan.FromHours(2),
+                                        NominalMax = 40000
+                                    }
+                                },
+                            ]}
+                        ]
+                    },
+
+                    Certificate = "EEBUS" + _nodeNumber + ".net"
+                };
+                return settings;
+            }
+        } 
     }
 }

@@ -1,5 +1,6 @@
 ﻿using EEBUS.SPINE.Commands;
 using Microsoft.AspNetCore.Http.HttpResults;
+using System.Diagnostics;
 
 namespace EEBUS.Models
 {
@@ -34,7 +35,8 @@ namespace EEBUS.Models
                     var feature = Feature.Create(featureInfo, this);
                     if (feature != null)
                     {
-                        this.Features.Add(feature);
+                        //this.Features.Add(feature);   GetOrAdd prevents a duplicate feature with the same type and role from being added to the list
+                        GetOrAdd(feature);
                     }
                 }
             }

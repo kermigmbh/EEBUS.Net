@@ -233,20 +233,6 @@ namespace EEBUS.Models
             };
         }
 
-        public AddressType? GetHeartbeatAddress(bool server)
-        {
-            string role = server ? "server" : "client";
-
-            foreach (Entity entity in this.Entities)
-            {
-                Feature? feature = entity.Features.Find(f => null != f && f.Type == "DeviceDiagnosis" && f.Role == role);
-                if (null != feature)
-                    return new AddressType() { device = this.DeviceId, entity = entity.Index, feature = feature.Index };
-            }
-
-            return null;
-        }
-
         public AddressType? GetFeatureAddress(string featureType, bool server)
         {
             string role = server ? "server" : "client";
@@ -260,6 +246,22 @@ namespace EEBUS.Models
 
             return null;
         }
+
+        public IEnumerable<AddressType> GetAllFeatureAddresses(string featureType, bool server)
+        {
+            List<AddressType> addresses = [];
+            string role = server ? "server" : "client";
+
+            foreach (Entity entity in this.Entities)
+            {
+                Feature? feature = entity.Features.Find(f => f != null && f.Type == featureType && f.Role == role);
+                if (feature != null)
+                    addresses.Add(new AddressType() { device = this.DeviceId, entity = entity.Index, feature = feature.Index });
+            }
+
+            return addresses;
+        }
+
 
         public AddressType GetElectricalConnectionAddress(bool source)
         {

@@ -106,6 +106,16 @@ namespace EEBUS.Net
                                 );
             }
         }
+
+        public IEnumerable<BindingSubscriptionInfo> GetBindings(string featureType)
+        {
+            lock (_lock)
+            {
+                return _bindings
+                    .Where(binding => binding.serverFeatureType == featureType);
+            }
+        }
+
         public bool HasSubscription(AddressType clientAddress, AddressType serverAddress/*, string serverFeatureType*/)
         {
             lock (_lock)

@@ -19,8 +19,7 @@ namespace EEBUS.UseCases.MonitoredUnit
         public MonitoringOfPowerConsumption(UseCaseSettings usecaseSettings, Entity entity)
             : base(usecaseSettings, entity)
         {
-            MeasurementServerFeature? measurementServer = entity.GetOrAdd(Feature.Create("Measurement", "server", entity)) as MeasurementServerFeature;
-            entity.GetOrAdd(Feature.Create("ElectricalConnection", "server", entity));
+            MeasurementServerFeature? measurementServer = entity.Features.Find(f => null != f && f.Type == "Measurement" && f.Role == "server") as MeasurementServerFeature;
 
             if (measurementServer != null)
             {
@@ -410,6 +409,14 @@ namespace EEBUS.UseCases.MonitoredUnit
                     }
                 });
             }
+        }
+
+        protected override IEnumerable<Feature?> GetFeatures(Entity entity)
+        {
+            return [
+                Feature.Create("Measurement", "server", entity),
+                Feature.Create("ElectricalConnection", "server", entity)
+            ];
         }
 
         protected override List<Scenario> GetScenarios()

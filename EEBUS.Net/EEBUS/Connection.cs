@@ -6,6 +6,7 @@ using EEBUS.SPINE.Commands;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
+using System.Data;
 using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
@@ -69,10 +70,8 @@ namespace EEBUS
 
                 if (connection.State == Connection.EState.Connected)
                 {
-                    AddressType? heartbeatSource = connection.Local?.GetHeartbeatAddress(true);
-                    AddressType? heartbeatDestination = connection.Remote?.GetHeartbeatAddress(false);
-
-                    if (heartbeatSource == null || heartbeatDestination == null) return;
+                    //AddressType? heartbeatSource = connection.Local?.GetFeatureAddress("DeviceDiagnosis", true, connection);
+                    //AddressType? heartbeatDestination = connection.Remote?.GetFeatureAddress("DeviceDiagnosis", false, connection);
 
                     if (!this.heartbeatSubscribed)
                     {
@@ -93,7 +92,10 @@ namespace EEBUS
                         Debug.WriteLine("--- Send heartbeat via client ---");
 
 
+                    AddressType? heartbeatSource = connection.GetLocalHeartbeatAddress(true);
+                    AddressType? heartbeatDestination = connection.GetRemoteHeartbeatAddress(false);
 
+                    if (heartbeatSource == null || heartbeatDestination == null) return;
                     SpineDatagramPayload reply = new SpineDatagramPayload();
                     reply.datagram.header.addressSource = heartbeatSource;
                     reply.datagram.header.addressDestination = heartbeatDestination;
@@ -348,36 +350,49 @@ namespace EEBUS
 
         public void HeartbeatSubscription()
         {
-            SpineDatagramPayload call = new SpineDatagramPayload();
-            call.datagram.header.addressSource = new();
-            call.datagram.header.addressSource.device = this.Local.DeviceId;
-            call.datagram.header.addressSource.entity = [0];
-            call.datagram.header.addressSource.feature = 0;
-            call.datagram.header.addressDestination = new();
-            call.datagram.header.addressDestination.device = this.Remote.DeviceId;
-            call.datagram.header.addressDestination.entity = [0];
-            call.datagram.header.addressDestination.feature = 0;
-            call.datagram.header.msgCounter = DataMessage.NextCount;
-            call.datagram.header.cmdClassifier = "call";
+            //SpineDatagramPayload call = new SpineDatagramPayload();
+            //call.datagram.header.addressSource = new();
+            //call.datagram.header.addressSource.device = this.Local.DeviceId;
+            //call.datagram.header.addressSource.entity = [0];
+            //call.datagram.header.addressSource.feature = 0;
+            //call.datagram.header.addressDestination = new();
+            //call.datagram.header.addressDestination.device = this.Remote.DeviceId;
+            //call.datagram.header.addressDestination.entity = [0];
+            //call.datagram.header.addressDestination.feature = 0;
+            //call.datagram.header.msgCounter = DataMessage.NextCount;
+            //call.datagram.header.cmdClassifier = "call";
 
-            NodeManagementSubscriptionRequestCall payload = new NodeManagementSubscriptionRequestCall();
-            SubscriptionRequestType subscriptionRequest = payload.cmd[0].nodeManagementSubscriptionRequestCall.subscriptionRequest;
-            subscriptionRequest.clientAddress = this.Local.GetHeartbeatAddress(false);
-            subscriptionRequest.serverAddress = this.Remote.GetHeartbeatAddress(true);
-            subscriptionRequest.serverFeatureType = "DeviceDiagnosis";
+            //NodeManagementSubscriptionRequestCall payload = new NodeManagementSubscriptionRequestCall();
+            //SubscriptionRequestType subscriptionRequest = payload.cmd[0].nodeManagementSubscriptionRequestCall.subscriptionRequest;
 
-            call.datagram.payload = payload.ToJsonNode();
+            var clientAddress = GetLocalHeartbeatAddress(false);
+            var serverAddress = GetRemoteHeartbeatAddress(true);
 
-            DataMessage message = new DataMessage();
-            message.SetPayload(JsonHelper.ToJsonNode(call) ?? throw new Exception("Failed to serialize heartbeat subscription message"));
+            if (clientAddress == null || serverAddress == null)
+            {
+                return;
+            }
 
+            //subscriptionRequest.clientAddress = clientAddress;
+            //subscriptionRequest.serverAddress = serverAddress;
+            //subscriptionRequest.serverFeatureType = "DeviceDiagnosis";
+
+            //call.datagram.payload = payload.ToJsonNode();
+
+            //DataMessage message = new DataMessage();
+            //message.SetPayload(JsonHelper.ToJsonNode(call) ?? throw new Exception("Failed to serialize heartbeat subscription message"));
+            if (Remote == null) return;
+            DataMessage message = DataMessage.CreateSubscription(clientAddress, serverAddress, "DeviceDiagnosis", Local.DeviceId, Remote.DeviceId);
             PushDataMessage(message);
         }
 
         public void HeartbeatRead()
         {
-            AddressType source = this.Local.GetHeartbeatAddress(false);
-            AddressType destination = this.Remote?.GetHeartbeatAddress(true) ?? throw new Exception("Remote device is not available");
+            if (Remote == null) throw new Exception("Remote device is not available");
+            AddressType? source = GetLocalHeartbeatAddress(false);
+            AddressType? destination = GetRemoteHeartbeatAddress(true);
+
+            if (source == null || destination == null) return;
 
             SpineDatagramPayload read = new SpineDatagramPayload();
             read.datagram.header.addressSource = source;
@@ -394,47 +409,99 @@ namespace EEBUS
             PushDataMessage(message);
         }
 
+        private AddressType? GetLocalHeartbeatAddress(bool server)
+        {
+            string role = server ? "server" : "client";
+
+            IEnumerable<AddressType> addresses = this.Local.GetAllFeatureAddresses("DeviceDiagnosis", server);
+
+            if (addresses.Count() == 1)
+            {
+                return addresses.Single();
+            } else
+            {
+                /* Should normally not happen, but it could be that we have multiple entities which offer the DeviceDiagnosis feature.
+                 * In this case we will just return the first one, as we right now don't have any other information to select a specific one.
+                */
+                return addresses.FirstOrDefault();
+            }
+        }
+
+        private AddressType? GetRemoteHeartbeatAddress(bool server)
+        {
+            if (Remote == null) return null;
+
+            string role = server ? "server" : "client";
+            Debug.WriteLine($"[{Local.Name}] GetRemoteHeartBeatAddress for {role}");
+            IEnumerable<AddressType> addresses = this.Remote.GetAllFeatureAddresses("DeviceDiagnosis", server);
+
+            if (addresses.Count() == 1)
+            {
+                Debug.WriteLine($"[{Local.Name}] Found exactly one address, returning...");
+                return addresses.Single();
+            }
+            else
+            {
+                /* If the communication partner has multiple entities which offer the DeviceDiagnosis feature, we will try to find the one which is bound to our LoadControl feature.
+                 * This is specified in the testing specification for lpc and lpp.
+                 */
+                BindingSubscriptionInfo? binding = BindingAndSubscriptionManager.GetBindings("LoadControl").FirstOrDefault();
+                if (binding == null) return null;
+
+                Entity? entity = Remote.Entities.FirstOrDefault(e => e.Index.SequenceEqual(binding.serverAddress.entity));
+                Feature? feature = entity?.Features.Find(f => null != f && f.Type == "DeviceDiagnosis" && f.Role == role);
+                if (entity != null && feature != null)
+                {
+                    return new AddressType() { device = Remote.DeviceId, entity = entity.Index, feature = feature.Index };
+                }
+
+                return null;
+            }
+        }
+
+
         public void ReadAndSubscribe()
         {
-            if (this.Remote != null && this.Local != null)
-            {
-                foreach (Entity entity in this.Remote.Entities)
-                {
-                    foreach (Feature feature in entity.Features)
-                    {
-                        if (feature.Role != "server") continue;
+            if (Remote == null || Local == null) return;
 
+            foreach (Entity entity in Remote.Entities)
+            {
+                foreach (UseCase useCase in entity.UseCases)
+                {
+                    foreach (var feature in useCase.Features)
+                    {
                         AddressType? featureSourceAddress = this.Local.GetFeatureAddress(feature.Type, false);    //client address
                         AddressType? featureDestinationAddress = this.Remote.GetFeatureAddress(feature.Type, true);  //server address
+                        if (featureSourceAddress == null || featureDestinationAddress == null) continue;
 
-
-                        if (featureSourceAddress != null && featureDestinationAddress != null)
+                        //Binding
+                        if (useCase.SupportsBinding(feature))
                         {
+                            if (!BindingAndSubscriptionManager.HasBinding(featureSourceAddress, featureDestinationAddress))
+                            {
+                                DataMessage callMessage = DataMessage.CreateBinding(featureSourceAddress, featureDestinationAddress, feature.Type, Local.DeviceId, Remote.DeviceId);
+                                PushDataMessage(callMessage);
+                            }
+                        }
+
+                        if (useCase.SupportsSubscription(feature) && feature.Type != "DeviceDiagnosis") //we have our own logic for heartbeat subscription, so we skip it here
+                        {
+                            //Reading
                             foreach (Function function in feature.Functions)
                             {
                                 if (function.SupportedFunction.possibleOperations.read != null)
                                 {
-                                    //read
                                     SpineCmdPayloadBase? payload = SpineCmdPayloadBase.GetClass(function.SupportedFunction.function)?.CreateRead(this);
                                     DataMessage readMessage = DataMessage.CreateRead(featureSourceAddress, featureDestinationAddress, payload);
                                     PushDataMessage(readMessage);
                                 }
                             }
 
+                            //Subscribing
                             if (!BindingAndSubscriptionManager.HasSubscription(featureSourceAddress, featureDestinationAddress))
                             {
                                 DataMessage callMessage = DataMessage.CreateSubscription(featureSourceAddress, featureDestinationAddress, feature.Type, Local.DeviceId, Remote.DeviceId);
                                 PushDataMessage(callMessage);
-                            }
-
-                            if (!BindingAndSubscriptionManager.HasBinding(featureSourceAddress, featureDestinationAddress))
-                            {
-                                //TODO: Check for which features we need a binding
-                                if (feature.Type == "LoadControl")
-                                {
-                                    DataMessage callMessage = DataMessage.CreateBinding(featureSourceAddress, featureDestinationAddress, feature.Type, Local.DeviceId, Remote.DeviceId);
-                                    PushDataMessage(callMessage);
-                                }
                             }
                         }
                     }

@@ -18,8 +18,6 @@ namespace EEBUS.UseCases.ControllableSystem
         public LimitationOfPowerConsumption(UseCaseSettings usecaseSettings, Entity entity)
             : base(usecaseSettings, entity)
         {
-
-
             if (usecaseSettings.SupportedScenarios != null)
             {
                 var scenarios = new List<Scenario>(Scenarios);
@@ -32,11 +30,6 @@ namespace EEBUS.UseCases.ControllableSystem
                 }
             }
 
-            entity.GetOrAdd(Feature.Create("DeviceDiagnosis", "client", entity));
-            entity.GetOrAdd(Feature.Create("LoadControl", "server", entity));
-            entity.GetOrAdd(Feature.Create("DeviceConfiguration", "server", entity));
-            entity.GetOrAdd(Feature.Create("DeviceDiagnosis", "server", entity));
-            entity.GetOrAdd(Feature.Create("ElectricalConnection", "server", entity));
 
             if (usecaseSettings.InitLimits != null)
             {
@@ -53,8 +46,18 @@ namespace EEBUS.UseCases.ControllableSystem
                 entity.Local.AddUnique(new FailsafeConsumptionActivePowerLimitKeyValue(entity.Local, failsafeLimit, 0, true));
                 entity.Local.AddUnique(new FailsafeDurationMinimumKeyValue(entity.Local, xmlFailsafeDuration, true));
             }
+        }
 
-            
+        protected override List<Feature?> GetFeatures(Entity entity)
+        {
+            //See spec for use case lpc
+            return [
+                Feature.Create("DeviceDiagnosis", "client", entity),
+                Feature.Create("LoadControl", "server", entity),
+                Feature.Create("DeviceConfiguration", "server", entity),
+                Feature.Create("DeviceDiagnosis", "server", entity),
+                Feature.Create("ElectricalConnection", "server", entity)
+            ];
         }
 
         protected override List<Scenario> GetScenarios()
@@ -65,6 +68,14 @@ namespace EEBUS.UseCases.ControllableSystem
                 new Scenario(3, true, "Heartbeat"),
                 new Scenario(4, true, "Constraints")
             ];
+        }
+
+        public override bool SupportsBinding(Feature feature)
+        {
+            //See spec for use case lpc
+            return
+                (feature.Type == "LoadControl" && feature.Role == "server") ||
+                (feature.Type == "DeviceConfiguration" && feature.Role == "server");
         }
 
         public new class Class : UseCase.Class
@@ -95,27 +106,5 @@ namespace EEBUS.UseCases.ControllableSystem
                 return support;
             }
         }
-
-        //public override void FillData<T>(List<T> dataList, Connection connection, Entity entity)
-        //{
-        //    //if (dataList is not List<ElectricalConnectionCharacteristicDataType>)
-        //    //    return;
-
-        //    //List<ElectricalConnectionCharacteristicDataType> eccs = dataList as List<ElectricalConnectionCharacteristicDataType>;
-
-        //    //uint id = (uint)eccs.Count;
-
-        //    //ElectricalConnectionCharacteristicDataType ecc = new();
-        //    //ecc.electricalConnectionId = 0;
-        //    //ecc.parameterId = 0;
-        //    //ecc.characteristicId = id;
-        //    //ecc.characteristicContext = "entity";
-        //    //ecc.characteristicType = "contractualConsumptionNominalMax";
-        //    //ecc.value.number = connection.Local.GetSettings().GetConsumptionNominalMax();
-        //    //ecc.value.scale = 0;
-        //    //ecc.unit = "W";
-
-        //    //eccs.Add(ecc);
-        //}
     }
 }

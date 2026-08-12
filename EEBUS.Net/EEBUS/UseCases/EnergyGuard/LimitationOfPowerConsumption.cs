@@ -18,11 +18,6 @@ namespace EEBUS.UseCases.EnergyGuard
         public LimitationOfPowerConsumption(UseCaseSettings usecaseSettings, Entity entity)
             : base(usecaseSettings, entity)
         {
-            entity.GetOrAdd(Feature.Create("DeviceDiagnosis", "server", entity));
-            entity.GetOrAdd(Feature.Create("LoadControl", "client", entity));
-            entity.GetOrAdd(Feature.Create("DeviceConfiguration", "client", entity));
-            entity.GetOrAdd(Feature.Create("DeviceDiagnosis", "client", entity));
-            entity.GetOrAdd(Feature.Create("ElectricalConnection", "client", entity));
 
 
             if (usecaseSettings.InitLimits != null)
@@ -41,6 +36,18 @@ namespace EEBUS.UseCases.EnergyGuard
                 entity.Local.AddUnique(new FailsafeDurationMinimumKeyValue(entity.Local, xmlFailsafeDuration, true));
             }
 
+        }
+
+        protected override IEnumerable<Feature?> GetFeatures(Entity entity)
+        {
+            //See spec for use case lpc
+            return [
+                Feature.Create("DeviceDiagnosis", "server", entity),
+                Feature.Create("LoadControl", "client", entity),
+                Feature.Create("DeviceConfiguration", "client", entity),
+                Feature.Create("DeviceDiagnosis", "client", entity),
+                Feature.Create("ElectricalConnection", "client", entity)
+            ]; 
         }
 
         protected override List<Scenario> GetScenarios()

@@ -9,87 +9,86 @@ using EEBUS.SPINE.Commands;
 
 namespace EEBUS.UseCases.MonitoringAppliance
 {
-	public class MonitoringOfPowerConsumption : UseCase
-	{
-		static MonitoringOfPowerConsumption()
-		{
-			Register( "monitoringOfPowerConsumption-MonitoringAppliance", new Class() );
-		}
+    public class MonitoringOfPowerConsumption : UseCase
+    {
+        static MonitoringOfPowerConsumption()
+        {
+            Register("monitoringOfPowerConsumption-MonitoringAppliance", new Class());
+        }
 
-		public MonitoringOfPowerConsumption( UseCaseSettings usecaseSettings, Entity entity )
-			: base( usecaseSettings, entity )
-		{
-			MeasurementClientFeature? measurementClient = entity.GetOrAdd( Feature.Create( "Measurement", "client", entity ) ) as MeasurementClientFeature;
-            entity.GetOrAdd(Feature.Create("ElectricalConnection", "client", entity));
+        public MonitoringOfPowerConsumption(UseCaseSettings usecaseSettings, Entity entity)
+            : base(usecaseSettings, entity)
+        {
+            MeasurementClientFeature? measurementClient = entity.Features.Find(f => f.Type == "Measurement" && f.Role == "client") as MeasurementClientFeature;
 
             if (measurementClient != null)
-			{
-				measurementClient.measurementData.Add(new()
-				{
-					measurementId = 0,
-					electricalConnectionParameterDescriptionData = new()
-					{
-						measurementId = 0,
-						electricalConnectionId = 0,
-						voltageType = "ac",
-						acMeasuredPhases = "abc",
-						acMeasuredInReferenceTo = "neutral",
-						acMeasurementType = "real",
-						acMeasurementVariant = "rms",
-					},
-					measurementDescriptionDataType = new()
-					{
-						measurementId = 0,
-						measurementType = "power",
-						commodityType = "electricity",
-						unit = "W",
-						scopeType = "acPowerTotal"
-					},
-					measurementDataType = new()
-					{
-						measurementId = 0,
-						valueType = "value",
-						value = new() { number = usecaseSettings.InitMeasurements?.AcPowerTotal ?? 0, scale = 0 },
-						valueSource = "measuredValue"
-					}
-				});
+            {
+                measurementClient.measurementData.Add(new()
+                {
+                    measurementId = 0,
+                    electricalConnectionParameterDescriptionData = new()
+                    {
+                        measurementId = 0,
+                        electricalConnectionId = 0,
+                        voltageType = "ac",
+                        acMeasuredPhases = "abc",
+                        acMeasuredInReferenceTo = "neutral",
+                        acMeasurementType = "real",
+                        acMeasurementVariant = "rms",
+                    },
+                    measurementDescriptionDataType = new()
+                    {
+                        measurementId = 0,
+                        measurementType = "power",
+                        commodityType = "electricity",
+                        unit = "W",
+                        scopeType = "acPowerTotal"
+                    },
+                    measurementDataType = new()
+                    {
+                        measurementId = 0,
+                        valueType = "value",
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcPowerTotal ?? 0, scale = 0 },
+                        valueSource = "measuredValue"
+                    }
+                });
 
-				measurementClient.measurementData.Add(new()
-				{
-					measurementId = 1,
-					electricalConnectionParameterDescriptionData = new()
-					{
-						measurementId = 1,
-						electricalConnectionId = 0,
-						voltageType = "ac",
-						acMeasurementType = "real",
-						acMeasuredPhases = "a",
-						acMeasuredInReferenceTo = "neutral",
-						acMeasurementVariant = "rms"
-					},
-					measurementDescriptionDataType = new()
-					{
-						measurementId = 1,
-						measurementType = "power",
-						commodityType = "electricity",
-						unit = "W",
-						scopeType = "acPower"
-					},
-					measurementDataType = new()
-					{
-						measurementId = 1,
-						valueType = "value",
-						value = new() { number = usecaseSettings.InitMeasurements?.AcPowerPhaseA ?? 0, scale = 0 },
-						valueSource = "measuredValue"
-					}
-				});
+                measurementClient.measurementData.Add(new()
+                {
+                    measurementId = 1,
+                    electricalConnectionParameterDescriptionData = new()
+                    {
+                        measurementId = 1,
+                        electricalConnectionId = 0,
+                        voltageType = "ac",
+                        acMeasurementType = "real",
+                        acMeasuredPhases = "a",
+                        acMeasuredInReferenceTo = "neutral",
+                        acMeasurementVariant = "rms"
+                    },
+                    measurementDescriptionDataType = new()
+                    {
+                        measurementId = 1,
+                        measurementType = "power",
+                        commodityType = "electricity",
+                        unit = "W",
+                        scopeType = "acPower"
+                    },
+                    measurementDataType = new()
+                    {
+                        measurementId = 1,
+                        valueType = "value",
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcPowerPhaseA ?? 0, scale = 0 },
+                        valueSource = "measuredValue"
+                    }
+                });
 
                 measurementClient.measurementData.Add(new()
                 {
                     measurementId = 2,
                     electricalConnectionParameterDescriptionData = new()
                     {
-						measurementId = 2,
+                        measurementId = 2,
                         electricalConnectionId = 0,
                         voltageType = "ac",
                         acMeasurementType = "real",
@@ -99,7 +98,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
                     },
                     measurementDescriptionDataType = new()
                     {
-						measurementId = 2,
+                        measurementId = 2,
                         measurementType = "power",
                         commodityType = "electricity",
                         unit = "W",
@@ -107,7 +106,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
                     },
                     measurementDataType = new()
                     {
-						measurementId = 2,
+                        measurementId = 2,
                         valueType = "value",
                         value = new() { number = usecaseSettings.InitMeasurements?.AcPowerPhaseB ?? 0, scale = 0 },
                         valueSource = "measuredValue"
@@ -119,7 +118,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
                     measurementId = 3,
                     electricalConnectionParameterDescriptionData = new()
                     {
-						measurementId = 3,
+                        measurementId = 3,
                         electricalConnectionId = 0,
                         voltageType = "ac",
                         acMeasurementType = "real",
@@ -129,7 +128,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
                     },
                     measurementDescriptionDataType = new()
                     {
-						measurementId = 3,
+                        measurementId = 3,
                         measurementType = "power",
                         commodityType = "electricity",
                         unit = "W",
@@ -137,7 +136,7 @@ namespace EEBUS.UseCases.MonitoringAppliance
                     },
                     measurementDataType = new()
                     {
-						measurementId = 3,
+                        measurementId = 3,
                         valueType = "value",
                         value = new() { number = usecaseSettings.InitMeasurements?.AcPowerPhaseC ?? 0, scale = 0 },
                         valueSource = "measuredValue"
@@ -145,270 +144,278 @@ namespace EEBUS.UseCases.MonitoringAppliance
                 });
 
                 measurementClient.measurementData.Add(new()
-				{
-					measurementId = 4,
-					electricalConnectionParameterDescriptionData = new()
-					{
-						measurementId = 4,
-						electricalConnectionId = 0,
-						voltageType = "ac",
-						acMeasurementType = "real",
-						
-					},
-					measurementDescriptionDataType = new()
-					{
-						measurementId = 4,
-						measurementType = "energy",
-						commodityType = "electricity",
-						unit = "Wh",
-						scopeType = "acEnergyConsumed"
-					},
-					measurementDataType = new()
-					{
-						measurementId = 4,
-						valueType = "value",
-						value = new() { number = usecaseSettings.InitMeasurements?.AcEnergyConsumed ?? 0, scale = 0 },
-						valueSource = "measuredValue"
-					}
-				});
+                {
+                    measurementId = 4,
+                    electricalConnectionParameterDescriptionData = new()
+                    {
+                        measurementId = 4,
+                        electricalConnectionId = 0,
+                        voltageType = "ac",
+                        acMeasurementType = "real",
 
-				measurementClient.measurementData.Add(new()
-				{
-					measurementId = 5,
-					electricalConnectionParameterDescriptionData = new()
-					{
-						measurementId = 5,
-						electricalConnectionId = 0,
-						voltageType = "ac",
-						acMeasuredPhases = "a",
-					},
-					measurementDescriptionDataType = new()
-					{
-						measurementId = 5,
-						measurementType = "current",
-						commodityType = "electricity",
-						unit = "A",
-						scopeType = "acCurrent"
-					},
-					measurementDataType = new()
-					{
-						measurementId = 5,
-						valueType = "value",
-						value = new() { number = usecaseSettings.InitMeasurements?.AcCurrentPhaseA ?? 0, scale = 0 },
-						valueSource = "measuredValue"
-					}
-				});
+                    },
+                    measurementDescriptionDataType = new()
+                    {
+                        measurementId = 4,
+                        measurementType = "energy",
+                        commodityType = "electricity",
+                        unit = "Wh",
+                        scopeType = "acEnergyConsumed"
+                    },
+                    measurementDataType = new()
+                    {
+                        measurementId = 4,
+                        valueType = "value",
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcEnergyConsumed ?? 0, scale = 0 },
+                        valueSource = "measuredValue"
+                    }
+                });
 
-				measurementClient.measurementData.Add(new()
-				{
-					measurementId = 6,
-					electricalConnectionParameterDescriptionData = new()
-					{
-						measurementId = 6,
-						electricalConnectionId = 0,
-						voltageType = "ac",
-						acMeasuredPhases = "b",
-					},
-					measurementDescriptionDataType = new()
-					{
-						measurementId = 6,
-						measurementType = "current",
-						commodityType = "electricity",
-						unit = "A",
-						scopeType = "acCurrent"
-					},
-					measurementDataType = new()
-					{
-						measurementId = 6,
-						valueType = "value",
-						value = new() { number = usecaseSettings.InitMeasurements?.AcCurrentPhaseB ?? 0, scale = 0 },
-						valueSource = "measuredValue"
-					}
-				});
+                measurementClient.measurementData.Add(new()
+                {
+                    measurementId = 5,
+                    electricalConnectionParameterDescriptionData = new()
+                    {
+                        measurementId = 5,
+                        electricalConnectionId = 0,
+                        voltageType = "ac",
+                        acMeasuredPhases = "a",
+                    },
+                    measurementDescriptionDataType = new()
+                    {
+                        measurementId = 5,
+                        measurementType = "current",
+                        commodityType = "electricity",
+                        unit = "A",
+                        scopeType = "acCurrent"
+                    },
+                    measurementDataType = new()
+                    {
+                        measurementId = 5,
+                        valueType = "value",
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcCurrentPhaseA ?? 0, scale = 0 },
+                        valueSource = "measuredValue"
+                    }
+                });
 
-				measurementClient.measurementData.Add(new()
-				{
-					measurementId = 7,
-					electricalConnectionParameterDescriptionData = new()
-					{
-						measurementId = 7,
-						electricalConnectionId = 0,
-						voltageType = "ac",
-						acMeasuredPhases = "c",
-					},
-					measurementDescriptionDataType = new()
-					{
-						measurementId = 7,
-						measurementType = "current",
-						commodityType = "electricity",
-						unit = "A",
-						scopeType = "acCurrent"
-					},
-					measurementDataType = new()
-					{
-						measurementId = 7,
-						valueType = "value",
-						value = new() { number = usecaseSettings.InitMeasurements?.AcCurrentPhaseC ?? 0, scale = 0 },
-						valueSource = "measuredValue"
-					}
-				});
+                measurementClient.measurementData.Add(new()
+                {
+                    measurementId = 6,
+                    electricalConnectionParameterDescriptionData = new()
+                    {
+                        measurementId = 6,
+                        electricalConnectionId = 0,
+                        voltageType = "ac",
+                        acMeasuredPhases = "b",
+                    },
+                    measurementDescriptionDataType = new()
+                    {
+                        measurementId = 6,
+                        measurementType = "current",
+                        commodityType = "electricity",
+                        unit = "A",
+                        scopeType = "acCurrent"
+                    },
+                    measurementDataType = new()
+                    {
+                        measurementId = 6,
+                        valueType = "value",
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcCurrentPhaseB ?? 0, scale = 0 },
+                        valueSource = "measuredValue"
+                    }
+                });
 
-				measurementClient.measurementData.Add(new()
-				{
-					measurementId = 8,
-					electricalConnectionParameterDescriptionData = new()
-					{
-						measurementId = 8,
-						electricalConnectionId = 0,
-						voltageType = "ac",
-						acMeasuredPhases = "a",
-						acMeasuredInReferenceTo = "neutral",
-						acMeasurementType = "apparent",
-						acMeasurementVariant = "rms",
-					},
-					measurementDescriptionDataType = new()
-					{
-						measurementId = 8,
-						measurementType = "voltage",
-						commodityType = "electricity",
-						unit = "V",
-						scopeType = "acVoltage"
-					},
-					measurementDataType = new()
-					{
-						measurementId = 8,
-						valueType = "value",
-						value = new() { number = usecaseSettings.InitMeasurements?.AcVoltagePhaseA ?? 0, scale = 0 },
-						valueSource = "measuredValue"
-					}
-				});
+                measurementClient.measurementData.Add(new()
+                {
+                    measurementId = 7,
+                    electricalConnectionParameterDescriptionData = new()
+                    {
+                        measurementId = 7,
+                        electricalConnectionId = 0,
+                        voltageType = "ac",
+                        acMeasuredPhases = "c",
+                    },
+                    measurementDescriptionDataType = new()
+                    {
+                        measurementId = 7,
+                        measurementType = "current",
+                        commodityType = "electricity",
+                        unit = "A",
+                        scopeType = "acCurrent"
+                    },
+                    measurementDataType = new()
+                    {
+                        measurementId = 7,
+                        valueType = "value",
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcCurrentPhaseC ?? 0, scale = 0 },
+                        valueSource = "measuredValue"
+                    }
+                });
 
-				measurementClient.measurementData.Add(new()
-				{
-					measurementId = 9,
-					electricalConnectionParameterDescriptionData = new()
-					{
-						measurementId = 9,
-						electricalConnectionId = 0,
-						voltageType = "ac",
-						acMeasuredPhases = "b",
-						acMeasuredInReferenceTo = "neutral",
-						acMeasurementType = "apparent",
-						acMeasurementVariant = "rms",
-					},
-					measurementDescriptionDataType = new()
-					{
-						measurementId = 9,
-						measurementType = "voltage",
-						commodityType = "electricity",
-						unit = "V",
-						scopeType = "acVoltage"
-					},
-					measurementDataType = new()
-					{
-						measurementId = 9,
-						valueType = "value",
-						value = new() { number = usecaseSettings.InitMeasurements?.AcVoltagePhaseB ?? 0, scale = 0 },
-						valueSource = "measuredValue"
-					}
-				});
+                measurementClient.measurementData.Add(new()
+                {
+                    measurementId = 8,
+                    electricalConnectionParameterDescriptionData = new()
+                    {
+                        measurementId = 8,
+                        electricalConnectionId = 0,
+                        voltageType = "ac",
+                        acMeasuredPhases = "a",
+                        acMeasuredInReferenceTo = "neutral",
+                        acMeasurementType = "apparent",
+                        acMeasurementVariant = "rms",
+                    },
+                    measurementDescriptionDataType = new()
+                    {
+                        measurementId = 8,
+                        measurementType = "voltage",
+                        commodityType = "electricity",
+                        unit = "V",
+                        scopeType = "acVoltage"
+                    },
+                    measurementDataType = new()
+                    {
+                        measurementId = 8,
+                        valueType = "value",
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcVoltagePhaseA ?? 0, scale = 0 },
+                        valueSource = "measuredValue"
+                    }
+                });
 
-				measurementClient.measurementData.Add(new()
-				{
-					measurementId = 10,
-					electricalConnectionParameterDescriptionData = new()
-					{
-						measurementId = 10,
-						electricalConnectionId = 0,
-						voltageType = "ac",
-						acMeasuredPhases = "c",
-						acMeasuredInReferenceTo = "neutral",
-						acMeasurementType = "apparent",
-						acMeasurementVariant = "rms",
-					},
-					measurementDescriptionDataType = new()
-					{
-						measurementId = 10,
-						measurementType = "voltage",
-						commodityType = "electricity",
-						unit = "V",
-						scopeType = "acVoltage"
-					},
-					measurementDataType = new()
-					{
-						measurementId = 10,
-						valueType = "value",
-						value = new() { number = usecaseSettings.InitMeasurements?.AcVoltagePhaseC ?? 0, scale = 0 },
-						valueSource = "measuredValue"
-					}
-				});
+                measurementClient.measurementData.Add(new()
+                {
+                    measurementId = 9,
+                    electricalConnectionParameterDescriptionData = new()
+                    {
+                        measurementId = 9,
+                        electricalConnectionId = 0,
+                        voltageType = "ac",
+                        acMeasuredPhases = "b",
+                        acMeasuredInReferenceTo = "neutral",
+                        acMeasurementType = "apparent",
+                        acMeasurementVariant = "rms",
+                    },
+                    measurementDescriptionDataType = new()
+                    {
+                        measurementId = 9,
+                        measurementType = "voltage",
+                        commodityType = "electricity",
+                        unit = "V",
+                        scopeType = "acVoltage"
+                    },
+                    measurementDataType = new()
+                    {
+                        measurementId = 9,
+                        valueType = "value",
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcVoltagePhaseB ?? 0, scale = 0 },
+                        valueSource = "measuredValue"
+                    }
+                });
 
-				measurementClient.measurementData.Add(new()
-				{
-					measurementId = 11,
-					electricalConnectionParameterDescriptionData = new()
-					{
-						measurementId = 11,
-						electricalConnectionId = 0,
-						voltageType = "ac",
-					},
-					measurementDescriptionDataType = new()
-					{
-						measurementId = 11,
-						measurementType = "frequency",
-						commodityType = "electricity",
-						unit = "Hz",
-						scopeType = "acFrequency"
-					},
-					measurementDataType = new()
-					{
-						measurementId = 11,
-						valueType = "value",
-						value = new() { number = usecaseSettings.InitMeasurements?.AcFrequency ?? 0, scale = 0 },
-						valueSource = "measuredValue"
-					}
-				});
-			}
-		}
+                measurementClient.measurementData.Add(new()
+                {
+                    measurementId = 10,
+                    electricalConnectionParameterDescriptionData = new()
+                    {
+                        measurementId = 10,
+                        electricalConnectionId = 0,
+                        voltageType = "ac",
+                        acMeasuredPhases = "c",
+                        acMeasuredInReferenceTo = "neutral",
+                        acMeasurementType = "apparent",
+                        acMeasurementVariant = "rms",
+                    },
+                    measurementDescriptionDataType = new()
+                    {
+                        measurementId = 10,
+                        measurementType = "voltage",
+                        commodityType = "electricity",
+                        unit = "V",
+                        scopeType = "acVoltage"
+                    },
+                    measurementDataType = new()
+                    {
+                        measurementId = 10,
+                        valueType = "value",
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcVoltagePhaseC ?? 0, scale = 0 },
+                        valueSource = "measuredValue"
+                    }
+                });
+
+                measurementClient.measurementData.Add(new()
+                {
+                    measurementId = 11,
+                    electricalConnectionParameterDescriptionData = new()
+                    {
+                        measurementId = 11,
+                        electricalConnectionId = 0,
+                        voltageType = "ac",
+                    },
+                    measurementDescriptionDataType = new()
+                    {
+                        measurementId = 11,
+                        measurementType = "frequency",
+                        commodityType = "electricity",
+                        unit = "Hz",
+                        scopeType = "acFrequency"
+                    },
+                    measurementDataType = new()
+                    {
+                        measurementId = 11,
+                        valueType = "value",
+                        value = new() { number = usecaseSettings.InitMeasurements?.AcFrequency ?? 0, scale = 0 },
+                        valueSource = "measuredValue"
+                    }
+                });
+            }
+        }
+
+        protected override IEnumerable<Feature?> GetFeatures(Entity entity)
+        {
+            return [
+                Feature.Create("Measurement", "client", entity),
+                Feature.Create("ElectricalConnection", "client", entity)
+            ];
+        }
 
         protected override List<Scenario> GetScenarios()
         {
-			return [
-				new Scenario(1, true, "Monitor power"),
-				new Scenario(2, true, "Monitor current"),
-				new Scenario(3, true, "Monitor energy"),
-				new Scenario(4, true, "Monitor voltage"),
-				new Scenario(5, true, "Monitor frequency"),
-			];
+            return [
+                new Scenario(1, true, "Monitor power"),
+                new Scenario(2, true, "Monitor current"),
+                new Scenario(3, true, "Monitor energy"),
+                new Scenario(4, true, "Monitor voltage"),
+                new Scenario(5, true, "Monitor frequency"),
+            ];
         }
 
-		public new class Class : UseCase.Class
-		{
-			public override UseCase Create( UseCaseSettings usecaseSettings, Entity entity )
-			{
-				return new MonitoringOfPowerConsumption( usecaseSettings, entity );
-			}
-		}
+        public new class Class : UseCase.Class
+        {
+            public override UseCase Create(UseCaseSettings usecaseSettings, Entity entity)
+            {
+                return new MonitoringOfPowerConsumption(usecaseSettings, entity);
+            }
+        }
 
-		public override string Actor { get { return "MonitoringAppliance"; } }
+        public override string Actor { get { return "MonitoringAppliance"; } }
 
-		public override UseCaseSupportType Information
-		{
-			get
-			{
-				List<uint> scenarios = new();
-				foreach ( var scenario in Scenarios )
-					scenarios.Add( scenario.Index );
+        public override UseCaseSupportType Information
+        {
+            get
+            {
+                List<uint> scenarios = new();
+                foreach (var scenario in Scenarios)
+                    scenarios.Add(scenario.Index);
 
-				UseCaseSupportType support = new();
-				support.useCaseName				   = "monitoringOfPowerConsumption";
-				support.useCaseVersion			   = "1.0.0";
-				support.useCaseAvailable		   = true;
-				support.scenarioSupport			   = scenarios.ToArray();
-				support.useCaseDocumentSubRevision = "release";
+                UseCaseSupportType support = new();
+                support.useCaseName = "monitoringOfPowerConsumption";
+                support.useCaseVersion = "1.0.0";
+                support.useCaseAvailable = true;
+                support.scenarioSupport = scenarios.ToArray();
+                support.useCaseDocumentSubRevision = "release";
 
-				return support;
-			}
-		}
-	}
+                return support;
+            }
+        }
+    }
 }

@@ -48,7 +48,7 @@ namespace EEBUS.SHIP.Messages
         }
 
         public static DataMessage CreateRead(AddressType source, AddressType destination, SpineCmdPayloadBase? payload) => Create(source, destination, "read", payload);
-        public static DataMessage CreateSubscription(AddressType source, AddressType destination, string serverFeatureType, string clientDeviceId, string serverDeviceId)
+        public static DataMessage CreateSubscription(AddressType clientAddress, AddressType serverAddress, string serverFeatureType, string clientDeviceId, string serverDeviceId)
         {
             //Fixed address for subscription
             var messageSource = new AddressType()
@@ -68,8 +68,8 @@ namespace EEBUS.SHIP.Messages
 
             NodeManagementSubscriptionRequestCall callPayload = new NodeManagementSubscriptionRequestCall();
             SubscriptionRequestType subscriptionRequest = callPayload.cmd[0].nodeManagementSubscriptionRequestCall.subscriptionRequest;
-            subscriptionRequest.clientAddress = source;
-            subscriptionRequest.serverAddress = destination;
+            subscriptionRequest.clientAddress = clientAddress;
+            subscriptionRequest.serverAddress = serverAddress;
             subscriptionRequest.serverFeatureType = serverFeatureType;
 
             return Create(messageSource, messageDestination, "call", callPayload);

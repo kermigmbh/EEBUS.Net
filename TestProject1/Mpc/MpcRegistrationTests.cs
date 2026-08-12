@@ -39,6 +39,11 @@ namespace TestProject1.Mpc
                                 Type = "monitoringOfPowerConsumption",
                                 Actor = "MonitoredUnit",
                             },
+                            new UseCaseSettings
+                            {
+                                Type = "monitoringOfPowerConsumption",
+                                Actor = "MonitoringAppliance",
+                            },
                         ],
                     },
                 ],

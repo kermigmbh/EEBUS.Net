@@ -1,8 +1,9 @@
-﻿using System.Xml;
-using EEBUS.DataStructures;
+﻿using EEBUS.DataStructures;
 using EEBUS.KeyValues;
 using EEBUS.Models;
+using EEBUS.Net.EEBUS.Data.DataStructures;
 using EEBUS.SPINE.Commands;
+using System.Xml;
 
 namespace EEBUS.UseCases.EnergyGuard
 {
@@ -16,11 +17,21 @@ namespace EEBUS.UseCases.EnergyGuard
         public LimitationOfPowerProduction(UseCaseSettings usecaseSettings, Entity entity)
             : base(usecaseSettings, entity)
         {
-            entity.GetOrAdd(Feature.Create("DeviceDiagnosis", "server", entity));
-            entity.GetOrAdd(Feature.Create("LoadControl", "client", entity));
-            entity.GetOrAdd(Feature.Create("DeviceConfiguration", "client", entity));
-            entity.GetOrAdd(Feature.Create("DeviceDiagnosis", "client", entity));
-            entity.GetOrAdd(Feature.Create("ElectricalConnection", "client", entity));
+            if (usecaseSettings.InitLimits != null)
+            {
+                bool active = usecaseSettings.InitLimits.Active;
+                long limit = usecaseSettings.InitLimits.Limit;
+                long failsafeLimit = usecaseSettings.InitLimits.FailsafeLimit;
+
+                string xmlDuration = XmlConvert.ToString(usecaseSettings.InitLimits.Duration);
+                string xmlFailsafeDuration = XmlConvert.ToString(usecaseSettings.InitLimits.FailsafeDurationMinimum);
+
+                entity.Local.Add(new LoadControlLimitDataStructure("produce", limit, 0, xmlDuration, active));
+                entity.Local.Add(new ElectricalConnectionCharacteristicDataStructure("contractualProductionNominalMax", usecaseSettings.InitLimits.NominalMax, 0));
+
+                entity.Local.AddUnique(new FailsafeProductionActivePowerLimitKeyValue(entity.Local, failsafeLimit, 0, true));
+                entity.Local.AddUnique(new FailsafeDurationMinimumKeyValue(entity.Local, xmlFailsafeDuration, true));
+            }
         }
 
         protected override List<Scenario> GetScenarios()
@@ -30,6 +41,18 @@ namespace EEBUS.UseCases.EnergyGuard
                 new Scenario(2, true, "Failsafe values"),
                 new Scenario(3, true, "Heartbeat"),
                 new Scenario(4, true, "Constraints")
+            ];
+        }
+
+        protected override IEnumerable<Feature?> GetFeatures(Entity entity)
+        {
+            //See spec for use case lpc
+            return [
+                Feature.Create("DeviceDiagnosis", "server", entity),
+                Feature.Create("LoadControl", "client", entity),
+                Feature.Create("DeviceConfiguration", "client", entity),
+                Feature.Create("DeviceDiagnosis", "client", entity),
+                Feature.Create("ElectricalConnection", "client", entity)
             ];
         }
 

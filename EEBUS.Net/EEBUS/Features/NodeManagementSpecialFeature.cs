@@ -18,7 +18,10 @@ namespace EEBUS.Features
 			this.Functions.Add( new Function( "nodeManagementUseCaseData",			   true,  false ) );
 			this.Functions.Add( new Function( "nodeManagementSubscriptionDeleteCall",  false, false ) );
 			this.Functions.Add( new Function( "nodeManagementBindingDeleteCall",	   false, false ) );
-			this.Functions.Add( new Function( "nodeManagementDestinationListData",	   true,  false ) );
+			
+			//This function is not implemented in our stack, but it's optional, so we can just leave it out
+			//this.Functions.Add( new Function( "nodeManagementDestinationListData",	   true,  false ) );
+			
 			this.Functions.Add( new Function( "nodeManagementSubscriptionData",		   true,  false ) );
 			this.Functions.Add( new Function( "nodeManagementSubscriptionRequestCall", false, false ) );
 			this.Functions.Add( new Function( "nodeManagementBindingRequestCall",	   false, false ) );
