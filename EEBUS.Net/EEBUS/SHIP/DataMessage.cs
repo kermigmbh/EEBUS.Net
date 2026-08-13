@@ -33,13 +33,14 @@ namespace EEBUS.SHIP.Messages
             this.data.payload = payload;
         }
 
-        private static DataMessage Create(AddressType source, AddressType destination, string cmdClassifier, SpineCmdPayloadBase? payload)
+        private static DataMessage Create(AddressType source, AddressType destination, string cmdClassifier, SpineCmdPayloadBase? payload, bool ackRequest = false)
         {
             SpineDatagramPayload messagePayload = new SpineDatagramPayload();
             messagePayload.datagram.header.addressSource = source;
             messagePayload.datagram.header.addressDestination = destination;
             messagePayload.datagram.header.msgCounter = DataMessage.NextCount;
             messagePayload.datagram.header.cmdClassifier = cmdClassifier;
+            messagePayload.datagram.header.ackRequest = ackRequest;
 
             messagePayload.datagram.payload = payload?.ToJsonNode();
             DataMessage message = new DataMessage();
@@ -72,7 +73,7 @@ namespace EEBUS.SHIP.Messages
             subscriptionRequest.serverAddress = serverAddress;
             subscriptionRequest.serverFeatureType = serverFeatureType;
 
-            return Create(messageSource, messageDestination, "call", callPayload);
+            return Create(messageSource, messageDestination, "call", callPayload, true);
         }
         public static DataMessage CreateBinding(AddressType source, AddressType destination, string serverFeatureType, string clientDeviceId, string serverDeviceId)
         {
@@ -98,7 +99,7 @@ namespace EEBUS.SHIP.Messages
             request.serverAddress = destination;
             request.serverFeatureType = serverFeatureType;
 
-            return Create(messageSource, messageDestination, "call", callPayload);
+            return Create(messageSource, messageDestination, "call", callPayload, true);
         }
 
         public DataMessage(SpineDatagramPayload datagram)

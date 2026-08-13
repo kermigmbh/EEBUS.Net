@@ -33,10 +33,10 @@ namespace EEBUS.Models
                 if (EqualIndex(featureInfo.description.featureAddress.entity))
                 {
                     var feature = Feature.Create(featureInfo, this);
-                    if (feature != null)
+                    if (feature != null && !this.Features.Any(f => f.Type == feature.Type && f.Role == feature.Role))
                     {
-                        //this.Features.Add(feature);   GetOrAdd prevents a duplicate feature with the same type and role from being added to the list
-                        GetOrAdd(feature);
+                        this.Features.Add(feature); 
+                        //GetOrAdd(feature);    we can not use this because it changes the feature index! e.g. if we fill this data for a remote device the indices do not match anymore!
                     }
                 }
             }
