@@ -20,7 +20,7 @@ namespace EEBUS.SPINE.Commands
                     return null;
 
                 NodeManagementSubscriptionData payload = new NodeManagementSubscriptionData();
-                payload.cmd[0].subscriptionEntry = connection.BindingAndSubscriptionManager.GetSubscriptions().Select(s => new NodeManagementSubscriptionEntryDataType()
+                payload.cmd[0].nodeManagementSubscriptionData.subscriptionEntry = connection.BindingAndSubscriptionManager.GetSubscriptions().Select(s => new NodeManagementSubscriptionEntryDataType()
                 {
                     clientAddress = s.clientAddress,
                     serverAddress = s.serverAddress
@@ -36,6 +36,12 @@ namespace EEBUS.SPINE.Commands
 
     [System.SerializableAttribute()]
     public class CmdNodeManagementSubscriptionDataType : CmdType
+    {
+        public NodeManagementSubscriptionDataType nodeManagementSubscriptionData { get; set; } = new();
+    }
+
+    [System.SerializableAttribute()]
+    public class NodeManagementSubscriptionDataType
     {
         public List<NodeManagementSubscriptionEntryDataType> subscriptionEntry { get; set; } = new();
     }

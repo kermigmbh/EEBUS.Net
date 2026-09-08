@@ -2,6 +2,7 @@
 using EEBUS.Models;
 using EEBUS.Net;
 using EEBUS.Net.EEBUS.Models;
+using EEBUS.Spine.Commands;
 using EEBUS.SPINE.Commands;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -72,6 +73,31 @@ namespace EEBUS.SHIP.Messages
             subscriptionRequest.clientAddress = clientAddress;
             subscriptionRequest.serverAddress = serverAddress;
             subscriptionRequest.serverFeatureType = serverFeatureType;
+
+            return Create(messageSource, messageDestination, "call", callPayload, true);
+        }
+        public static DataMessage CreateSubscriptionDelete(AddressType clientAddress, AddressType serverAddress, string clientDeviceId, string serverDeviceId)
+        {
+            //Fixed address for subscription
+            var messageSource = new AddressType()
+            {
+                device = clientDeviceId,
+                entity = [0],
+                feature = 0
+            };
+
+            //Fixed address for subscription
+            var messageDestination = new AddressType()
+            {
+                device = serverDeviceId,
+                entity = [0],
+                feature = 0
+            };
+
+            NodeManagementSubscriptionDeleteCall callPayload = new NodeManagementSubscriptionDeleteCall();
+            SubscriptionDeleteType subscriptionDelete = callPayload.cmd[0].nodeManagementSubscriptionDeleteCall.subscriptionDelete;
+            subscriptionDelete.clientAddress = clientAddress;
+            subscriptionDelete.serverAddress = serverAddress;
 
             return Create(messageSource, messageDestination, "call", callPayload, true);
         }
