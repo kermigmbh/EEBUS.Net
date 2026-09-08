@@ -93,6 +93,24 @@ namespace EEBUS.Net
             return true;
         }
 
+        public bool TryRemoveSubscription(AddressType clientAddress, AddressType serverAddress/*, string serverFeatureType*/)
+        {
+            lock (_lock)
+            {
+                var entry = _subsriptions.FirstOrDefault(b =>
+                                b.clientAddress.feature == clientAddress.feature &&
+                                b.clientAddress.entity.SequenceEqual(clientAddress.entity) &&
+                                b.serverAddress.feature == serverAddress.feature &&
+                                b.serverAddress.entity.SequenceEqual(serverAddress.entity)
+                                );
+                if (entry != null)
+                {
+                    _subsriptions.Remove(entry);
+                    return true;
+                }
+            }
+            return false;
+        }
 
         public bool HasBinding(AddressType clientAddress, AddressType serverAddress/*, string serverFeatureType*/)
         {
@@ -113,6 +131,14 @@ namespace EEBUS.Net
             {
                 return _bindings
                     .Where(binding => binding.serverFeatureType == featureType);
+            }
+        }
+
+        public IEnumerable<BindingSubscriptionInfo> GetSubscriptions()
+        {
+            lock (_lock)
+            {
+                return _subsriptions.AsReadOnly();
             }
         }
 
