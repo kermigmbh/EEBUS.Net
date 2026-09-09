@@ -19,13 +19,14 @@ namespace EEBUS.SPINE.Commands
                 if (datagram.header.cmdClassifier != "read")
                     return null;
 
-                NodeManagementSubscriptionData payload = new NodeManagementSubscriptionData();
-                payload.cmd[0].nodeManagementSubscriptionData.subscriptionEntry = connection.BindingAndSubscriptionManager.GetSubscriptions().Select(s => new NodeManagementSubscriptionEntryDataType()
+                NodeManagementSubscriptionData data = new NodeManagementSubscriptionData();
+                data.cmd[0].nodeManagementSubscriptionData.subscriptionEntry = connection.BindingAndSubscriptionManager.GetSubscriptions().Select(s => new NodeManagementSubscriptionEntryDataType()
                 {
                     clientAddress = s.clientAddress,
                     serverAddress = s.serverAddress
                 }).ToList();
-                return payload;
+
+                return data;
             }
             public override SpineCmdPayloadBase CreateRead(Connection connection)
             {
@@ -34,19 +35,16 @@ namespace EEBUS.SPINE.Commands
         }
     }
 
-    [System.SerializableAttribute()]
     public class CmdNodeManagementSubscriptionDataType : CmdType
     {
         public NodeManagementSubscriptionDataType nodeManagementSubscriptionData { get; set; } = new();
     }
 
-    [System.SerializableAttribute()]
     public class NodeManagementSubscriptionDataType
     {
         public List<NodeManagementSubscriptionEntryDataType> subscriptionEntry { get; set; } = new();
     }
 
-    [System.SerializableAttribute()]
     public class NodeManagementSubscriptionEntryDataType
     {
         public AddressType clientAddress { get; set; } = new();

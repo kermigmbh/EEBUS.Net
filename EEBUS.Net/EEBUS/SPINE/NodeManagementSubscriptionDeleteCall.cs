@@ -1,10 +1,9 @@
 ﻿using EEBUS.Messages;
-using EEBUS.SPINE.Commands;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace EEBUS.Spine.Commands
+namespace EEBUS.SPINE.Commands
 {
     public class NodeManagementSubscriptionDeleteCall : SpineCmdPayload<CmdNodeManagementSubscriptionDeleteCallType>
     {
@@ -40,19 +39,16 @@ namespace EEBUS.Spine.Commands
         }
     }
 
-    [System.SerializableAttribute()]
     public class CmdNodeManagementSubscriptionDeleteCallType : CmdType
     {
         public NodeManagementSubscriptionDeleteCallType nodeManagementSubscriptionDeleteCall { get; set; } = new();
     }
 
-    [System.SerializableAttribute()]
     public class NodeManagementSubscriptionDeleteCallType
     {
         public SubscriptionDeleteType subscriptionDelete { get; set; } = new();
     }
 
-    [System.SerializableAttribute()]
     public class SubscriptionDeleteType
     {
         public AddressType clientAddress { get; set; } = new();
