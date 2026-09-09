@@ -125,6 +125,31 @@ namespace EEBUS.SHIP.Messages
 
             return Create(messageSource, messageDestination, "call", callPayload, true);
         }
+        public static DataMessage CreateBindingDelete(AddressType clientAddress, AddressType serverAddress, string clientDeviceId, string serverDeviceId)
+        {
+            //Fixed address for binding
+            var messageSource = new AddressType()
+            {
+                device = clientDeviceId,
+                entity = [0],
+                feature = 0
+            };
+
+            //Fixed address for binding
+            var messageDestination = new AddressType()
+            {
+                device = serverDeviceId,
+                entity = [0],
+                feature = 0
+            };
+
+            NodeManagementBindingDeleteCall callPayload = new NodeManagementBindingDeleteCall();
+            BindingDeleteType bindingDelete = callPayload.cmd[0].nodeManagementBindingDeleteCall.bindingDelete;
+            bindingDelete.clientAddress = clientAddress;
+            bindingDelete.serverAddress = serverAddress;
+
+            return Create(messageSource, messageDestination, "call", callPayload, true);
+        }
 
         public DataMessage(SpineDatagramPayload datagram)
         {

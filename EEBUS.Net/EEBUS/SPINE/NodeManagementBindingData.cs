@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace EEBUS.Net.EEBUS.SPINE
+namespace EEBUS.SPINE.Commands
 {
     public class NodeManagementBindingData : SpineCmdPayload<CmdNodeManagementBindingDataType>
     {

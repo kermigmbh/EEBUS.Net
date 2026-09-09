@@ -1,14 +1,8 @@
 ﻿using EEBUS;
 using EEBUS.Messages;
-using EEBUS.Models;
 using EEBUS.Net;
 using EEBUS.SHIP.Messages;
-using EEBUS.Spine.Commands;
 using EEBUS.SPINE.Commands;
-using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Text.Json.Nodes;
 
 namespace TestProject1.ConsistencyTests
 {
@@ -49,6 +43,57 @@ namespace TestProject1.ConsistencyTests
             // Read subscription data -> subscription must be gone
             entries = await ReadSubscriptionEntriesAsync(connection, clientAddress);
             Assert.Empty(entries);
+        }
+
+        [Fact]
+        public async Task Binding_IsAdded_AndRemoved_ViaNodeManagementCalls()
+        {
+            Connection connection = GetDefaultMockConnection();
+            SetRemoteDiscoveryData(connection);
+            Assert.NotNull(connection.Remote);
+
+            const string serverFeatureType = "LoadControl";
+            AddressType clientAddress = new AddressType { device = connection.Remote.DeviceId, entity = [1], feature = 1 };
+            AddressType? serverAddress = connection.Local.GetFeatureAddress(serverFeatureType, server: true);
+            Assert.NotNull(serverAddress);
+
+            // Bind
+            SpineDatagramPayload bindingRequest = DataMessage.CreateBinding(clientAddress, serverAddress, serverFeatureType, connection.Remote.DeviceId, connection.Local.DeviceId).SpineDatagramPayload;
+            SpineDatagramPayload? bindingAnswer = await bindingRequest.CreateAnswerAsync(DataMessage.NextCount, connection);
+            Assert.NotNull(bindingAnswer);
+            Assert.Equal("result", bindingAnswer.datagram.header.cmdClassifier);
+
+            // Read binding data -> binding must be present
+            List<NodeManagementBindingEntryDataType> entries = await ReadBindingEntriesAsync(connection, clientAddress);
+            Assert.Single(entries);
+            Assert.Equal(clientAddress, entries[0].clientAddress);
+            Assert.Equal(serverAddress, entries[0].serverAddress);
+
+            // Delete binding
+            SpineDatagramPayload deleteRequest = DataMessage.CreateBindingDelete(clientAddress, serverAddress, connection.Remote.DeviceId, connection.Local.DeviceId).SpineDatagramPayload;
+            SpineDatagramPayload? deleteAnswer = await deleteRequest.CreateAnswerAsync(DataMessage.NextCount, connection);
+            Assert.NotNull(deleteAnswer);
+            Assert.Equal("result", deleteAnswer.datagram.header.cmdClassifier);
+
+            // Read binding data -> binding must be gone
+            entries = await ReadBindingEntriesAsync(connection, clientAddress);
+            Assert.Empty(entries);
+        }
+
+        private async Task<List<NodeManagementBindingEntryDataType>> ReadBindingEntriesAsync(Connection connection, AddressType clientAddress)
+        {
+            AddressType nodeManagementAddress = new AddressType { device = connection.Local.DeviceId, entity = [0], feature = 0 };
+            SpineDatagramPayload readRequest = DataMessage.CreateRead(clientAddress, nodeManagementAddress, new NodeManagementBindingData()).SpineDatagramPayload;
+            SpineDatagramPayload? answer = await readRequest.CreateAnswerAsync(DataMessage.NextCount, connection);
+            Assert.NotNull(answer);
+            Assert.Equal("reply", answer.datagram.header.cmdClassifier);
+            Assert.NotNull(answer.datagram.payload);
+
+            NodeManagementBindingData? data = JsonHelper.FromJsonNode<NodeManagementBindingData>(answer.datagram.payload);
+            Assert.NotNull(data);
+            Assert.Single(data.cmd);
+
+            return data.cmd[0].nodeManagementBindingData.bindingEntry;
         }
 
         private async Task<List<NodeManagementSubscriptionEntryDataType>> ReadSubscriptionEntriesAsync(Connection connection, AddressType clientAddress)

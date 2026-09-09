@@ -1,10 +1,9 @@
 ﻿using EEBUS.Messages;
-using EEBUS.SPINE.Commands;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace EEBUS.Net.EEBUS.SPINE
+namespace EEBUS.SPINE.Commands
 {
     public class NodeManagementBindingDeleteCall : SpineCmdPayload<CmdNodeManagementBindingDeleteCallType>
     {
@@ -39,7 +38,6 @@ namespace EEBUS.Net.EEBUS.SPINE
                 return new NodeManagementBindingDeleteCall();
             }
         }
-    {
     }
 
     public class CmdNodeManagementBindingDeleteCallType : CmdType
