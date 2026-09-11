@@ -261,7 +261,7 @@ namespace EEBUS.SPINE.Commands
 					FailsafeDurationMinimumKeyValue? failsafeDurationKeyValue = localDevice.GetKeyValue<FailsafeDurationMinimumKeyValue>();
 					if (failsafeDurationKeyValue != null)
 					{
-						failsafeDurationKeyValue.Duration = XmlConvert.ToString(deviceData.FailSafe.LimitDuration.Value);
+						failsafeDurationKeyValue.Duration = XmlConvert.ToString(TimeSpan.FromSeconds(deviceData.FailSafe.LimitDuration.Value));
 						didChange = true;
 					}
 				}
