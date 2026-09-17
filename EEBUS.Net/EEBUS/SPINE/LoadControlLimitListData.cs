@@ -370,7 +370,15 @@ namespace EEBUS.SPINE.Commands
     [System.SerializableAttribute()]
     public class CmdLoadControlLimitListDataType : CmdType
     {
-        public string function { get; set; } = "loadControlLimitListData";
+        public string? function
+        {
+            get
+            {
+                if (filter == null) return null;
+                return "loadControlLimitListData";
+            }
+        }
+
         public LoadControlLimitListDataFilterType[]? filter { get; set; }
         public LoadControlLimitListDataType loadControlLimitListData { get; set; } = new();
     }

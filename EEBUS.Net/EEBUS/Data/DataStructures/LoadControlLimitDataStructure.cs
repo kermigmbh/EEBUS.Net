@@ -22,6 +22,7 @@ namespace EEBUS.DataStructures
 			this.EndTime		= duration;
 			this.Number			= value;
 			this.Scale			= scale;
+			this.Unit = "W";
 		}
 
 		private uint   limitId;
@@ -36,6 +37,7 @@ namespace EEBUS.DataStructures
 		public string?  EndTime		  { get; set; }
 		public long	   Number		  { get; set; }
 		public short   Scale		  { get; set; }
+		public string Unit { get; set; }
 
 		public override uint Id
 		{
@@ -77,8 +79,9 @@ namespace EEBUS.DataStructures
 				descriptionData.limitDirection = this.LimitDirection;
 				descriptionData.measurementId  = this.measurementId;
 				descriptionData.scopeType	   = this.scopeType;
+				descriptionData.unit = this.Unit;
 
-				return descriptionData;
+                return descriptionData;
 			}
 		}
 

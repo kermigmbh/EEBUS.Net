@@ -30,8 +30,8 @@ namespace EEBUS.SPINE.Commands
             {
                 ElectricalConnectionCharacteristicListData payload = new ElectricalConnectionCharacteristicListData();
                 payload.cmd = [new()];
-                payload.cmd[0].function = "electricalConnectionCharacteristicListData";
-                payload.cmd[0].filter = [new()];
+                //payload.cmd[0].function = "electricalConnectionCharacteristicListData";
+                //payload.cmd[0].filter = [new()];
                 payload.cmd[0].electricalConnectionCharacteristicListData = new();
 
                 //connection.Local.FillData<ElectricalConnectionCharacteristicDataType>( eccs, connection );
@@ -166,8 +166,15 @@ namespace EEBUS.SPINE.Commands
     [System.SerializableAttribute()]
     public class CmdElectricalConnectionCharacteristicListDataType : CmdType
     {
-        public string function { get; set; } = "electricalConnectionCharacteristicListData";
-        public FilterType[] filter { get; set; }
+        public string? function
+        {
+            get
+            {
+                if (filter == null) return null;
+                return "electricalConnectionCharacteristicListData";
+            }
+        }
+        public FilterType[]? filter { get; set; }
         public ElectricalConnectionCharacteristicListDataType electricalConnectionCharacteristicListData { get; set; } = new();
     }
 

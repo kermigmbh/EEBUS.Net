@@ -163,7 +163,14 @@ namespace EEBUS.SPINE.Commands
     public class CmdMeasurementListDataType : CmdType
     {
         [JsonPropertyName("function")]
-        public string function { get; set; } = "measurementListData";
+        public string? function
+        {
+            get
+            {
+                if (filter == null) return null;
+                return "measurementListData";
+            }
+        }
 
         [JsonPropertyName("filter")]
         public FilterType[] filter { get; set; }
