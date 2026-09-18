@@ -409,7 +409,7 @@ namespace EEBUS
             PushDataMessage(message);
         }
 
-        private AddressType? GetLocalHeartbeatAddress(bool server)
+        public AddressType? GetLocalHeartbeatAddress(bool server)
         {
             string role = server ? "server" : "client";
 
@@ -427,7 +427,7 @@ namespace EEBUS
             }
         }
 
-        private AddressType? GetRemoteHeartbeatAddress(bool server)
+        public AddressType? GetRemoteHeartbeatAddress(bool server)
         {
             if (Remote == null) return null;
 
@@ -445,10 +445,10 @@ namespace EEBUS
                 /* If the communication partner has multiple entities which offer the DeviceDiagnosis feature, we will try to find the one which is bound to our LoadControl feature.
                  * This is specified in the testing specification for lpc and lpp.
                  */
-                BindingSubscriptionInfo? binding = BindingAndSubscriptionManager.GetBindings("LoadControl").FirstOrDefault();
-                if (binding == null) return null;
+                BindingSubscriptionInfo? loadControlBinding = BindingAndSubscriptionManager.GetBindings("LoadControl").FirstOrDefault();
+                if (loadControlBinding == null) return null;
 
-                Entity? entity = Remote.Entities.FirstOrDefault(e => e.Index.SequenceEqual(binding.serverAddress.entity));
+                Entity? entity = Remote.Entities.FirstOrDefault(e => e.Index.SequenceEqual(loadControlBinding.clientAddress.entity));  //get remote entity which is bound to our LoadControl feature
                 Feature? feature = entity?.Features.Find(f => null != f && f.Type == "DeviceDiagnosis" && f.Role == role);
                 if (entity != null && feature != null)
                 {

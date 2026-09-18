@@ -55,7 +55,7 @@ namespace TestProject1
             return payload;
         }
 
-        protected void SetDiscoveryData(Connection connection, string discoveryMessage)
+        protected void SetRemoteDiscoveryData(Connection connection, string discoveryMessage)
         {
             if (connection.Remote == null) return;
 
@@ -68,7 +68,7 @@ namespace TestProject1
             connection.Remote.SetDiscoveryData(discoveryData, connection);
         }
 
-        protected void SetUseCaseData(Connection connection, string useCaseMessage)
+        protected void SetRemoteUseCaseData(Connection connection, string useCaseMessage)
         {
             if (connection.Remote == null) return;
 

@@ -25,7 +25,7 @@ namespace TestProject1
             SpineDatagramPayload payload = GetPayload(EEBusMessages.LoadControl_Write_DeleteTimePeriod_AndUpdate);
 
             Connection testConnection = GetDefaultMockConnection();
-            SetDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
+            SetRemoteDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
             testConnection.BindingAndSubscriptionManager.TryAddOrUpdateClientBinding(payload.datagram.header.addressSource, payload.datagram.header.addressDestination, "LoadControl");
 
             await payload.EvaluateAsync(testConnection);
@@ -103,7 +103,7 @@ namespace TestProject1
         {
             // Arrange
             Connection connection = GetDefaultMockConnection();
-            SetDiscoveryData(connection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
+            SetRemoteDiscoveryData(connection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
 
             JsonNode? capturedPayload = null;
             AddressType capturedAddress = default;
@@ -136,7 +136,7 @@ namespace TestProject1
         {
             // Arrange
             Connection connection = GetDefaultMockConnection();
-            SetDiscoveryData(connection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
+            SetRemoteDiscoveryData(connection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
 
             JsonNode? capturedPayload = null;
             connection.Local.AddUseCaseEvents(new CapturingNotifyEventHandler(
@@ -206,7 +206,7 @@ namespace TestProject1
         {
             // Arrange
             Connection testConnection = GetDefaultMockConnection();
-            SetDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
+            SetRemoteDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
 
             SpineDatagramPayload payload = GetPayload(EEBusMessages.LoadControl_Write_DeleteTimePeriod_AndUpdate);
             testConnection.BindingAndSubscriptionManager.TryAddOrUpdateClientBinding(
@@ -240,7 +240,7 @@ namespace TestProject1
         {
             // Arrange
             Connection testConnection = GetDefaultMockConnection();
-            SetDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
+            SetRemoteDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
 
             SpineDatagramPayload payload = GetPayload(EEBusMessages.LoadControl_Write_UpdateOnly);
             testConnection.BindingAndSubscriptionManager.TryAddOrUpdateClientBinding(
@@ -274,7 +274,7 @@ namespace TestProject1
         {
             // Arrange
             Connection testConnection = GetDefaultMockConnection();
-            SetDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
+            SetRemoteDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
 
             SpineDatagramPayload payload = GetPayload(EEBusMessages.LoadControl_Write_DeleteTimePeriod_AndUpdate);
             testConnection.BindingAndSubscriptionManager.TryAddOrUpdateClientBinding(
@@ -309,7 +309,7 @@ namespace TestProject1
         {
             // Arrange
             Connection testConnection = GetDefaultMockConnection();
-            SetDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
+            SetRemoteDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
 
             SpineDatagramPayload payload = GetPayload(EEBusMessages.LoadControl_Write_DeleteTimePeriod_AndUpdate);
             // Note: NOT adding binding
@@ -339,7 +339,7 @@ namespace TestProject1
         {
             // Arrange
             Connection testConnection = GetDefaultMockConnection();
-            SetDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
+            SetRemoteDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
 
             // First update - delete timePeriod and update value
             SpineDatagramPayload payload1 = GetPayload(EEBusMessages.LoadControl_Write_DeleteTimePeriod_AndUpdate);

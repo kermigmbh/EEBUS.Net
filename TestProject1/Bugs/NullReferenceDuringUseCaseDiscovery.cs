@@ -41,8 +41,8 @@ namespace TestProject1.Bugs
         {
             Connection connection = GetDefaultMockConnection();
 
-            SetDiscoveryData(connection, NodeDiscoveryData);
-            SetUseCaseData(connection, UseCaseDiscoveryData);
+            SetRemoteDiscoveryData(connection, NodeDiscoveryData);
+            SetRemoteUseCaseData(connection, UseCaseDiscoveryData);
         }
 
         protected override DeviceSettings GetDeviceSettings()

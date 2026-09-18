@@ -35,8 +35,8 @@ namespace TestProject1.Bugs
         {
             Connection connection = GetDefaultMockConnection();
 
-            SetDiscoveryData(connection, NodeDiscoveryData);
-            SetUseCaseData(connection, UseCaseDiscoveryData);
+            SetRemoteDiscoveryData(connection, NodeDiscoveryData);
+            SetRemoteUseCaseData(connection, UseCaseDiscoveryData);
 
             SpineDatagramPayload payload = GetPayload(SubscriptionRequestCall);
             SpineDatagramPayload? answer = await payload.CreateAnswerAsync(DataMessage.NextCount, connection);
@@ -48,8 +48,8 @@ namespace TestProject1.Bugs
         {
             Connection connection = GetDefaultMockConnection();
 
-            SetDiscoveryData(connection, NodeDiscoveryData);
-            SetUseCaseData(connection, UseCaseDiscoveryData);
+            SetRemoteDiscoveryData(connection, NodeDiscoveryData);
+            SetRemoteUseCaseData(connection, UseCaseDiscoveryData);
 
             SpineDatagramPayload payload = GetPayload(BindingRequestCall);
             SpineDatagramPayload? answer = await payload.CreateAnswerAsync(DataMessage.NextCount, connection);
