@@ -34,7 +34,7 @@ namespace EEBUS
 				Name	= fullyQualifiedName,
 				Strings	= { "txtvers=1" }
 			} );
-			foreach ( IPAddress item in addresses ?? MulticastService.GetLinkLocalAddresses() )
+			foreach ( IPAddress item in addresses ?? EEBusServiceDiscovery.GetLinkLocalAddresses() )
 			{
 				Resources.Add( AddressRecord.Create( HostName, item ) );
 			}

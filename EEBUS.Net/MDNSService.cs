@@ -24,7 +24,7 @@ namespace EEBUS
             this.settings = options.Value;
             this.serviceProfile = new EEBusServiceProfile(Dns.GetHostName(), this.settings.Device.Id, "_ship._tcp", this.settings.Device.Port);
 
-            _sd = serviceDiscovery ?? new ServiceDiscovery();
+            _sd = serviceDiscovery ?? new EEBusServiceDiscovery();
             _serviceDiscoveryNeedsDispose = serviceDiscovery == null;
         }
 
@@ -33,7 +33,7 @@ namespace EEBUS
             this.settings = settings.Get<Settings>();
             this.serviceProfile = new EEBusServiceProfile(Dns.GetHostName(), this.settings.Device.Id, "_ship._tcp", this.settings.Device.Port);
 
-            _sd = serviceDiscovery ?? new ServiceDiscovery();
+            _sd = serviceDiscovery ?? new EEBusServiceDiscovery();
             _serviceDiscoveryNeedsDispose = serviceDiscovery == null;
         }
 
@@ -42,7 +42,7 @@ namespace EEBUS
             this.serviceProfile = new EEBusServiceProfile(Dns.GetHostName(), deviceId, "_ship._tcp", devicePort);
 
             _serviceDiscoveryNeedsDispose = serviceDiscovery == null;
-            _sd = serviceDiscovery ?? new ServiceDiscovery();
+            _sd = serviceDiscovery ?? new EEBusServiceDiscovery();
         }
 
         public void AddProperty(string key, string value)

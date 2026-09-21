@@ -65,7 +65,7 @@ namespace EEBUS.Net
             if (serviceDiscovery == null)
             {
                 _serviceDiscoveryNeedsDispose = true;
-                serviceDiscovery = new ServiceDiscovery();
+                serviceDiscovery = new EEBusServiceDiscovery();
             }
 
             foreach (string ns in new string[] {"EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands", "EEBUS.Entities",

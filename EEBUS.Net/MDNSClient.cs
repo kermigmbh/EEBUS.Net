@@ -26,7 +26,7 @@ namespace EEBUS
         public MDNSClient(ServiceDiscovery? serviceDiscovery = null, Func<bool>? allowShipPairingEvaluation = null, ILogger? logger = null)
         {
             _serviceDiscoveryNeedsDispose = serviceDiscovery == null;
-            this._serviceDiscovery = serviceDiscovery ?? new ServiceDiscovery();
+            this._serviceDiscovery = serviceDiscovery ?? new EEBusServiceDiscovery();
             _allowShipPairingEvaluation = allowShipPairingEvaluation;
             _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
         }
