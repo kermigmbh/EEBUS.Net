@@ -370,6 +370,7 @@ namespace EEBUS
 
             if (clientAddress == null || serverAddress == null)
             {
+                Logger?.LogInformation("HeartbeatSubscription: Could not find valid client or server address for heartbeat subscription. ClientAddress: {clientAddress}, ServerAddress: {serverAddress}", clientAddress, serverAddress);
                 return;
             }
 
@@ -381,7 +382,12 @@ namespace EEBUS
 
             //DataMessage message = new DataMessage();
             //message.SetPayload(JsonHelper.ToJsonNode(call) ?? throw new Exception("Failed to serialize heartbeat subscription message"));
-            if (Remote == null) return;
+            if (Remote == null)
+            {
+                Logger?.LogInformation("HeartbeatSubscription: Remote device is not available.");
+                return;
+            }
+
             DataMessage message = DataMessage.CreateSubscription(clientAddress, serverAddress, "DeviceDiagnosis", Local.DeviceId, Remote.DeviceId);
             PushDataMessage(message);
         }

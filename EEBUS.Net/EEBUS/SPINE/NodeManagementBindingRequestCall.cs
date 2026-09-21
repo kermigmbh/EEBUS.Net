@@ -24,24 +24,29 @@ namespace EEBUS.SPINE.Commands
                     return null;
 
                 bool success = false;
+				string serverFeatureType = string.Empty;
                 var bindingReq = FromJsonNode(datagram.payload);
                 if (bindingReq != null && bindingReq.cmd.FirstOrDefault()?.nodeManagementBindingRequestCall.bindingRequest is BindingRequestType req)
                 {
+					serverFeatureType = req.serverFeatureType;
                     success = connection.BindingAndSubscriptionManager.TryAddOrUpdateClientBinding(req.clientAddress, req.serverAddress, req.serverFeatureType);
                 }
 
 
 				if (success)
 				{
+					if (serverFeatureType == "LoadControl")
+					{
+						connection.HeartbeatSubscription();
+					}
                     ResultData payload = new ResultData();
-
                     return payload;
                 }
                 //Reject
                 return null;
 
             }
-		}
+        }
 	}
 
 	[System.SerializableAttribute()]
