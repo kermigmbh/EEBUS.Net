@@ -10,6 +10,11 @@ namespace EEBUS
         public string BasePath { get; set; } = string.Empty;
         public DeviceSettings Device { get; set; }
         public bool UseStrictShipPairing { get; set; } = false;
+        /// <summary>
+        /// Hide IPv4 link-local (169.254/16) addresses from mDNS on interfaces that also have a routable IPv4 address
+        /// (e.g. an <c>eth0:0</c> alias). Set to <c>false</c> to get the plain library behavior.
+        /// </summary>
+        public bool FilterLinkLocalAddresses { get; set; } = true;
     }
 
     public class DeviceSettings

@@ -34,6 +34,16 @@ namespace EEBUS
         }
 
         /// <summary>
+        /// Creates a started <see cref="ServiceDiscovery"/>. With <paramref name="filterLinkLocalAddresses"/> set to
+        /// <c>true</c> the IPv4 link-local filtering of <see cref="EEBusServiceDiscovery"/> is used, otherwise the plain
+        /// library behavior.
+        /// </summary>
+        public static ServiceDiscovery Create(bool filterLinkLocalAddresses)
+        {
+            return filterLinkLocalAddresses ? new EEBusServiceDiscovery() : new ServiceDiscovery();
+        }
+
+        /// <summary>
         /// Wraps each interface so that IPv4 link-local addresses are hidden if a routable IPv4 address exists.
         /// </summary>
         public static IEnumerable<NetworkInterface> FilterNetworkInterfaces(IEnumerable<NetworkInterface> nics)
@@ -52,6 +62,14 @@ namespace EEBUS
                 .Select(u => u.Address)
                 .Where(a => a.AddressFamily == AddressFamily.InterNetwork ||
                             (a.AddressFamily == AddressFamily.InterNetworkV6 && a.IsIPv6LinkLocal));
+        }
+
+        /// <summary>
+        /// Returns the addresses to advertise, matching the behavior selected by <see cref="Create"/>.
+        /// </summary>
+        public static IEnumerable<IPAddress> GetLinkLocalAddresses(bool filterLinkLocalAddresses)
+        {
+            return filterLinkLocalAddresses ? GetLinkLocalAddresses() : MulticastService.GetLinkLocalAddresses();
         }
 
         internal static bool IsIPv4LinkLocal(IPAddress address)

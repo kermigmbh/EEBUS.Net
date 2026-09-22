@@ -37,7 +37,7 @@ Console.WriteLine("  library:  " + string.Join(", ", MulticastService.GetLinkLoc
 Console.WriteLine("  filtered: " + string.Join(", ", EEBusServiceDiscovery.GetLinkLocalAddresses()));
 Console.WriteLine();
 
-using ServiceDiscovery sd = useFilter ? new EEBusServiceDiscovery() : new ServiceDiscovery();
+using ServiceDiscovery sd = EEBusServiceDiscovery.Create(useFilter);
 
 sd.Mdns.NetworkInterfaceDiscovered += (_, e) =>
 {
@@ -63,7 +63,8 @@ sd.ServiceInstanceDiscovered += (_, e) =>
 
 if (advertise)
 {
-    var profile = new EEBusServiceProfile(Dns.GetHostName(), "Kermi-EEBUS-Mdns-Demo", "_shiptest._tcp", 7200);
+    var profile = new EEBusServiceProfile(Dns.GetHostName(), "Kermi-EEBUS-Mdns-Demo", "_shiptest._tcp", 7200,
+        EEBusServiceDiscovery.GetLinkLocalAddresses(useFilter));
     profile.AddProperty("txtvers", "1");
     profile.AddProperty("id", "Kermi-EEBUS-Mdns-Demo");
     profile.AddProperty("path", "/ship/");

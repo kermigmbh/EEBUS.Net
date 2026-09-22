@@ -22,27 +22,30 @@ namespace EEBUS
         public MDNSService(IOptions<Settings> options, ServiceDiscovery? serviceDiscovery = null)
         {
             this.settings = options.Value;
-            this.serviceProfile = new EEBusServiceProfile(Dns.GetHostName(), this.settings.Device.Id, "_ship._tcp", this.settings.Device.Port);
+            this.serviceProfile = new EEBusServiceProfile(Dns.GetHostName(), this.settings.Device.Id, "_ship._tcp", this.settings.Device.Port,
+                EEBusServiceDiscovery.GetLinkLocalAddresses(this.settings.FilterLinkLocalAddresses));
 
-            _sd = serviceDiscovery ?? new EEBusServiceDiscovery();
+            _sd = serviceDiscovery ?? EEBusServiceDiscovery.Create(this.settings.FilterLinkLocalAddresses);
             _serviceDiscoveryNeedsDispose = serviceDiscovery == null;
         }
 
         public MDNSService(IConfigurationSection settings, ServiceDiscovery? serviceDiscovery = null)
         {
             this.settings = settings.Get<Settings>();
-            this.serviceProfile = new EEBusServiceProfile(Dns.GetHostName(), this.settings.Device.Id, "_ship._tcp", this.settings.Device.Port);
+            this.serviceProfile = new EEBusServiceProfile(Dns.GetHostName(), this.settings.Device.Id, "_ship._tcp", this.settings.Device.Port,
+                EEBusServiceDiscovery.GetLinkLocalAddresses(this.settings.FilterLinkLocalAddresses));
 
-            _sd = serviceDiscovery ?? new EEBusServiceDiscovery();
+            _sd = serviceDiscovery ?? EEBusServiceDiscovery.Create(this.settings.FilterLinkLocalAddresses);
             _serviceDiscoveryNeedsDispose = serviceDiscovery == null;
         }
 
-        public MDNSService(string deviceId, ushort devicePort, ServiceDiscovery? serviceDiscovery = null)
+        public MDNSService(string deviceId, ushort devicePort, ServiceDiscovery? serviceDiscovery = null, bool filterLinkLocalAddresses = true)
         {
-            this.serviceProfile = new EEBusServiceProfile(Dns.GetHostName(), deviceId, "_ship._tcp", devicePort);
+            this.serviceProfile = new EEBusServiceProfile(Dns.GetHostName(), deviceId, "_ship._tcp", devicePort,
+                EEBusServiceDiscovery.GetLinkLocalAddresses(filterLinkLocalAddresses));
 
             _serviceDiscoveryNeedsDispose = serviceDiscovery == null;
-            _sd = serviceDiscovery ?? new EEBusServiceDiscovery();
+            _sd = serviceDiscovery ?? EEBusServiceDiscovery.Create(filterLinkLocalAddresses);
         }
 
         public void AddProperty(string key, string value)

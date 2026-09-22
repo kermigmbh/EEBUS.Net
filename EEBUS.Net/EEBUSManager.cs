@@ -65,7 +65,7 @@ namespace EEBUS.Net
             if (serviceDiscovery == null)
             {
                 _serviceDiscoveryNeedsDispose = true;
-                serviceDiscovery = new EEBusServiceDiscovery();
+                serviceDiscovery = EEBusServiceDiscovery.Create(settings.FilterLinkLocalAddresses);
             }
 
             foreach (string ns in new string[] {"EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands", "EEBUS.Entities",
@@ -83,7 +83,7 @@ namespace EEBUS.Net
             byte[] hash = SHA1.HashData(_cert.GetPublicKey());
 
             _mDNSClient = new MDNSClient(serviceDiscovery, CanEvaluateShipPairingRequests, logger);
-            _mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port, serviceDiscovery);
+            _mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port, serviceDiscovery, settings.FilterLinkLocalAddresses);
 
             LocalDevice localDevice = _devices.GetOrCreateLocal(hash, settings.Device);
 
