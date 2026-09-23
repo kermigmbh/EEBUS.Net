@@ -14,15 +14,20 @@ namespace EEBUS.Net
 
 
 
-        public bool IsKnownFeature(AddressType clientAddress, AddressType serverAddress, string serverFeatureType)
+        public bool IsKnownFeature(AddressType clientAddress, AddressType serverAddress, string serverFeatureType, BindingSubscriptionDirection direction = BindingSubscriptionDirection.Incoming)
         {
-            var localEntity = _connection.Local.Entities.FirstOrDefault(e => e.Index.SequenceEqual(serverAddress.entity));
-            var localFeature = localEntity?.Features.FirstOrDefault(f => f.Index == serverAddress.feature && /*f.Type == serverFeatureType &&*/ f.Role is "server" or "special" );
+            // Incoming: the remote device is the client, our local device is the server.
+            // Outgoing: our local device is the client, the remote device is the server.
+            global::EEBUS.Models.Device? serverDevice = direction == BindingSubscriptionDirection.Incoming ? _connection.Local : _connection.Remote;
+            global::EEBUS.Models.Device? clientDevice = direction == BindingSubscriptionDirection.Incoming ? _connection.Remote : _connection.Local;
 
-            var remoteEntity = _connection.Remote?.Entities.FirstOrDefault(e => e.Index.SequenceEqual(clientAddress.entity));
-            var remoteFeature = remoteEntity?.Features.FirstOrDefault(f => f.Index == clientAddress.feature && /*f.Type == serverFeatureType &&*/ f.Role is "client" or "special");
+            var serverEntity = serverDevice?.Entities.FirstOrDefault(e => e.Index.SequenceEqual(serverAddress.entity));
+            var serverFeature = serverEntity?.Features.FirstOrDefault(f => f.Index == serverAddress.feature && /*f.Type == serverFeatureType &&*/ f.Role is "server" or "special" );
 
-            if (localFeature == null || remoteFeature == null)
+            var clientEntity = clientDevice?.Entities.FirstOrDefault(e => e.Index.SequenceEqual(clientAddress.entity));
+            var clientFeature = clientEntity?.Features.FirstOrDefault(f => f.Index == clientAddress.feature && /*f.Type == serverFeatureType &&*/ f.Role is "client" or "special");
+
+            if (serverFeature == null || clientFeature == null)
             {
                 return false;
             }
@@ -31,7 +36,7 @@ namespace EEBUS.Net
 
         public bool TryAddOrUpdateClientBinding(AddressType clientAddress, AddressType serverAddress, string serverFeatureType, BindingSubscriptionDirection direction)
         {
-            if (!IsKnownFeature(clientAddress, serverAddress, serverFeatureType))
+            if (!IsKnownFeature(clientAddress, serverAddress, serverFeatureType, direction))
             {
                 return false;
             }
@@ -66,7 +71,7 @@ namespace EEBUS.Net
 
         public bool TryAddOrUpdateSubscription(AddressType clientAddress, AddressType serverAddress, string serverFeatureType, BindingSubscriptionDirection direction)
         {
-            if (!IsKnownFeature(clientAddress, serverAddress, serverFeatureType))
+            if (!IsKnownFeature(clientAddress, serverAddress, serverFeatureType, direction))
             {
                 return false;
             }
