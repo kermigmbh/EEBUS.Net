@@ -66,7 +66,7 @@ namespace EEBUS.SHIP.Messages
                 feature = 0
             };
 
-            SpineCmdPayloadBase callPayload = SpineCmdPayloadBase.GetClass("nodeManagementSubscriptionRequestCall").CreateCall(connection, clientAddress, serverAddress, serverFeatureType);
+            SpineCmdPayloadBase? callPayload = SpineCmdPayloadBase.GetClass("nodeManagementSubscriptionRequestCall")?.CreateCall(connection, clientAddress, serverAddress, serverFeatureType);
 
             return Create(messageSource, messageDestination, "call", callPayload, true);
         }
@@ -88,7 +88,7 @@ namespace EEBUS.SHIP.Messages
                 feature = 0
             };
 
-            SpineCmdPayloadBase callPayload = SpineCmdPayloadBase.GetClass("nodeManagementSubscriptionDeleteCall").CreateCall(connection, clientAddress, serverAddress);
+            SpineCmdPayloadBase? callPayload = SpineCmdPayloadBase.GetClass("nodeManagementSubscriptionDeleteCall")?.CreateCall(connection, clientAddress, serverAddress);
 
             return Create(messageSource, messageDestination, "call", callPayload, true);
         }
@@ -110,7 +110,7 @@ namespace EEBUS.SHIP.Messages
                 feature = 0
             };
 
-            SpineCmdPayloadBase callPayload = SpineCmdPayloadBase.GetClass("nodeManagementBindingRequestCall").CreateCall(connection, clientAddress, serverAddress, serverFeatureType);
+            SpineCmdPayloadBase? callPayload = SpineCmdPayloadBase.GetClass("nodeManagementBindingRequestCall")?.CreateCall(connection, clientAddress, serverAddress, serverFeatureType);
 
             return Create(messageSource, messageDestination, "call", callPayload, true);
         }
@@ -132,7 +132,7 @@ namespace EEBUS.SHIP.Messages
                 feature = 0
             };
 
-            SpineCmdPayloadBase callPayload = SpineCmdPayloadBase.GetClass("nodeManagementBindingDeleteCall").CreateCall(connection, clientAddress, serverAddress);
+            SpineCmdPayloadBase? callPayload = SpineCmdPayloadBase.GetClass("nodeManagementBindingDeleteCall")?.CreateCall(connection, clientAddress, serverAddress);
 
 
             return Create(messageSource, messageDestination, "call", callPayload, true);

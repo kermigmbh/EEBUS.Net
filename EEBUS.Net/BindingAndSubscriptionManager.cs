@@ -157,7 +157,7 @@ namespace EEBUS.Net
             {
                 if (featureType == null)
                 {
-                    return _bindings.AsReadOnly();
+                    return _bindings.Where(b => b.Direction == direction).ToList();
                 }
                 else
                 {

@@ -6,7 +6,7 @@ using EEBUS.SPINE.Commands;
 
 namespace TestProject1.ConsistencyTests
 {
-    public class BindingAndScubscriptionTests : EebusTests
+    public class BindingAndSubscriptionTests : EebusTests
     {
         const string RemoteDeviceId = "TestRemoteDevice";
 
