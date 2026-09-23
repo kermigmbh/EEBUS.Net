@@ -1,8 +1,4 @@
-using System.Reflection;
-using System.Runtime.CompilerServices;
-
-using EEBUS;
-using EEBUS.Messages;
+﻿using EEBUS;
 using EEBUS.Models;
 using EEBUS.SHIP.Messages;
 
@@ -11,83 +7,20 @@ namespace TestProject1.Ship
     /// <summary>
     /// Tests für Reconnect-Verhalten und SKI-basierte Geräteerkennung.
     /// </summary>
-    public class ShipReconnectTests
+    public class ShipReconnectTests : ShipTestBase
     {
-        private const string LocalSki  = "662728a479fa2fcf28e6d9e7855e996ab1d850a2";
-        private const string RemoteSki = "c09ff4c4dc2916414714662366f968f4743af7b7";
-        private const string RemoteId  = "TestRemote";
-
-        // ── Testhelfer ────────────────────────────────────────────────────────
-
-        private sealed class TestClient : Client
-        {
-            public TestClient(FakeWebSocket ws, Devices devices, RemoteDevice remote)
-                : base(default, ws, devices, remote) { }
-
-            public void SetState(
-                Connection.EState    s,
-                Connection.ESubState ss = Connection.ESubState.None)
-            {
-                state    = s;
-                subState = ss;
-            }
-        }
-
-        private sealed class TestServer : Server
-        {
-            public TestServer(FakeWebSocket ws, Devices devices)
-                : base(string.Empty, default, ws, devices) { }
-
-            public void SetState(
-                Connection.EState    s,
-                Connection.ESubState ss = Connection.ESubState.None)
-            {
-                state    = s;
-                subState = ss;
-            }
-            
-            public RemoteDevice? LookupById(string id) => GetRemote(id);
-        }
-
-        private static byte[] GetSkiBytes(string ski)
-            => Enumerable.Range(0, ski.Length / 2)
-                         .Select(x => Convert.ToByte(ski.Substring(x * 2, 2), 16))
-                         .ToArray();
-
-        private Devices CreateDevices(bool withRegisteredRemote = true)
-        {
-            var devices = new Devices();
-            devices.GetOrCreateLocal(
-                GetSkiBytes(LocalSki),
-                new DeviceSettings
-                {
-                    Name    = "ReconnectTest", Id     = "Reconnect-Test",
-                    Model   = "Test",          Brand  = "Test",
-                    Type    = "EnergyManagementSystem",
-                    Serial  = "RC001",         Port   = 7300,
-                    Entities = [new EntitySettings { Type = "DeviceInformation" }],
-                });
-
-            if (withRegisteredRemote)
-            {
-                devices.GetOrCreateRemote(RemoteId, RemoteSki, string.Empty, "TestRemote");
-            }
-
-            return devices;
-        }
-
         [Fact]
         public void Ski_FromHexString_RoundTripsToString()
         {
-            var ski = new SKI(LocalSki);
-            Assert.Equal(LocalSki, ski.ToString());
+            var ski = new SKI(DefaultLocalSki);
+            Assert.Equal(DefaultLocalSki, ski.ToString());
         }
 
         [Fact]
         public void Ski_EqualityOperator_TrueForIdenticalBytes()
         {
-            var a = new SKI(LocalSki);
-            var b = new SKI(LocalSki);
+            var a = new SKI(DefaultLocalSki);
+            var b = new SKI(DefaultLocalSki);
             Assert.True(a == b,  "Gleiche Bytes müssen == ergeben.");
             Assert.False(a != b, "Gleiche Bytes dürfen != nicht ergeben.");
         }
@@ -95,8 +28,8 @@ namespace TestProject1.Ship
         [Fact]
         public void Ski_InequalityOperator_TrueForDifferentBytes()
         {
-            var a = new SKI(LocalSki);
-            var b = new SKI(RemoteSki);
+            var a = new SKI(DefaultLocalSki);
+            var b = new SKI(DefaultRemoteSki);
             Assert.True(a != b, "Verschiedene Bytes müssen != ergeben.");
         }
         
@@ -104,7 +37,7 @@ namespace TestProject1.Ship
         public void Devices_GetOrCreateRemote_RejectsSelfSki()
         {
             var devices = CreateDevices(withRegisteredRemote: false);
-            var result  = devices.GetOrCreateRemote("self", LocalSki, string.Empty, "Self");
+            var result  = devices.GetOrCreateRemote("self", DefaultLocalSki, string.Empty, "Self");
             Assert.Null(result);
         }
 
@@ -112,8 +45,8 @@ namespace TestProject1.Ship
         public void Devices_GetOrCreateRemote_ReusesByDeviceId()
         {
             var devices = CreateDevices(withRegisteredRemote: false);
-            var first   = devices.GetOrCreateRemote(RemoteId, RemoteSki, string.Empty, "R");
-            var second  = devices.GetOrCreateRemote(RemoteId, RemoteSki, string.Empty, "R");
+            var first   = devices.GetOrCreateRemote(DefaultRemoteId, DefaultRemoteSki, string.Empty, "R");
+            var second  = devices.GetOrCreateRemote(DefaultRemoteId, DefaultRemoteSki, string.Empty, "R");
 
             Assert.Same(first, second);
             Assert.Single(devices.GetRemotes());
@@ -146,11 +79,11 @@ namespace TestProject1.Ship
 
             // Erste Server-Instanz (erste Verbindung)
             var server1 = new TestServer(new FakeWebSocket(), devices);
-            var found1  = server1.LookupById(RemoteId);
+            var found1  = server1.LookupById(DefaultRemoteId);
 
             // Zweite Server-Instanz (Reconnect) – gleicher Devices-Container
             var server2 = new TestServer(new FakeWebSocket(), devices);
-            var found2  = server2.LookupById(RemoteId);
+            var found2  = server2.LookupById(DefaultRemoteId);
 
             Assert.NotNull(found1);
             Assert.NotNull(found2);

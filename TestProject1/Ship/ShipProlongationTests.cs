@@ -1,8 +1,4 @@
-using System.Reflection;
-using System.Runtime.CompilerServices;
-
 using EEBUS;
-using EEBUS.Models;
 using EEBUS.SHIP.Messages;
 
 namespace TestProject1.Ship
@@ -10,51 +6,11 @@ namespace TestProject1.Ship
     /// <summary>
     /// Tests für die SHIP-Prolongation-Logik.
     /// </summary>
-    public class ShipProlongationTests
+    public class ShipProlongationTests : ShipTestBase
     {
-        // ──────────────────────────────────────────────────────────────────────
-        // TestClient – erlaubt manuelles Setzen von State/SubState
-        // ──────────────────────────────────────────────────────────────────────
-
-        private sealed class TestClient : Client
-        {
-            public TestClient(FakeWebSocket ws, Devices devices, RemoteDevice remote)
-                : base(default, ws, devices, remote) { }
-
-            public void SetState(
-                Connection.EState    s,
-                Connection.ESubState ss = Connection.ESubState.None)
-            {
-                state    = s;
-                subState = ss;
-            }
-        }
-
         // ──────────────────────────────────────────────────────────────────────
         // Hilfsmethoden
         // ──────────────────────────────────────────────────────────────────────
-
-        private static byte[] GetSkiBytes(string ski)
-            => Enumerable.Range(0, ski.Length / 2)
-                         .Select(x => Convert.ToByte(ski.Substring(x * 2, 2), 16))
-                         .ToArray();
-
-        private static TestClient CreateTestClient(FakeWebSocket fakeWs)
-        {
-            var devices = new Devices();
-            devices.GetOrCreateLocal(
-                GetSkiBytes("662728a479fa2fcf28e6d9e7855e996ab1d850a2"),
-                new DeviceSettings
-                {
-                    Name = "ProlongTest", Id = "Prolong-Test",
-                    Model = "Test", Brand = "Test",
-                    Type = "EnergyManagementSystem", Serial = "PROLONG001", Port = 7200,
-                    Entities = [new EntitySettings { Type = "DeviceInformation" }],
-                });
-
-            var remote = devices.GetOrCreateRemote("TestRemote", "c09ff4c4dc2916414714662366f968f4743af7b7", string.Empty, "TestRemote");
-            return new TestClient(fakeWs, devices, remote);
-        }
 
         private static ConnectionHelloMessage MakeProlongationRequest(uint waitingMs = 30_000)
         {
