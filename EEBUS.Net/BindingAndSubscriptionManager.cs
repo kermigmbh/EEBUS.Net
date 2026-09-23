@@ -29,7 +29,7 @@ namespace EEBUS.Net
             return true;
         }
 
-        public bool TryAddOrUpdateClientBinding(AddressType clientAddress, AddressType serverAddress, string serverFeatureType)
+        public bool TryAddOrUpdateClientBinding(AddressType clientAddress, AddressType serverAddress, string serverFeatureType, BindingSubscriptionDirection direction)
         {
             if (!IsKnownFeature(clientAddress, serverAddress, serverFeatureType))
             {
@@ -41,7 +41,8 @@ namespace EEBUS.Net
                 var entry = _bindings.FirstOrDefault(b =>
                                 b.serverFeatureType == serverFeatureType &&
                                 b.serverAddress.feature == serverAddress.feature &&
-                                b.serverAddress.entity.SequenceEqual(serverAddress.entity)
+                                b.serverAddress.entity.SequenceEqual(serverAddress.entity) &&
+                                b.Direction == direction
                                 );
 
                 if (entry == null)
@@ -51,6 +52,7 @@ namespace EEBUS.Net
                         clientAddress = clientAddress,
                         serverAddress = serverAddress,
                         serverFeatureType = serverFeatureType,
+                        Direction = direction
                     };
                     _bindings.Add(entry);
                 }
@@ -62,7 +64,7 @@ namespace EEBUS.Net
             return true;
         }
 
-        public bool TryAddOrUpdateSubscription(AddressType clientAddress, AddressType serverAddress, string serverFeatureType)
+        public bool TryAddOrUpdateSubscription(AddressType clientAddress, AddressType serverAddress, string serverFeatureType, BindingSubscriptionDirection direction)
         {
             if (!IsKnownFeature(clientAddress, serverAddress, serverFeatureType))
             {
@@ -73,7 +75,8 @@ namespace EEBUS.Net
             {
                 var entry = _subsriptions.FirstOrDefault(b =>
                                 b.serverAddress.feature == serverAddress.feature &&
-                                b.serverAddress.entity.SequenceEqual(serverAddress.entity)
+                                b.serverAddress.entity.SequenceEqual(serverAddress.entity) &&
+                                b.Direction == direction
                                 );
                 if (entry == null)
                 {
@@ -82,6 +85,7 @@ namespace EEBUS.Net
                         clientAddress = clientAddress,
                         serverAddress = serverAddress,
                         serverFeatureType = serverFeatureType,
+                        Direction = direction
                     };
                     _subsriptions.Add(entry);
                 }
@@ -93,7 +97,7 @@ namespace EEBUS.Net
             return true;
         }
 
-        public bool TryRemoveSubscription(AddressType clientAddress, AddressType serverAddress/*, string serverFeatureType*/)
+        public bool TryRemoveSubscription(AddressType clientAddress, AddressType serverAddress, BindingSubscriptionDirection direction)
         {
             lock (_lock)
             {
@@ -101,7 +105,8 @@ namespace EEBUS.Net
                                 b.clientAddress.feature == clientAddress.feature &&
                                 b.clientAddress.entity.SequenceEqual(clientAddress.entity) &&
                                 b.serverAddress.feature == serverAddress.feature &&
-                                b.serverAddress.entity.SequenceEqual(serverAddress.entity)
+                                b.serverAddress.entity.SequenceEqual(serverAddress.entity) &&
+                                b.Direction == direction
                                 );
                 if (entry != null)
                 {
@@ -112,7 +117,7 @@ namespace EEBUS.Net
             return false;
         }
 
-        public bool TryRemoveBinding(AddressType clientAddress, AddressType serverAddress/*, string serverFeatureType*/)
+        public bool TryRemoveBinding(AddressType clientAddress, AddressType serverAddress, BindingSubscriptionDirection direction)
         {
             lock (_lock)
             {
@@ -120,7 +125,8 @@ namespace EEBUS.Net
                                 b.clientAddress.feature == clientAddress.feature &&
                                 b.clientAddress.entity.SequenceEqual(clientAddress.entity) &&
                                 b.serverAddress.feature == serverAddress.feature &&
-                                b.serverAddress.entity.SequenceEqual(serverAddress.entity)
+                                b.serverAddress.entity.SequenceEqual(serverAddress.entity) &&
+                                b.Direction == direction
                                 );
                 if (entry != null)
                 {
@@ -131,7 +137,7 @@ namespace EEBUS.Net
             return false;
         }
 
-        public bool HasBinding(AddressType clientAddress, AddressType serverAddress/*, string serverFeatureType*/)
+        public bool HasBinding(AddressType clientAddress, AddressType serverAddress, BindingSubscriptionDirection direction)
         {
             lock (_lock)
             {
@@ -139,12 +145,13 @@ namespace EEBUS.Net
                                 b.clientAddress.feature == clientAddress.feature &&
                                 b.clientAddress.entity.SequenceEqual(clientAddress.entity) &&
                                 b.serverAddress.feature == serverAddress.feature &&
-                                b.serverAddress.entity.SequenceEqual(serverAddress.entity)
+                                b.serverAddress.entity.SequenceEqual(serverAddress.entity) &&
+                                b.Direction == direction
                                 );
             }
         }
 
-        public IEnumerable<BindingSubscriptionInfo> GetBindings(string? featureType = null)
+        public IEnumerable<BindingSubscriptionInfo> GetBindings(BindingSubscriptionDirection direction, string? featureType = null)
         {
             lock (_lock)
             {
@@ -155,20 +162,20 @@ namespace EEBUS.Net
                 else
                 {
                     return _bindings
-                        .Where(binding => binding.serverFeatureType == featureType);
+                        .Where(binding => binding.serverFeatureType == featureType && binding.Direction == direction).ToList();
                 }
             }
         }
 
-        public IEnumerable<BindingSubscriptionInfo> GetSubscriptions()
+        public IEnumerable<BindingSubscriptionInfo> GetSubscriptions(BindingSubscriptionDirection direction)
         {
             lock (_lock)
             {
-                return _subsriptions.AsReadOnly();
+                return _subsriptions.Where(subscription => subscription.Direction == direction).ToList();
             }
         }
 
-        public bool HasSubscription(AddressType clientAddress, AddressType serverAddress/*, string serverFeatureType*/)
+        public bool HasSubscription(AddressType clientAddress, AddressType serverAddress, BindingSubscriptionDirection direction)
         {
             lock (_lock)
             {
@@ -176,38 +183,40 @@ namespace EEBUS.Net
                                 b.clientAddress.feature == clientAddress.feature &&
                                 b.clientAddress.entity.SequenceEqual(clientAddress.entity) &&
                                 b.serverAddress.feature == serverAddress.feature &&
-                                b.serverAddress.entity.SequenceEqual(serverAddress.entity)
+                                b.serverAddress.entity.SequenceEqual(serverAddress.entity) &&
+                                b.Direction == direction
                                 );
             }
         }
 
-        public IEnumerable<AddressType> GetSubscriptionsByServerAddress(AddressType serverAddress)
+        public IEnumerable<AddressType> GetSubscriptionsByServerAddress(AddressType serverAddress, BindingSubscriptionDirection direction)
         {
             lock (_lock)
             {
                 // Materialize inside the lock so the caller can enumerate safely.
                 return _subsriptions
-                    .Where(subscription => subscription.serverAddress == serverAddress)
+                    .Where(subscription => subscription.serverAddress == serverAddress && subscription.Direction == direction)
                     .Select(subscription => subscription.clientAddress)
                     .ToList();
             }
         }
     }
 
-
-
-
-
-
-    //public enum BindingSubscriptionState
-    //{
-    //    None,
-        
-    //}
+    public enum BindingSubscriptionDirection
+    {
+        /// <summary>
+        /// The binding/subscription is made from someone else and sent to us
+        /// </summary>
+        Incoming,
+        /// <summary>
+        /// The binding/subscription is made from us and sent to someone else
+        /// </summary>
+        Outgoing
+    }
 
     public class BindingSubscriptionInfo
     {
-        //public BindingSubscriptionState State { get; set; }
+        public BindingSubscriptionDirection Direction { get; set; } = BindingSubscriptionDirection.Incoming;
         public required AddressType clientAddress { get; set; }
 
         public required AddressType serverAddress { get; set; }

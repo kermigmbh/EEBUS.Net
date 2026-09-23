@@ -279,7 +279,7 @@ namespace EEBUS.Net
                 var connections = EEBusManager._connections.Values.ToList();
                 foreach (Connection connection in connections)
                 {
-                    IEnumerable<AddressType> clientAddresses = connection.BindingAndSubscriptionManager.GetSubscriptionsByServerAddress(serverAddress);
+                    IEnumerable<AddressType> clientAddresses = connection.BindingAndSubscriptionManager.GetSubscriptionsByServerAddress(serverAddress, BindingSubscriptionDirection.Incoming);
 
                     foreach (var clientAddress in clientAddresses)
                     {

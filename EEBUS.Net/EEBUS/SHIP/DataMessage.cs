@@ -48,7 +48,7 @@ namespace EEBUS.SHIP.Messages
         }
 
         public static DataMessage CreateRead(AddressType source, AddressType destination, SpineCmdPayloadBase? payload) => Create(source, destination, "read", payload);
-        public static DataMessage CreateSubscription(AddressType clientAddress, AddressType serverAddress, string serverFeatureType, string clientDeviceId, string serverDeviceId)
+        public static DataMessage CreateSubscriptionRequest(Connection connection, AddressType clientAddress, AddressType serverAddress, string serverFeatureType, string clientDeviceId, string serverDeviceId)
         {
             //Fixed address for subscription
             var messageSource = new AddressType()
@@ -66,15 +66,11 @@ namespace EEBUS.SHIP.Messages
                 feature = 0
             };
 
-            NodeManagementSubscriptionRequestCall callPayload = new NodeManagementSubscriptionRequestCall();
-            SubscriptionRequestType subscriptionRequest = callPayload.cmd[0].nodeManagementSubscriptionRequestCall.subscriptionRequest;
-            subscriptionRequest.clientAddress = clientAddress;
-            subscriptionRequest.serverAddress = serverAddress;
-            subscriptionRequest.serverFeatureType = serverFeatureType;
+            SpineCmdPayloadBase callPayload = SpineCmdPayloadBase.GetClass("nodeManagementSubscriptionRequestCall").CreateCall(connection, clientAddress, serverAddress, serverFeatureType);
 
             return Create(messageSource, messageDestination, "call", callPayload, true);
         }
-        public static DataMessage CreateSubscriptionDelete(AddressType clientAddress, AddressType serverAddress, string clientDeviceId, string serverDeviceId)
+        public static DataMessage CreateSubscriptionDelete(Connection connection, AddressType clientAddress, AddressType serverAddress, string clientDeviceId, string serverDeviceId)
         {
             //Fixed address for subscription
             var messageSource = new AddressType()
@@ -92,14 +88,11 @@ namespace EEBUS.SHIP.Messages
                 feature = 0
             };
 
-            NodeManagementSubscriptionDeleteCall callPayload = new NodeManagementSubscriptionDeleteCall();
-            SubscriptionDeleteType subscriptionDelete = callPayload.cmd[0].nodeManagementSubscriptionDeleteCall.subscriptionDelete;
-            subscriptionDelete.clientAddress = clientAddress;
-            subscriptionDelete.serverAddress = serverAddress;
+            SpineCmdPayloadBase callPayload = SpineCmdPayloadBase.GetClass("nodeManagementSubscriptionDeleteCall").CreateCall(connection, clientAddress, serverAddress);
 
             return Create(messageSource, messageDestination, "call", callPayload, true);
         }
-        public static DataMessage CreateBinding(AddressType source, AddressType destination, string serverFeatureType, string clientDeviceId, string serverDeviceId)
+        public static DataMessage CreateBindingRequest(Connection connection, AddressType clientAddress, AddressType serverAddress, string serverFeatureType, string clientDeviceId, string serverDeviceId)
         {
             //Fixed address for subscription
             var messageSource = new AddressType()
@@ -117,15 +110,11 @@ namespace EEBUS.SHIP.Messages
                 feature = 0
             };
 
-            NodeManagementBindingRequestCall callPayload = new NodeManagementBindingRequestCall();
-            BindingRequestType request = callPayload.cmd[0].nodeManagementBindingRequestCall.bindingRequest;
-            request.clientAddress = source;
-            request.serverAddress = destination;
-            request.serverFeatureType = serverFeatureType;
+            SpineCmdPayloadBase callPayload = SpineCmdPayloadBase.GetClass("nodeManagementBindingRequestCall").CreateCall(connection, clientAddress, serverAddress, serverFeatureType);
 
             return Create(messageSource, messageDestination, "call", callPayload, true);
         }
-        public static DataMessage CreateBindingDelete(AddressType clientAddress, AddressType serverAddress, string clientDeviceId, string serverDeviceId)
+        public static DataMessage CreateBindingDelete(Connection connection, AddressType clientAddress, AddressType serverAddress, string clientDeviceId, string serverDeviceId)
         {
             //Fixed address for binding
             var messageSource = new AddressType()
@@ -143,10 +132,8 @@ namespace EEBUS.SHIP.Messages
                 feature = 0
             };
 
-            NodeManagementBindingDeleteCall callPayload = new NodeManagementBindingDeleteCall();
-            BindingDeleteType bindingDelete = callPayload.cmd[0].nodeManagementBindingDeleteCall.bindingDelete;
-            bindingDelete.clientAddress = clientAddress;
-            bindingDelete.serverAddress = serverAddress;
+            SpineCmdPayloadBase callPayload = SpineCmdPayloadBase.GetClass("nodeManagementBindingDeleteCall").CreateCall(connection, clientAddress, serverAddress);
+
 
             return Create(messageSource, messageDestination, "call", callPayload, true);
         }

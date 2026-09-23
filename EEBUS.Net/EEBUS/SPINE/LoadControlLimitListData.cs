@@ -95,7 +95,7 @@ namespace EEBUS.SPINE.Commands
                 if (datagram.header.cmdClassifier == "write")
                 {
 
-                    if (!connection.BindingAndSubscriptionManager.HasBinding(datagram.header.addressSource, datagram.header.addressDestination))
+                    if (!connection.BindingAndSubscriptionManager.HasBinding(datagram.header.addressSource, datagram.header.addressDestination, BindingSubscriptionDirection.Incoming))
                     {
                         //Reject
                         return;

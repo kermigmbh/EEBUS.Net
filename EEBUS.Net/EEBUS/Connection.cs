@@ -60,7 +60,6 @@ namespace EEBUS
 
         protected class HeartBeatTask
         {
-            private bool heartbeatSubscribed = false;
             private DeviceDiagnosisHeartbeatData.Class heartbeatClass = new DeviceDiagnosisHeartbeatData.Class();
             // This method is called by the timer delegate.
             public void Beat(object? connectionObj)
@@ -70,13 +69,8 @@ namespace EEBUS
 
                 if (connection.State == Connection.EState.Connected)
                 {
-                    //AddressType? heartbeatSource = connection.Local?.GetFeatureAddress("DeviceDiagnosis", true, connection);
-                    //AddressType? heartbeatDestination = connection.Remote?.GetFeatureAddress("DeviceDiagnosis", false, connection);
-
-                    if (!this.heartbeatSubscribed)
+                    if (!connection.BindingAndSubscriptionManager.GetSubscriptions(BindingSubscriptionDirection.Outgoing).Any(info => info.serverFeatureType == "DeviceDiagnosis"))
                     {
-                        this.heartbeatSubscribed = true;
-
                         if (connection is Server)
                             Debug.WriteLine("--- Request heartbeat via server ---");
                         else
@@ -350,21 +344,6 @@ namespace EEBUS
 
         public void HeartbeatSubscription()
         {
-            //SpineDatagramPayload call = new SpineDatagramPayload();
-            //call.datagram.header.addressSource = new();
-            //call.datagram.header.addressSource.device = this.Local.DeviceId;
-            //call.datagram.header.addressSource.entity = [0];
-            //call.datagram.header.addressSource.feature = 0;
-            //call.datagram.header.addressDestination = new();
-            //call.datagram.header.addressDestination.device = this.Remote.DeviceId;
-            //call.datagram.header.addressDestination.entity = [0];
-            //call.datagram.header.addressDestination.feature = 0;
-            //call.datagram.header.msgCounter = DataMessage.NextCount;
-            //call.datagram.header.cmdClassifier = "call";
-
-            //NodeManagementSubscriptionRequestCall payload = new NodeManagementSubscriptionRequestCall();
-            //SubscriptionRequestType subscriptionRequest = payload.cmd[0].nodeManagementSubscriptionRequestCall.subscriptionRequest;
-
             var clientAddress = GetLocalHeartbeatAddress(false);
             var serverAddress = GetRemoteHeartbeatAddress(true);
 
@@ -374,21 +353,13 @@ namespace EEBUS
                 return;
             }
 
-            //subscriptionRequest.clientAddress = clientAddress;
-            //subscriptionRequest.serverAddress = serverAddress;
-            //subscriptionRequest.serverFeatureType = "DeviceDiagnosis";
-
-            //call.datagram.payload = payload.ToJsonNode();
-
-            //DataMessage message = new DataMessage();
-            //message.SetPayload(JsonHelper.ToJsonNode(call) ?? throw new Exception("Failed to serialize heartbeat subscription message"));
             if (Remote == null)
             {
                 Logger?.LogInformation("HeartbeatSubscription: Remote device is not available.");
                 return;
             }
 
-            DataMessage message = DataMessage.CreateSubscription(clientAddress, serverAddress, "DeviceDiagnosis", Local.DeviceId, Remote.DeviceId);
+            DataMessage message = DataMessage.CreateSubscriptionRequest(this, clientAddress, serverAddress, "DeviceDiagnosis", Local.DeviceId, Remote.DeviceId);
             PushDataMessage(message);
         }
 
@@ -451,7 +422,7 @@ namespace EEBUS
                 /* If the communication partner has multiple entities which offer the DeviceDiagnosis feature, we will try to find the one which is bound to our LoadControl feature.
                  * This is specified in the testing specification for lpc and lpp.
                  */
-                BindingSubscriptionInfo? loadControlBinding = BindingAndSubscriptionManager.GetBindings("LoadControl").FirstOrDefault();
+                BindingSubscriptionInfo? loadControlBinding = BindingAndSubscriptionManager.GetBindings(BindingSubscriptionDirection.Incoming, "LoadControl").FirstOrDefault();
                 if (loadControlBinding == null) return null;
 
                 Entity? entity = Remote.Entities.FirstOrDefault(e => e.Index.SequenceEqual(loadControlBinding.clientAddress.entity));  //get remote entity which is bound to our LoadControl feature
@@ -483,9 +454,9 @@ namespace EEBUS
                         //Binding
                         if (useCase.SupportsBinding(feature))
                         {
-                            if (!BindingAndSubscriptionManager.HasBinding(featureSourceAddress, featureDestinationAddress))
+                            if (!BindingAndSubscriptionManager.HasBinding(featureSourceAddress, featureDestinationAddress, Net.BindingSubscriptionDirection.Outgoing))
                             {
-                                DataMessage callMessage = DataMessage.CreateBinding(featureSourceAddress, featureDestinationAddress, feature.Type, Local.DeviceId, Remote.DeviceId);
+                                DataMessage callMessage = DataMessage.CreateBindingRequest(this, featureSourceAddress, featureDestinationAddress, feature.Type, Local.DeviceId, Remote.DeviceId);
                                 PushDataMessage(callMessage);
                             }
                         }
@@ -504,9 +475,9 @@ namespace EEBUS
                             }
 
                             //Subscribing
-                            if (!BindingAndSubscriptionManager.HasSubscription(featureSourceAddress, featureDestinationAddress))
+                            if (!BindingAndSubscriptionManager.HasSubscription(featureSourceAddress, featureDestinationAddress, Net.BindingSubscriptionDirection.Outgoing))
                             {
-                                DataMessage callMessage = DataMessage.CreateSubscription(featureSourceAddress, featureDestinationAddress, feature.Type, Local.DeviceId, Remote.DeviceId);
+                                DataMessage callMessage = DataMessage.CreateSubscriptionRequest(this, featureSourceAddress, featureDestinationAddress, feature.Type, Local.DeviceId, Remote.DeviceId);
                                 PushDataMessage(callMessage);
                             }
                         }

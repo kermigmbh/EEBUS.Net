@@ -26,7 +26,7 @@ namespace TestProject1
 
             Connection testConnection = GetDefaultMockConnection();
             SetRemoteDiscoveryData(testConnection, EEBusMessages.MsgNodeManagementDetailedDiscoveryDataReply);
-            testConnection.BindingAndSubscriptionManager.TryAddOrUpdateClientBinding(payload.datagram.header.addressSource, payload.datagram.header.addressDestination, "LoadControl");
+            testConnection.BindingAndSubscriptionManager.TryAddOrUpdateClientBinding(payload.datagram.header.addressSource, payload.datagram.header.addressDestination, "LoadControl", EEBUS.Net.BindingSubscriptionDirection.Incoming);
 
             await payload.EvaluateAsync(testConnection);
         }
@@ -212,7 +212,8 @@ namespace TestProject1
             testConnection.BindingAndSubscriptionManager.TryAddOrUpdateClientBinding(
                 payload.datagram.header.addressSource,
                 payload.datagram.header.addressDestination,
-                "LoadControl");
+                "LoadControl",
+                EEBUS.Net.BindingSubscriptionDirection.Incoming);
 
             // Get the data structure and set initial values including timePeriod
             LoadControlLimitDataStructure? dataStructure = testConnection.Local
@@ -246,7 +247,8 @@ namespace TestProject1
             testConnection.BindingAndSubscriptionManager.TryAddOrUpdateClientBinding(
                 payload.datagram.header.addressSource,
                 payload.datagram.header.addressDestination,
-                "LoadControl");
+                "LoadControl",
+                EEBUS.Net.BindingSubscriptionDirection.Incoming);
 
             LoadControlLimitDataStructure? dataStructure = testConnection.Local
                 .GetDataStructures<LoadControlLimitDataStructure>()
@@ -280,7 +282,8 @@ namespace TestProject1
             testConnection.BindingAndSubscriptionManager.TryAddOrUpdateClientBinding(
                 payload.datagram.header.addressSource,
                 payload.datagram.header.addressDestination,
-                "LoadControl");
+                "LoadControl",
+                EEBUS.Net.BindingSubscriptionDirection.Incoming);
 
             LoadControlLimitDataStructure? dataStructure = testConnection.Local
                 .GetDataStructures<LoadControlLimitDataStructure>()
@@ -346,7 +349,8 @@ namespace TestProject1
             testConnection.BindingAndSubscriptionManager.TryAddOrUpdateClientBinding(
                 payload1.datagram.header.addressSource,
                 payload1.datagram.header.addressDestination,
-                "LoadControl");
+                "LoadControl",
+                EEBUS.Net.BindingSubscriptionDirection.Incoming);
 
             LoadControlLimitDataStructure? dataStructure = testConnection.Local
                 .GetDataStructures<LoadControlLimitDataStructure>()

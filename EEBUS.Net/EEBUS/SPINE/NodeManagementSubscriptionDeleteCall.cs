@@ -22,7 +22,7 @@ namespace EEBUS.SPINE.Commands
                 var subscriptionDeleteReq = FromJsonNode(datagram.payload);
                 if (subscriptionDeleteReq != null && subscriptionDeleteReq.cmd.FirstOrDefault()?.nodeManagementSubscriptionDeleteCall.subscriptionDelete is SubscriptionDeleteType req)
                 {
-                    success = connection.BindingAndSubscriptionManager.TryRemoveSubscription(req.clientAddress, req.serverAddress);
+                    success = connection.BindingAndSubscriptionManager.TryRemoveSubscription(req.clientAddress, req.serverAddress, Net.BindingSubscriptionDirection.Incoming);
                 }
                 if (success)
                 {
@@ -32,9 +32,14 @@ namespace EEBUS.SPINE.Commands
                 //Reject
                 return null;
             }
-            public override SpineCmdPayloadBase CreateCall(Connection connection)
+            public override SpineCmdPayloadBase CreateCall(Connection connection, AddressType clientAddress, AddressType serverAddress, string serverFeatureType = "")
             {
-                return new NodeManagementSubscriptionDeleteCall();
+                var call = new NodeManagementSubscriptionDeleteCall();
+                call.cmd[0].nodeManagementSubscriptionDeleteCall.subscriptionDelete.clientAddress = clientAddress;
+                call.cmd[0].nodeManagementSubscriptionDeleteCall.subscriptionDelete.serverAddress = serverAddress;
+                connection.BindingAndSubscriptionManager.TryRemoveSubscription(clientAddress, serverAddress, Net.BindingSubscriptionDirection.Outgoing);
+
+                return call;
             }
         }
     }

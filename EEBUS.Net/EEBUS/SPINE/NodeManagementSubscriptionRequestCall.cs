@@ -23,7 +23,7 @@ namespace EEBUS.SPINE.Commands
                 var subscriptionReq = FromJsonNode(datagram.payload);
                 if (subscriptionReq != null && subscriptionReq.cmd.FirstOrDefault()?.nodeManagementSubscriptionRequestCall.subscriptionRequest is SubscriptionRequestType req)
                 {
-                    success = connection.BindingAndSubscriptionManager.TryAddOrUpdateSubscription(req.clientAddress, req.serverAddress, req.serverFeatureType);
+                    success = connection.BindingAndSubscriptionManager.TryAddOrUpdateSubscription(req.clientAddress, req.serverAddress, req.serverFeatureType, Net.BindingSubscriptionDirection.Incoming);
                 }
                 if (success)
                 {
@@ -36,9 +36,15 @@ namespace EEBUS.SPINE.Commands
                
             }
 
-			public override SpineCmdPayloadBase CreateCall( Connection connection )
+			public override SpineCmdPayloadBase CreateCall(Connection connection, AddressType clientAddress, AddressType serverAddress, string serverFeatureType = "")
 			{
-				return new NodeManagementSubscriptionRequestCall();
+				var call = new NodeManagementSubscriptionRequestCall();
+				call.cmd[0].nodeManagementSubscriptionRequestCall.subscriptionRequest.clientAddress = clientAddress;
+				call.cmd[0].nodeManagementSubscriptionRequestCall.subscriptionRequest.serverAddress = serverAddress;
+				call.cmd[0].nodeManagementSubscriptionRequestCall.subscriptionRequest.serverFeatureType = serverFeatureType;
+				connection.BindingAndSubscriptionManager.TryAddOrUpdateSubscription(clientAddress, serverAddress, serverFeatureType, Net.BindingSubscriptionDirection.Outgoing);
+
+				return call;
 			}
 
 		}

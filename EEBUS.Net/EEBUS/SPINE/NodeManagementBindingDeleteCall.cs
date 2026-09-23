@@ -23,7 +23,7 @@ namespace EEBUS.SPINE.Commands
                 var bindingDeleteReq = FromJsonNode(datagram.payload);
                 if (bindingDeleteReq != null && bindingDeleteReq.cmd.FirstOrDefault()?.nodeManagementBindingDeleteCall.bindingDelete is BindingDeleteType req)
                 {
-                    success = connection.BindingAndSubscriptionManager.TryRemoveBinding(req.clientAddress, req.serverAddress);
+                    success = connection.BindingAndSubscriptionManager.TryRemoveBinding(req.clientAddress, req.serverAddress, Net.BindingSubscriptionDirection.Incoming);
                 }
                 if (success)
                 {
@@ -33,9 +33,14 @@ namespace EEBUS.SPINE.Commands
                 //Reject
                 return null;
             }
-            public override SpineCmdPayloadBase CreateCall(Connection connection)
+            public override SpineCmdPayloadBase CreateCall(Connection connection, AddressType clientAddress, AddressType serverAddress, string serverFeatureType = "")
             {
-                return new NodeManagementBindingDeleteCall();
+                var call = new NodeManagementBindingDeleteCall();
+                call.cmd[0].nodeManagementBindingDeleteCall.bindingDelete.clientAddress = clientAddress;
+                call.cmd[0].nodeManagementBindingDeleteCall.bindingDelete.serverAddress = serverAddress;
+                connection.BindingAndSubscriptionManager.TryRemoveBinding(clientAddress, serverAddress, Net.BindingSubscriptionDirection.Outgoing);
+
+                return call;
             }
         }
     }

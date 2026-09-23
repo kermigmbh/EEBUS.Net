@@ -41,7 +41,7 @@ namespace EEBUS.Messages
                 return null;
             }
 
-            public virtual SpineCmdPayloadBase? CreateCall( Connection connection )
+            public virtual SpineCmdPayloadBase? CreateCall(Connection connection, AddressType clientAddress, AddressType serverAddress, string serverFeatureType = "")
 			{
 				return null;
 			}

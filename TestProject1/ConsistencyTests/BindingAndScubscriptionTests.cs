@@ -23,7 +23,7 @@ namespace TestProject1.ConsistencyTests
             Assert.NotNull(serverAddress);
 
             // Subscribe
-            SpineDatagramPayload subscriptionRequest = DataMessage.CreateSubscription(clientAddress, serverAddress, serverFeatureType, connection.Remote.DeviceId, connection.Local.DeviceId).SpineDatagramPayload;
+            SpineDatagramPayload subscriptionRequest = DataMessage.CreateSubscriptionRequest(connection, clientAddress, serverAddress, serverFeatureType, connection.Remote.DeviceId, connection.Local.DeviceId).SpineDatagramPayload;
             SpineDatagramPayload? subscriptionAnswer = await subscriptionRequest.CreateAnswerAsync(DataMessage.NextCount, connection);
             Assert.NotNull(subscriptionAnswer);
             Assert.Equal("result", subscriptionAnswer.datagram.header.cmdClassifier);
@@ -35,7 +35,7 @@ namespace TestProject1.ConsistencyTests
             Assert.Equal(serverAddress, entries[0].serverAddress);
 
             // Delete subscription
-            SpineDatagramPayload deleteRequest = DataMessage.CreateSubscriptionDelete(clientAddress, serverAddress, connection.Remote.DeviceId, connection.Local.DeviceId).SpineDatagramPayload;
+            SpineDatagramPayload deleteRequest = DataMessage.CreateSubscriptionDelete(connection, clientAddress, serverAddress, connection.Remote.DeviceId, connection.Local.DeviceId).SpineDatagramPayload;
             SpineDatagramPayload? deleteAnswer = await deleteRequest.CreateAnswerAsync(DataMessage.NextCount, connection);
             Assert.NotNull(deleteAnswer);
             Assert.Equal("result", deleteAnswer.datagram.header.cmdClassifier);
@@ -58,7 +58,7 @@ namespace TestProject1.ConsistencyTests
             Assert.NotNull(serverAddress);
 
             // Bind
-            SpineDatagramPayload bindingRequest = DataMessage.CreateBinding(clientAddress, serverAddress, serverFeatureType, connection.Remote.DeviceId, connection.Local.DeviceId).SpineDatagramPayload;
+            SpineDatagramPayload bindingRequest = DataMessage.CreateBindingRequest(connection, clientAddress, serverAddress, serverFeatureType, connection.Remote.DeviceId, connection.Local.DeviceId).SpineDatagramPayload;
             SpineDatagramPayload? bindingAnswer = await bindingRequest.CreateAnswerAsync(DataMessage.NextCount, connection);
             Assert.NotNull(bindingAnswer);
             Assert.Equal("result", bindingAnswer.datagram.header.cmdClassifier);
@@ -70,7 +70,7 @@ namespace TestProject1.ConsistencyTests
             Assert.Equal(serverAddress, entries[0].serverAddress);
 
             // Delete binding
-            SpineDatagramPayload deleteRequest = DataMessage.CreateBindingDelete(clientAddress, serverAddress, connection.Remote.DeviceId, connection.Local.DeviceId).SpineDatagramPayload;
+            SpineDatagramPayload deleteRequest = DataMessage.CreateBindingDelete(connection, clientAddress, serverAddress, connection.Remote.DeviceId, connection.Local.DeviceId).SpineDatagramPayload;
             SpineDatagramPayload? deleteAnswer = await deleteRequest.CreateAnswerAsync(DataMessage.NextCount, connection);
             Assert.NotNull(deleteAnswer);
             Assert.Equal("result", deleteAnswer.datagram.header.cmdClassifier);
