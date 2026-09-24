@@ -264,6 +264,12 @@ namespace EEBUS.Net
             return sb.ToString();
         }
 
+        public Connection? GetConnection(string ski)
+        {
+            _connections.TryGetValue(ski, out Connection? connection);
+            return connection;
+        }
+
         private LpcLimitStateMachine lpcStateMachine;
         private LppLimitStateMachine lppStateMachine;
         private MonitoringUseCasesEventHandler monitoringUseCasesEventHandler;

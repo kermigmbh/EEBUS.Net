@@ -33,6 +33,25 @@ namespace TestProject1.IntegrationTests
             return new TestOutputLogger(_output, $"[{testName}] {categoryName}");
         }
 
+        /// <summary>
+        /// Polls <paramref name="condition"/> until it returns a non-null value or <paramref name="timeoutMs"/> elapses.
+        /// Useful for state that is not exposed via events (e.g. bindings/subscriptions on a connection).
+        /// </summary>
+        protected static async Task<T> WaitUntilAsync<T>(Func<T?> condition, int timeoutMs = 5000, int pollIntervalMs = 50, string? description = null)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            while (true)
+            {
+                T? result = condition();
+                if (result != null) return result;
+
+                if (stopwatch.ElapsedMilliseconds >= timeoutMs)
+                    throw new TimeoutException($"Condition{(description == null ? "" : $" '{description}'")} was not met within {timeoutMs} ms.");
+
+                await Task.Delay(pollIntervalMs);
+            }
+        }
+
         protected async Task StartManagersAsync(EEBUSManager manager1, EEBUSManager manager2)
         {
             manager1.OnDeviceDataChanged += deviceData =>
