@@ -153,7 +153,7 @@ namespace EEBUS
             if (!txtRecordStrings.Any())
             {
                 _logger.LogWarning("[MDNS] EEBUS service instance '{instanceName}' discovered but no TXT records found.", instanceName);
-            })
+            }
 
             if (srvRecords.Any() && addressRecords.Any() && txtRecordStrings.Any())
             {
