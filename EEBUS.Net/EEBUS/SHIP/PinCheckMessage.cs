@@ -41,11 +41,11 @@ namespace EEBUS.SHIP.Messages
                 error = "Pinstate none expected!";
                 newState = Connection.EState.Stopped;
             }
-            if (this.connectionPinState.inputPermissionSpecified != false)
-            {
-                error = "Pinstate inputPermissionSpecified expected!";
-                newState = Connection.EState.Stopped;
-            }
+            //if (this.connectionPinState.inputPermissionSpecified != false)
+            //{
+            //    error = "Pinstate inputPermissionSpecified expected!";
+            //    newState = Connection.EState.Stopped;
+            //}
 
             return (newState, Connection.ESubState.None, error);
         }
@@ -71,11 +71,11 @@ namespace EEBUS.SHIP.Messages
                 error = "Pinstate none expected!";
                 newState = Connection.EState.Stopped;
             }
-            if (this.connectionPinState.inputPermissionSpecified != false)
-            {
-                error = "Pinstate inputPermissionSpecified expected!";
-                newState = Connection.EState.Stopped;
-            }
+            //if (this.connectionPinState.inputPermissionSpecified != false)
+            //{
+            //    error = "Pinstate inputPermissionSpecified expected!";
+            //    newState = Connection.EState.Stopped;
+            //}
 
             return (newState, Connection.ESubState.None, error);
         }
