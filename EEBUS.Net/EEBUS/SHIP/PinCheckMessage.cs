@@ -99,7 +99,7 @@ namespace EEBUS.SHIP.Messages
     {
         public PinStateType pinState { get; set; }
 
-        public bool inputPermissionSpecified { get; set; }
+        //public bool inputPermissionSpecified { get; set; }
     }
 
     /// <remarks/>

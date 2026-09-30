@@ -81,11 +81,13 @@ namespace EEBUS.Net
 
             _cert = CertificateGenerator.GenerateCert(settings.BasePath, settings.Certificate);
             byte[] hash = SHA1.HashData(_cert.GetPublicKey());
+            byte[] fpHash = SHA256.HashData(_cert.GetRawCertData());
+            string fingerprint = Convert.ToHexString(fpHash);
 
             _mDNSClient = new MDNSClient(serviceDiscovery, CanEvaluateShipPairingRequests, logger);
             _mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port, serviceDiscovery, settings.FilterLinkLocalAddresses);
 
-            LocalDevice localDevice = _devices.GetOrCreateLocal(hash, settings.Device);
+            LocalDevice localDevice = _devices.GetOrCreateLocal(hash, settings.Device, fingerprint);
 
             
             _devices.RemoteDeviceFound += OnRemoteDeviceFound;

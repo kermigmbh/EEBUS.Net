@@ -9,8 +9,9 @@ namespace EEBUS.Models
 	public class LocalDevice : Device
 	{
 		private byte[]? _secret;
+		private string? _fingerprint;
 
-		public LocalDevice(byte[] ski, DeviceSettings settings)
+		public LocalDevice(byte[] ski, DeviceSettings settings, string? fingerprint = null)
 			: base(settings.Id, ski)
 		{
 			this.Name = settings.Name;
@@ -36,7 +37,8 @@ namespace EEBUS.Models
 			{
 				_secret = Convert.FromHexString(settings.Secret);
 			}
-		}
+			_fingerprint = fingerprint;
+        }
 
 		public string Brand { get; private set; }
 
@@ -55,8 +57,13 @@ namespace EEBUS.Models
 		{
 			get
 			{
+				string fingerprintString = string.Empty;
+				if (!string.IsNullOrEmpty(_fingerprint))
+				{
+					fingerprintString = $";FPH256:{_fingerprint}";
+				}
 				return "SHIP;SKI:" + this.SKI.ToString() + ";ID:" + this.Name + ";BRAND:" + this.Brand
-					+ ";TYPE:" + this.Type + ";MODEL:" + this.Model + ";SERIAL:" + this.Serial + ";CAT:1;FPH256:12345;SPSEC:" + Convert.ToHexString(GetSecret()) + ";ENDSHIP;";
+					+ ";TYPE:" + this.Type + ";MODEL:" + this.Model + ";SERIAL:" + this.Serial + ";CAT:1" + fingerprintString + ";SPSEC:" + Convert.ToHexString(GetSecret()) + ";ENDSHIP;";
 			}
 		}
 

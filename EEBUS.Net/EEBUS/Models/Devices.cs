@@ -29,12 +29,12 @@ namespace EEBUS.Models
             RemoteDeviceFound?.Invoke(device);
         }
 
-        public LocalDevice GetOrCreateLocal(byte[] ski, DeviceSettings settings)
+        public LocalDevice GetOrCreateLocal(byte[] ski, DeviceSettings settings, string? fingerprint = null)
         {
             lock (this.mutex)
             {
                 if (null == Local)
-                    Local = new LocalDevice(ski, settings);
+                    Local = new LocalDevice(ski, settings, fingerprint);
 
                 return Local;
             }
