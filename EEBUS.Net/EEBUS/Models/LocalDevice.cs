@@ -55,8 +55,8 @@ namespace EEBUS.Models
 		{
 			get
 			{
-				return "SHIP;SKI:" + this.SKI.ToString() + ",ID:" + this.Name + ";BRAND:" + this.Brand
-					+ ";TYPE:" + this.Type + ";MODEL:" + this.Model + ";SERIAL:" + this.Serial + ";CAT:1;SPSEC:" + Convert.ToHexString(GetSecret()) + ";ENDSHIP;";
+				return "SHIP;SKI:" + this.SKI.ToString() + ";ID:" + this.Name + ";BRAND:" + this.Brand
+					+ ";TYPE:" + this.Type + ";MODEL:" + this.Model + ";SERIAL:" + this.Serial + ";CAT:1;FPH256:12345;SPSEC:" + Convert.ToHexString(GetSecret()) + ";ENDSHIP;";
 			}
 		}
 

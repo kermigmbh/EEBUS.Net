@@ -135,12 +135,26 @@ namespace EEBUS
             //IEnumerable<SRVRecord> servers = mdnsMessage.AdditionalRecords.OfType<SRVRecord>();
             //IEnumerable<AddressRecord> addresses = mdnsMessage.AdditionalRecords.OfType<AddressRecord>();
             //IEnumerable<string>? txtRecords = mdnsMessage.AdditionalRecords.OfType<TXTRecord>()?.SelectMany(s => s.Strings);
-
             IEnumerable<SRVRecord> srvRecords = mdnsMessage.Answers.OfType<SRVRecord>().Concat(mdnsMessage.AdditionalRecords.OfType<SRVRecord>());
             IEnumerable<AddressRecord> addressRecords = mdnsMessage.Answers.OfType<AddressRecord>().Concat(mdnsMessage.AdditionalRecords.OfType<AddressRecord>());
             IEnumerable<TXTRecord> txtRecords = mdnsMessage.Answers.OfType<TXTRecord>().Concat(mdnsMessage.AdditionalRecords.OfType<TXTRecord>());
             IEnumerable<string> txtRecordStrings = txtRecords.SelectMany(s => s.Strings);
+
+            if (!srvRecords.Any())
+            {
+                _logger.LogWarning("[MDNS] EEBUS service instance '{instanceName}' discovered but no SRV records found.", instanceName);
+            }
+
+            if (!addressRecords.Any())
+            {
+                _logger.LogWarning("[MDNS] EEBUS service instance '{instanceName}' discovered but no Address records found.", instanceName);
+            }
             
+            if (!txtRecordStrings.Any())
+            {
+                _logger.LogWarning("[MDNS] EEBUS service instance '{instanceName}' discovered but no TXT records found.", instanceName);
+            })
+
             if (srvRecords.Any() && addressRecords.Any() && txtRecordStrings.Any())
             {
                 foreach (SRVRecord server in srvRecords)
@@ -189,6 +203,7 @@ namespace EEBUS
             } else
             {
                 _logger.LogWarning("[MDNS] EEBUS service instance '{instanceName}' discovered but missing required records.", instanceName);
+                _logger.LogInformation(mdnsMessage.ToString());
             }
         }
 
