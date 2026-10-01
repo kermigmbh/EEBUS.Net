@@ -268,7 +268,7 @@ namespace EEBUS
             {
                 if (shouldQuery)
                 {
-                    _logger.LogDebug("[MDNS] EEBUS service instance '{instanceName}' is missing {missing}, querying explicitly.", instanceName,
+                    _logger.LogTrace("[MDNS] EEBUS service instance '{instanceName}' is missing {missing}, querying explicitly.", instanceName,
                         srv == null && txt == null ? "SRV and TXT" : srv == null ? "SRV" : "TXT");
                     DomainName instance = new(instanceName);
                     if (srv == null) SendQuery(instance, DnsType.SRV);
@@ -281,7 +281,7 @@ namespace EEBUS
             {
                 if (shouldQuery)
                 {
-                    _logger.LogDebug("[MDNS] No address record for '{host}' (instance '{instanceName}'), querying A/AAAA.", srv.Target, instanceName);
+                    _logger.LogTrace("[MDNS] No address record for '{host}' (instance '{instanceName}'), querying A/AAAA.", srv.Target, instanceName);
                     SendQuery(srv.Target, DnsType.A);
                     SendQuery(srv.Target, DnsType.AAAA);
                 }
@@ -306,7 +306,7 @@ namespace EEBUS
 
             if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(path) || string.IsNullOrEmpty(ski))
             {
-                _logger.LogWarning("[MDNS] EEBUS service instance '{instanceName}' discovered but missing required TXT records.", instanceName);
+                _logger.LogTrace("[MDNS] EEBUS service instance '{instanceName}' discovered but missing required TXT records.", instanceName);
                 return;
             }
 
@@ -326,7 +326,7 @@ namespace EEBUS
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "[MDNS] Failed to send {type} query for '{name}'.", type, name);
+                _logger.LogTrace(ex, "[MDNS] Failed to send {type} query for '{name}'.", type, name);
             }
         }
 
