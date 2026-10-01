@@ -23,9 +23,19 @@ namespace EEBUS
         private bool _serviceDiscoveryNeedsDispose = false;
         private readonly ILogger _logger;
 
-        private sealed record PendingShipInstance(string InstanceName, ushort Port, string Id, string Path, string Ski, DateTime Requested);
-        private static readonly TimeSpan PendingResolutionTimeout = TimeSpan.FromSeconds(30);
-        private readonly Dictionary<string, List<PendingShipInstance>> _pendingByHost = new(StringComparer.OrdinalIgnoreCase);
+        private sealed class ShipInstanceState
+        {
+            public SRVRecord? Srv;
+            public List<string>? Txt;
+            public DateTime LastSeen;
+            public DateTime LastQuery = DateTime.MinValue;
+        }
+
+        private const string ShipServiceSuffix = "._ship._tcp.local";
+        private static readonly TimeSpan InstanceStateTimeout = TimeSpan.FromMinutes(5);
+        private static readonly TimeSpan MissingRecordQueryInterval = TimeSpan.FromSeconds(5);
+        private readonly Dictionary<string, ShipInstanceState> _shipInstances = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, (HashSet<System.Net.IPAddress> Addresses, DateTime LastSeen)> _hostAddresses = new(StringComparer.OrdinalIgnoreCase);
 
         public MDNSClient(ServiceDiscovery? serviceDiscovery = null, Func<bool>? allowShipPairingEvaluation = null, ILogger? logger = null)
         {
@@ -124,9 +134,8 @@ namespace EEBUS
 
             if (instanceName.Contains("._ship."))
             {
+                // Records for this instance are collected in Mdns_AnswerReceived, which sees the same message.
                 _logger.LogTrace("[MDNS] EEBUS service instance '{instanceName}' discovered.", ev.ServiceInstanceName);
-                ProcessShipRequest(ev.Message, instanceName);
-
             }
             else if (instanceName.Contains("._shippairing.") && _allowShipPairingEvaluation?.Invoke() == true)
             {
@@ -135,152 +144,189 @@ namespace EEBUS
             }
         }
 
-        private void ProcessShipRequest(Message mdnsMessage, string instanceName)
-        {
-            //This is not enough! Some devices send all of their records in the AdditionalRecords section, some send them in the Answers section, and some send them in both. So we need to check both sections for the records we need.
-            //IEnumerable<SRVRecord> servers = mdnsMessage.AdditionalRecords.OfType<SRVRecord>();
-            //IEnumerable<AddressRecord> addresses = mdnsMessage.AdditionalRecords.OfType<AddressRecord>();
-            //IEnumerable<string>? txtRecords = mdnsMessage.AdditionalRecords.OfType<TXTRecord>()?.SelectMany(s => s.Strings);
-            IEnumerable<SRVRecord> srvRecords = mdnsMessage.Answers.OfType<SRVRecord>().Concat(mdnsMessage.AdditionalRecords.OfType<SRVRecord>());
-            IEnumerable<AddressRecord> addressRecords = mdnsMessage.Answers.OfType<AddressRecord>().Concat(mdnsMessage.AdditionalRecords.OfType<AddressRecord>());
-            IEnumerable<TXTRecord> txtRecords = mdnsMessage.Answers.OfType<TXTRecord>().Concat(mdnsMessage.AdditionalRecords.OfType<TXTRecord>());
-            IEnumerable<string> txtRecordStrings = txtRecords.SelectMany(s => s.Strings);
-
-            if (!srvRecords.Any())
-            {
-                _logger.LogWarning("[MDNS] EEBUS service instance '{instanceName}' discovered but no SRV records found.", instanceName);
-            }
-
-            if (!addressRecords.Any())
-            {
-                _logger.LogDebug("[MDNS] EEBUS service instance '{instanceName}' discovered but no Address records found.", instanceName);
-            }
-
-            if (!txtRecordStrings.Any())
-            {
-                _logger.LogWarning("[MDNS] EEBUS service instance '{instanceName}' discovered but no TXT records found.", instanceName);
-            }
-
-            if (srvRecords.Any() && txtRecordStrings.Any())
-            {
-                string id = string.Empty;
-                string path = string.Empty;
-                string ski = string.Empty;
-
-                foreach (string textRecord in txtRecordStrings)
-                {
-                    if (textRecord.StartsWith("id"))
-                        id = GetTxtRecordValue(textRecord);
-
-                    if (textRecord.StartsWith("path"))
-                        path = GetTxtRecordValue(textRecord);
-
-                    if (textRecord.StartsWith("ski"))
-                        ski = GetTxtRecordValue(textRecord);
-                }
-
-                if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(path) || string.IsNullOrEmpty(ski))
-                {
-                    _logger.LogWarning("[MDNS] EEBUS service instance '{instanceName}' discovered but missing required TXT records.", instanceName);
-                    return;
-                }
-
-                foreach (SRVRecord server in srvRecords)
-                {
-                    IEnumerable<AddressRecord> serverAddresses = addressRecords.Where(w => w.Name == server.Target && w.Address.AddressFamily == AddressFamily.InterNetwork);
-                    if (serverAddresses.Any())
-                    {
-                        foreach (AddressRecord serverAddress in serverAddresses)
-                        {
-                            RegisterRemote(id, ski, serverAddress.Address, server.Port, path, instanceName);
-                        }
-                    }
-                    else
-                    {
-                        // The responder did not include A/AAAA records for the SRV target (allowed by RFC 6763 §12.2),
-                        // so remember the instance and ask explicitly for the host addresses.
-                        RequestHostAddresses(server.Target, new PendingShipInstance(instanceName, server.Port, id, path, ski, DateTime.UtcNow));
-                    }
-                }
-            } else
-            {
-                _logger.LogWarning("[MDNS] EEBUS service instance '{instanceName}' discovered but missing required records.", instanceName);
-                _logger.LogInformation(mdnsMessage.ToString());
-            }
-        }
-
-        private void RegisterRemote(string id, string ski, System.Net.IPAddress address, ushort port, string path, string instanceName)
-        {
-            string url = address.ToString() + ":" + port.ToString() + path;
-            this.devices?.GetOrCreateRemote(id, ski, url, instanceName);
-        }
-
-        private void RequestHostAddresses(DomainName host, PendingShipInstance pending)
-        {
-            string hostName = host.ToString();
-            lock (_lock)
-            {
-                if (!_pendingByHost.TryGetValue(hostName, out List<PendingShipInstance>? list))
-                {
-                    list = [];
-                    _pendingByHost[hostName] = list;
-                }
-                list.RemoveAll(p => p.InstanceName == pending.InstanceName);
-                list.Add(pending);
-            }
-
-            _logger.LogDebug("[MDNS] No address record for '{host}' (instance '{instanceName}'), querying A/AAAA.", hostName, pending.InstanceName);
-            try
-            {
-                _serviceDiscovery.Mdns.SendQuery(host, type: DnsType.A);
-                _serviceDiscovery.Mdns.SendQuery(host, type: DnsType.AAAA);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "[MDNS] Failed to send address query for '{host}'.", hostName);
-            }
-        }
-
+        /// <summary>
+        /// mDNS responders are not required to deliver PTR, SRV, TXT and A/AAAA records in a single datagram
+        /// (RFC 6762 §7.1 known-answer suppression, §17 multi-packet responses; RFC 6763 §12 additionals are only SHOULD).
+        /// Bonjour typically sends PTR + host addresses without SRV/TXT, Go zeroconf sends SRV/TXT without addresses.
+        /// Therefore every received message is fed into a per-instance cache and a remote device is only registered
+        /// once all pieces are known. Missing pieces are requested explicitly.
+        /// </summary>
         private void Mdns_AnswerReceived(object? sender, MessageEventArgs e)
         {
             Message message = e.Message;
-            IEnumerable<AddressRecord> addressRecords = message.Answers.OfType<AddressRecord>()
-                .Concat(message.AdditionalRecords.OfType<AddressRecord>())
-                .Where(a => a.Address.AddressFamily == AddressFamily.InterNetwork);
+            IEnumerable<ResourceRecord> records = message.Answers.Concat(message.AdditionalRecords);
 
-            List<(PendingShipInstance Pending, AddressRecord Address)> resolved = [];
+            HashSet<string> touchedInstances = new(StringComparer.OrdinalIgnoreCase);
+            HashSet<string> touchedHosts = new(StringComparer.OrdinalIgnoreCase);
+            DateTime now = DateTime.UtcNow;
+
             lock (_lock)
             {
-                if (_pendingByHost.Count == 0) return;
-
-                DateTime now = DateTime.UtcNow;
-                foreach (string host in _pendingByHost.Keys.ToList())
+                foreach (ResourceRecord record in records)
                 {
-                    _pendingByHost[host].RemoveAll(p => now - p.Requested > PendingResolutionTimeout);
-                    if (_pendingByHost[host].Count == 0)
+                    switch (record)
                     {
-                        _pendingByHost.Remove(host);
+                        case PTRRecord ptr when IsShipInstance(ptr.DomainName):
+                            GetOrCreateInstanceState(ptr.DomainName.ToString(), now);
+                            touchedInstances.Add(ptr.DomainName.ToString());
+                            break;
+
+                        case SRVRecord srv when IsShipInstance(srv.Name):
+                            GetOrCreateInstanceState(srv.Name.ToString(), now).Srv = srv;
+                            touchedInstances.Add(srv.Name.ToString());
+                            break;
+
+                        case TXTRecord txt when IsShipInstance(txt.Name):
+                            GetOrCreateInstanceState(txt.Name.ToString(), now).Txt = txt.Strings.ToList();
+                            touchedInstances.Add(txt.Name.ToString());
+                            break;
+
+                        case AddressRecord a when a.Address.AddressFamily == AddressFamily.InterNetwork:
+                            string host = a.Name.ToString();
+                            if (!_hostAddresses.TryGetValue(host, out var entry))
+                            {
+                                entry = (new HashSet<System.Net.IPAddress>(), now);
+                            }
+                            entry.Addresses.Add(a.Address);
+                            _hostAddresses[host] = (entry.Addresses, now);
+                            touchedHosts.Add(host);
+                            break;
                     }
                 }
 
-                foreach (AddressRecord address in addressRecords)
+                // An address answer may complete instances whose SRV target is that host.
+                foreach (var kv in _shipInstances)
                 {
-                    string host = address.Name.ToString();
-                    if (_pendingByHost.TryGetValue(host, out List<PendingShipInstance>? list))
+                    if (kv.Value.Srv != null && touchedHosts.Contains(kv.Value.Srv.Target.ToString()))
                     {
-                        foreach (PendingShipInstance pending in list)
-                        {
-                            resolved.Add((pending, address));
-                        }
-                        _pendingByHost.Remove(host);
+                        touchedInstances.Add(kv.Key);
                     }
                 }
+
+                PruneExpiredState(now);
             }
 
-            foreach ((PendingShipInstance pending, AddressRecord address) in resolved)
+            foreach (string instanceName in touchedInstances)
             {
-                _logger.LogTrace("[MDNS] Resolved '{host}' to {address} for EEBUS service instance '{instanceName}'.", address.Name, address.Address, pending.InstanceName);
-                RegisterRemote(pending.Id, pending.Ski, address.Address, pending.Port, pending.Path, pending.InstanceName);
+                TryCompleteShipInstance(instanceName, now);
+            }
+        }
+
+        private static bool IsShipInstance(DomainName name)
+        {
+            string s = name.ToString();
+            return s.EndsWith(ShipServiceSuffix, StringComparison.OrdinalIgnoreCase) && s.Length > ShipServiceSuffix.Length;
+        }
+
+        private ShipInstanceState GetOrCreateInstanceState(string instanceName, DateTime now)
+        {
+            if (!_shipInstances.TryGetValue(instanceName, out ShipInstanceState? state))
+            {
+                state = new ShipInstanceState();
+                _shipInstances[instanceName] = state;
+            }
+            state.LastSeen = now;
+            return state;
+        }
+
+        private void PruneExpiredState(DateTime now)
+        {
+            foreach (string key in _shipInstances.Where(kv => now - kv.Value.LastSeen > InstanceStateTimeout).Select(kv => kv.Key).ToList())
+            {
+                _shipInstances.Remove(key);
+            }
+            foreach (string key in _hostAddresses.Where(kv => now - kv.Value.LastSeen > InstanceStateTimeout).Select(kv => kv.Key).ToList())
+            {
+                _hostAddresses.Remove(key);
+            }
+        }
+
+        private void TryCompleteShipInstance(string instanceName, DateTime now)
+        {
+            SRVRecord? srv;
+            List<string>? txt;
+            System.Net.IPAddress[] addresses = [];
+            bool shouldQuery;
+
+            lock (_lock)
+            {
+                if (!_shipInstances.TryGetValue(instanceName, out ShipInstanceState? state)) return;
+
+                srv = state.Srv;
+                txt = state.Txt;
+                if (srv != null && _hostAddresses.TryGetValue(srv.Target.ToString(), out var entry))
+                {
+                    addresses = entry.Addresses.ToArray();
+                }
+
+                bool complete = srv != null && txt != null && addresses.Length > 0;
+                shouldQuery = !complete && now - state.LastQuery >= MissingRecordQueryInterval;
+                if (shouldQuery) state.LastQuery = now;
+            }
+
+            if (srv == null || txt == null)
+            {
+                if (shouldQuery)
+                {
+                    _logger.LogDebug("[MDNS] EEBUS service instance '{instanceName}' is missing {missing}, querying explicitly.", instanceName,
+                        srv == null && txt == null ? "SRV and TXT" : srv == null ? "SRV" : "TXT");
+                    DomainName instance = new(instanceName);
+                    if (srv == null) SendQuery(instance, DnsType.SRV);
+                    if (txt == null) SendQuery(instance, DnsType.TXT);
+                }
+                return;
+            }
+
+            if (addresses.Length == 0)
+            {
+                if (shouldQuery)
+                {
+                    _logger.LogDebug("[MDNS] No address record for '{host}' (instance '{instanceName}'), querying A/AAAA.", srv.Target, instanceName);
+                    SendQuery(srv.Target, DnsType.A);
+                    SendQuery(srv.Target, DnsType.AAAA);
+                }
+                return;
+            }
+
+            string id = string.Empty;
+            string path = string.Empty;
+            string ski = string.Empty;
+
+            foreach (string textRecord in txt)
+            {
+                if (textRecord.StartsWith("id"))
+                    id = GetTxtRecordValue(textRecord);
+
+                if (textRecord.StartsWith("path"))
+                    path = GetTxtRecordValue(textRecord);
+
+                if (textRecord.StartsWith("ski"))
+                    ski = GetTxtRecordValue(textRecord);
+            }
+
+            if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(path) || string.IsNullOrEmpty(ski))
+            {
+                _logger.LogWarning("[MDNS] EEBUS service instance '{instanceName}' discovered but missing required TXT records.", instanceName);
+                return;
+            }
+
+            foreach (System.Net.IPAddress address in addresses)
+            {
+                string url = address.ToString() + ":" + srv.Port.ToString() + path;
+                _logger.LogTrace("[MDNS] EEBUS service instance '{instanceName}' resolved to {url}.", instanceName, url);
+                this.devices?.GetOrCreateRemote(id, ski, url, instanceName);
+            }
+        }
+
+        private void SendQuery(DomainName name, DnsType type)
+        {
+            try
+            {
+                _serviceDiscovery.Mdns.SendQuery(name, type: type);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[MDNS] Failed to send {type} query for '{name}'.", type, name);
             }
         }
 

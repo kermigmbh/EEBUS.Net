@@ -285,7 +285,7 @@ namespace EEBUS
                 throw new Exception("Message couldn't be recognized");
             }
 
-            Logger?.LogTrace(DateTime.Now.ToString("HH:mm:ss.fff") + " <--- " + Encoding.UTF8.GetString(messageSpan) + "\n");
+            Logger?.LogDebug(DateTime.Now.ToString("HH:mm:ss.fff") + " <--- " + Encoding.UTF8.GetString(messageSpan) + "\n");
 
             return message;
         }

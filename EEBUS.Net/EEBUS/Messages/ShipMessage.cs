@@ -76,7 +76,7 @@ namespace EEBUS.Messages
             this.sentData[0] = GetDataType();
             Buffer.BlockCopy(msg, 0, this.sentData, 1, msg.Length);
 
-            logger?.LogTrace(DateTime.Now.ToString("HH:mm:ss.fff") + " ---> " + this.ToEEBUSJson() + "\n");
+            logger?.LogDebug(DateTime.Now.ToString("HH:mm:ss.fff") + " ---> " + this.ToEEBUSJson() + "\n");
             await ws.SendAsync(this.sentData, WebSocketMessageType.Binary, true, new CancellationTokenSource(timeoutMilliseconds).Token).ConfigureAwait(false);
         }
 
@@ -91,7 +91,7 @@ namespace EEBUS.Messages
                 throw new Exception($"Expected message of type {template.GetDataType()}!");
 
             var ret = template.FromJsonVirtual(msg/*, null*/ );
-            logger?.LogTrace(DateTime.Now.ToString("HH:mm:ss.fff") + "<---" + Encoding.UTF8.GetString(msg) + "\n");
+            logger?.LogDebug(DateTime.Now.ToString("HH:mm:ss.fff") + "<---" + Encoding.UTF8.GetString(msg) + "\n");
             return ret;
         }
 

@@ -209,7 +209,10 @@ namespace EEBUS.SHIP.Messages
                 return (Connection.EState.WaitingForCloseConfirm, Connection.ESubState.None);
             }
 
-            if (connection.State == Connection.EState.Connected)
+            if (connection.State != Connection.EState.Disconnected && 
+                connection.State != Connection.EState.Stopped && 
+                connection.State != Connection.EState.ErrorOrTimeout && 
+                connection.State != Connection.EState.SendProtocolHandshakeError)
             {
                 if (this.data.payload is JsonObject payloadObj && payloadObj.ContainsKey("datagram"))
                 {

@@ -188,7 +188,7 @@ namespace EEBUS.StateMachines
                 _hasReceivedHeartbeat = true;
                 _lastHeartbeatTime = _timeProvider.GetUtcNow();
 
-                Logger?.LogTrace($"[LimitStateMachine:{_direction}] Heartbeat received in state {_currentState}");
+                Logger?.LogDebug($"[LimitStateMachine:{_direction}] Heartbeat received in state {_currentState}");
 
                 // Handle state transitions based on current state
                 string reason = "received heartbeat";
@@ -350,7 +350,7 @@ namespace EEBUS.StateMachines
             {
                 _hasReceivedLimitWrite = true;
 
-                Logger?.LogTrace($"[LimitStateMachine:{_direction}] Limit write accepted: active={active}, value={limit}W, state={_currentState}");
+                Logger?.LogDebug($"[LimitStateMachine:{_direction}] Limit write accepted: active={active}, value={limit}W, state={_currentState}");
 
                 // Calculate expiry time if duration is specified
                 DateTimeOffset? expiresAt = null;
@@ -520,7 +520,7 @@ namespace EEBUS.StateMachines
 
                 lock (_lock)
                 {
-                    Logger?.LogTrace($"[LimitStateMachine:{_direction}] Heartbeat timeout in state {_currentState}");
+                    Logger?.LogDebug($"[LimitStateMachine:{_direction}] Heartbeat timeout in state {_currentState}");
 
                     switch (_currentState)
                     {
@@ -560,7 +560,7 @@ namespace EEBUS.StateMachines
 
                 lock (_lock)
                 {
-                    Logger?.LogTrace($"[LimitStateMachine:{_direction}] Limit duration expired in state {_currentState}");
+                    Logger?.LogDebug($"[LimitStateMachine:{_direction}] Limit duration expired in state {_currentState}");
 
                     // Transition 6: Limited -> UnlimitedControlled (duration expired)
                     if (_currentState == LimitState.Limited)
@@ -587,7 +587,7 @@ namespace EEBUS.StateMachines
 
                 lock (_lock)
                 {
-                    Logger?.LogTrace($"[LimitStateMachine:{_direction}] Failsafe duration expired in state {_currentState}");
+                    Logger?.LogDebug($"[LimitStateMachine:{_direction}] Failsafe duration expired in state {_currentState}");
 
                     // Transition 10: Failsafe -> UnlimitedAutonomous (failsafe duration expired)
                     if (_currentState == LimitState.Failsafe || _currentState == LimitState.FailsafePlusHeartbeat)
@@ -612,7 +612,7 @@ namespace EEBUS.StateMachines
 
                 lock (_lock)
                 {
-                    Logger?.LogTrace($"[LimitStateMachine:{_direction}] Init timeout in state {_currentState}");
+                    Logger?.LogDebug($"[LimitStateMachine:{_direction}] Init timeout in state {_currentState}");
 
                     switch (_currentState)
                     {
@@ -651,7 +651,7 @@ namespace EEBUS.StateMachines
                 var oldState = _currentState;
                 _currentState = newState;
 
-                Logger?.LogTrace($"[LimitStateMachine:{_direction}] State transition: {oldState} -> {newState} ({reason})");
+                Logger?.LogDebug($"[LimitStateMachine:{_direction}] State transition: {oldState} -> {newState} ({reason})");
 
                 var oldEffectiveLimit = GetEffectiveLimitForState(oldState);
                 var newEffectiveLimit = GetEffectiveLimit();
