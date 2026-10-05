@@ -41,7 +41,10 @@ namespace EEBUS.SPINE.Commands
                         datas.Add(structure.Data);
                     }
 
-                    data.loadControlLimitData = datas.ToArray();
+                    if (datas.Count > 0)
+                    {
+                        data.loadControlLimitData = datas.ToArray();
+                    }
                     return payload;
                 }
                 else if (datagram.header.cmdClassifier == "write")

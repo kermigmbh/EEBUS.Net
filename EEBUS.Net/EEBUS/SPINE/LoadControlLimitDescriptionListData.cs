@@ -32,7 +32,10 @@ namespace EEBUS.SPINE.Commands
 				foreach ( LoadControlLimitDataStructure description in connection.Local.GetDataStructures<LoadControlLimitDataStructure>() )
 					datas.Add( description.DescriptionData );
 
-				data.loadControlLimitDescriptionData = datas.ToArray();
+				if (datas.Count > 0)
+				{
+					data.loadControlLimitDescriptionData = datas.ToArray();
+				}
 
 				return payload;
 			}

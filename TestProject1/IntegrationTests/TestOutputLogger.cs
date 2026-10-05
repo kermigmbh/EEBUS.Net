@@ -6,11 +6,11 @@ using Xunit.Abstractions;
 
 namespace TestProject1.IntegrationTests
 {
-    public sealed class TestOutputLogger(ITestOutputHelper output, string categoryName) : ILogger
+    public sealed class TestOutputLogger(ITestOutputHelper output, string categoryName, LogLevel? minLogLevel = null) : ILogger
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
 
-        public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None;
+        public bool IsEnabled(LogLevel logLevel) => minLogLevel.HasValue ? logLevel >= minLogLevel.Value : logLevel != LogLevel.None;
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {

@@ -1,4 +1,8 @@
 ﻿using EEBUS;
+using EEBUS.Messages;
+using EEBUS.Net;
+using EEBUS.SHIP.Messages;
+using EEBUS.SPINE.Commands;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -11,6 +15,78 @@ namespace TestProject1.IntegrationTests
         //_nodeNumber ensures we do not create the same node multiple times, which could influence the test results
         private static int _nodeNumber = 0;
         private static object _lock = new object();
+
+        private static SpineDatagramPayload GetPayload(string message)
+        {
+            var bytes = Encoding.UTF8.GetBytes(message);
+            var parsedMessage = ShipMessageBase.Create(bytes) as DataMessage;
+            if (parsedMessage == null) throw new Exception("Failed to parse message");
+
+            SpineDatagramPayload? payload = JsonHelper.FromJsonNode<SpineDatagramPayload>(parsedMessage.data.payload);
+            if (payload == null) throw new Exception("Failed to create payload");
+
+            return payload;
+        }
+
+        public static Settings GetSettingsFromDiscoveryData(string nodeManagementDetailedDiscoveryMessage, string nodeManagementUseCaseDataMessaage)
+        {
+            SpineDatagramPayload discoveryPayload = GetPayload(nodeManagementDetailedDiscoveryMessage);
+            NodeManagementDetailedDiscoveryData? discoveryMessage = JsonHelper.FromJsonNode<NodeManagementDetailedDiscoveryData>(discoveryPayload.datagram.payload);
+            if (discoveryMessage == null) throw new Exception("Failed to parse discovery message");
+
+            SpineDatagramPayload useCaseDataPayload = GetPayload(nodeManagementUseCaseDataMessaage);
+            NodeManagementUseCaseData? useCaseDataMessage = JsonHelper.FromJsonNode<NodeManagementUseCaseData>(useCaseDataPayload.datagram.payload);
+            if (useCaseDataMessage == null) throw new Exception("Failed to parse use case data message");
+
+            lock (_lock)
+            {
+                _nodeNumber++;
+                var settings = new Settings()
+                {
+                    Device = new DeviceSettings()
+                    {
+                        Name = "KermiConsumer",
+                        Id = "KermiConsumer-" + _nodeNumber,
+                        Model = "KermiDemo",
+                        Brand = "Kermi",
+                        Type = "EnergyManagementSystem",
+                        Serial = "123456",
+                        Port = (ushort)(7000 + _nodeNumber),
+                    },
+                    Certificate = "EEBUS" + (_nodeNumber) + ".net"
+                };
+
+                EntityInformationType[]? entitySettings = discoveryMessage.cmd.First().nodeManagementDetailedDiscoveryData.entityInformation;
+                if (entitySettings == null) throw new Exception("Failed to parse entity settings");
+
+                List<EntitySettings> entities = [];
+                foreach (EntityInformationType entity in entitySettings)
+                {
+                    List<UseCaseSettings> useCases = [];
+                    IEnumerable<UseCaseInformationType>? entityUseCases = useCaseDataMessage.cmd.First().nodeManagementUseCaseData.useCaseInformation?.Where(uci => uci.address.entity.SequenceEqual(entity.description.entityAddress.entity));
+
+                    foreach (UseCaseInformationType entityUseCase in entityUseCases ?? [])
+                    {
+                        foreach (UseCaseSupportType useCaseSupport in entityUseCase.useCaseSupport)
+                        {
+                            if (!useCaseSupport.useCaseAvailable) continue;
+
+                            useCases.Add(new UseCaseSettings
+                            {
+                                Actor = entityUseCase.actor,
+                                Type = useCaseSupport.useCaseName,
+                                SupportedScenarios = useCaseSupport.scenarioSupport
+                            });
+                        }
+                    }
+
+                    entities.Add(new EntitySettings { Type = entity.description.entityType, UseCases = useCases.ToArray() });
+                }
+
+                settings.Device.Entities = entities.ToArray();
+                return settings;
+            }
+        }
 
         public static Settings GetCEMSettings(LimitSettings? initLimits = null)
         {
@@ -243,7 +319,7 @@ namespace TestProject1.IntegrationTests
                                         FailsafeLimit = 7200,
                                         FailsafeDurationMinimum = TimeSpan.FromHours(2),
                                         NominalMax = 40000
-                                    }   
+                                    }
                                 },
                                 new UseCaseSettings {
                                     Type = "limitationOfPowerProduction",
@@ -342,6 +418,6 @@ namespace TestProject1.IntegrationTests
                 };
                 return settings;
             }
-        } 
+        }
     }
 }

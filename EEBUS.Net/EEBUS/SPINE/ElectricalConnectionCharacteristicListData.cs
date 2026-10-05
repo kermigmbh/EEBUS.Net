@@ -37,7 +37,10 @@ namespace EEBUS.SPINE.Commands
                 //connection.Local.FillData<ElectricalConnectionCharacteristicDataType>( eccs, connection );
 
                 List<ElectricalConnectionCharacteristicDataStructure> structures = connection.Local.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>();
-                payload.cmd[0].electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData = structures.Select(structure => structure.Data).ToArray();
+                if (structures.Count > 0)
+                {
+                    payload.cmd[0].electricalConnectionCharacteristicListData.electricalConnectionCharacteristicData = structures.Select(structure => structure.Data).ToArray();
+                }
 
                 return payload;
             }

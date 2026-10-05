@@ -1,9 +1,12 @@
-﻿using EEBUS.Models;
+﻿using EEBUS;
+using EEBUS.Enums;
+using EEBUS.Models;
 using EEBUS.Net;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Xunit.Abstractions;
@@ -28,9 +31,9 @@ namespace TestProject1.IntegrationTests
             _defaultLogger.LogTrace($"[{testName}] {message}");
         }
 
-        protected ILogger GetLogger(string categoryName, [CallerMemberName] string testName = "")
+        protected ILogger GetLogger(string categoryName, [CallerMemberName] string testName = "", LogLevel? minLogLevel = null)
         {
-            return new TestOutputLogger(_output, $"[{testName}] {categoryName}");
+            return new TestOutputLogger(_output, $"[{testName}] {categoryName}", minLogLevel);
         }
 
         /// <summary>
@@ -126,6 +129,18 @@ namespace TestProject1.IntegrationTests
 
             await manager2ReadyWaiter.Match((remoteDevice, status) => remoteDevice.SKI.ToString() == manager1Ski && status == DeviceConnectionStatus.UseCaseDiscoveryCompleted, timeoutMs: 50000);
             await manager1ReadyWaiter.Match((remoteDevice, status) => remoteDevice.SKI.ToString() == manager2Ski && status == DeviceConnectionStatus.UseCaseDiscoveryCompleted, timeoutMs: 50000);
+        }
+
+        protected async Task SendDataMessageAsync(Connection connection, string message, int timeoutMilliseconds = SHIPMessageTimeout.CMI_TIMEOUT)
+        {
+            byte[] msg = Encoding.UTF8.GetBytes(message);
+            var dataToSend = new byte[msg.Length + 1];
+
+            dataToSend[0] = SHIPMessageType.DATA;
+            Buffer.BlockCopy(msg, 0, dataToSend, 1, msg.Length);
+
+            //logger?.LogDebug(DateTime.Now.ToString("HH:mm:ss.fff") + " ---> " + this.ToEEBUSJson() + "\n");
+            await connection.WebSocket.SendAsync(dataToSend, WebSocketMessageType.Binary, true, new CancellationTokenSource(timeoutMilliseconds).Token).ConfigureAwait(false);
         }
     }
 }

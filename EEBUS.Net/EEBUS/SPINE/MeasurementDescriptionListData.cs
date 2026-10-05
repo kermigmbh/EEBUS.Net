@@ -123,7 +123,11 @@ namespace EEBUS.SPINE.Commands
                             measurementData.Add(data.measurementDescriptionDataType);
                         }
                     }
-                    measurementDescriptionListData.cmd[0].measurementDescriptionListData.measurementDescriptionData = measurementData.ToArray();
+
+                    if (measurementData.Count > 0)
+                    {
+                        measurementDescriptionListData.cmd[0].measurementDescriptionListData.measurementDescriptionData = measurementData.ToArray();
+                    }
                     return measurementDescriptionListData;
                 } else
                 {

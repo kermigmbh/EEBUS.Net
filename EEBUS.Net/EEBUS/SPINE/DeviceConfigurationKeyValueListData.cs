@@ -39,7 +39,10 @@ namespace EEBUS.SPINE.Commands
 					foreach (var keyValue in connection.Local.KeyValues)
 						datas.Add(keyValue.Data);
 
-					data.deviceConfigurationKeyValueData = datas.ToArray();
+					if (datas.Count > 0)
+					{
+						data.deviceConfigurationKeyValueData = datas.ToArray();
+					}
 
 					return payload;
 				}

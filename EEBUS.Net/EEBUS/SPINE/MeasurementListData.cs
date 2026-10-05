@@ -39,7 +39,10 @@ namespace EEBUS.SPINE.Commands
                 if (measurementFeature == null) return null;
 
                 MeasurementListData measurementListData = new MeasurementListData();
-                measurementListData.cmd[0].measurementListData.measurementData = measurementFeature.measurementData.Select(data => data.measurementDataType).ToArray();
+                if (measurementFeature.measurementData.Count > 0)
+                {
+                    measurementListData.cmd[0].measurementListData.measurementData = measurementFeature.measurementData.Select(data => data.measurementDataType).ToArray();
+                }
                 return measurementListData;
             }
 
@@ -182,7 +185,7 @@ namespace EEBUS.SPINE.Commands
     [System.SerializableAttribute()]
     public class MeasurementListDataType
     {
-        public MeasurementDataType[] measurementData { get; set; }
+        public MeasurementDataType[]? measurementData { get; set; }
     }
 
     [System.SerializableAttribute()]

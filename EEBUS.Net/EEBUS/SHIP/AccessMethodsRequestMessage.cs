@@ -45,7 +45,7 @@ namespace EEBUS.SHIP.Messages
                 return (Connection.EState.WaitingForAccessMethods, Connection.ESubState.None);
             }
 
-            throw new Exception("Was waiting for PinChecked");
+            throw new Exception("Was waiting for AccessMethodsRequest");
         }
     }
 

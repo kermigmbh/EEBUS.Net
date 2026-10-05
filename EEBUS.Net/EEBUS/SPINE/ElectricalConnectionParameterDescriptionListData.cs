@@ -42,10 +42,10 @@ namespace EEBUS.SPINE.Commands
                             descriptionData.Add(data.electricalConnectionParameterDescriptionData);
                         }
                     }
-                    electricalConnectionParameterDescriptionListData.cmd[0].electricalConnectionParameterDescriptionListData = new()
-                    {
-                        electricalConnectionParameterDescriptionData = descriptionData.ToArray()
-                    };
+                    electricalConnectionParameterDescriptionListData.cmd[0].electricalConnectionParameterDescriptionListData = new();
+                    if (descriptionData.Count > 0) {
+                        electricalConnectionParameterDescriptionListData.cmd.First().electricalConnectionParameterDescriptionListData.electricalConnectionParameterDescriptionData = descriptionData.ToArray();
+                    }
                     return electricalConnectionParameterDescriptionListData;
                 }
                 else if (datagram.header.cmdClassifier == "write")
