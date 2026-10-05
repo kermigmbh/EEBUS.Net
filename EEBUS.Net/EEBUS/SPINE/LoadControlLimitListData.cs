@@ -142,7 +142,7 @@ namespace EEBUS.SPINE.Commands
                     }
 
                     WriteApprovalResult approvalResult = WriteApprovalResult.Accept();
-                    foreach (LoadControlLimitDataType loadControlLimitData in command.cmd[0].loadControlLimitListData.loadControlLimitData)
+                    foreach (LoadControlLimitDataType loadControlLimitData in command.cmd[0].loadControlLimitListData.loadControlLimitData ?? [])
                     {
                         if (loadControlLimitData.limitId == null)
                         {
@@ -192,7 +192,7 @@ namespace EEBUS.SPINE.Commands
                     if (approvalResult.Approved)
                     {
                         // Only update data if all limits are approved
-                        foreach (LoadControlLimitDataType loadControlLimitData in command.cmd[0].loadControlLimitListData.loadControlLimitData)
+                        foreach (LoadControlLimitDataType loadControlLimitData in command.cmd[0].loadControlLimitListData.loadControlLimitData ?? [])
                         {
                             if (loadControlLimitData.limitId == null)
                             {
@@ -223,7 +223,7 @@ namespace EEBUS.SPINE.Commands
                     if (command == null || command.cmd == null || command.cmd.Length == 0)
                         return;
 
-                    foreach (LoadControlLimitDataType loadControlLimitData in command.cmd.First().loadControlLimitListData.loadControlLimitData)
+                    foreach (LoadControlLimitDataType loadControlLimitData in command.cmd.First().loadControlLimitListData.loadControlLimitData ?? [])
                     {
                         if (loadControlLimitData.limitId == null)
                             continue;
@@ -318,7 +318,7 @@ namespace EEBUS.SPINE.Commands
                         if (lpcLimitId != null && deviceData.Lpc != null)
                         {
                             deviceData.Lpc = new LpcLppData();
-                            var lpcLimit = loadControlLimitListData.cmd.First().loadControlLimitListData.loadControlLimitData
+                            var lpcLimit = loadControlLimitListData.cmd.First().loadControlLimitListData.loadControlLimitData?
                                 .FirstOrDefault(d => d.limitId == lpcLimitId);
                             deviceData.Lpc.LimitActive = lpcLimit?.isLimitActive;
                             deviceData.Lpc.LimitDuration = lpcLimit?.timePeriod?.endTime != null ? (int)XmlConvert.ToTimeSpan(lpcLimit.timePeriod.endTime).TotalSeconds : null;
@@ -328,7 +328,7 @@ namespace EEBUS.SPINE.Commands
                         if (lppLimitId != null && deviceData.Lpp != null)
                         {
                             deviceData.Lpp = new LpcLppData();
-                            var lppLimit = loadControlLimitListData.cmd.First().loadControlLimitListData.loadControlLimitData
+                            var lppLimit = loadControlLimitListData.cmd.First().loadControlLimitListData.loadControlLimitData?
                                 .FirstOrDefault(d => d.limitId == lppLimitId);
                             deviceData.Lpp.LimitActive = lppLimit?.isLimitActive;
                             deviceData.Lpp.LimitDuration = lppLimit?.timePeriod?.endTime != null ? (int)XmlConvert.ToTimeSpan(lppLimit.timePeriod.endTime).TotalSeconds : null;
@@ -389,7 +389,7 @@ namespace EEBUS.SPINE.Commands
     [System.SerializableAttribute()]
     public class LoadControlLimitListDataType
     {
-        public LoadControlLimitDataType[] loadControlLimitData { get; set; }
+        public LoadControlLimitDataType[]? loadControlLimitData { get; set; }
     }
 
     [System.SerializableAttribute()]

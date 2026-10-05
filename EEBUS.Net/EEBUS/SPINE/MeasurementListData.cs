@@ -61,7 +61,7 @@ namespace EEBUS.SPINE.Commands
                     MeasurementServerFeature? measurementFeature = entity?.Features.FirstOrDefault(f => f.Index == datagram.header.addressSource.feature) as MeasurementServerFeature;
                     if (measurementFeature == null) return;
 
-                    foreach (MeasurementDataType measurement in command.cmd.First().measurementListData.measurementData)
+                    foreach (MeasurementDataType measurement in command.cmd.First().measurementListData.measurementData ?? [])
                     {
                         MeasurementData.MeasurementData? corresponding = measurementFeature.measurementData.FirstOrDefault(data => data.measurementId == measurement.measurementId);
                         if (corresponding == null)
@@ -141,7 +141,7 @@ namespace EEBUS.SPINE.Commands
                     if (measurementListData != null)
                     {
                         List<MeasurementData.MeasurementData> measurementDataList = [];
-                        foreach (var measurement in measurementListData.cmd.First().measurementListData.measurementData)
+                        foreach (var measurement in measurementListData.cmd.First().measurementListData.measurementData ?? [])
                         {
                             var description = measurementDescriptionListData?.cmd.First().measurementDescriptionListData.measurementDescriptionData?.FirstOrDefault(d => d.measurementId == measurement.measurementId);
                             var electricalConnectionParameter = electricalConnectionParameterDescriptionListData?.cmd.First().electricalConnectionParameterDescriptionListData?.electricalConnectionParameterDescriptionData?.FirstOrDefault(e => e.measurementId == measurement.measurementId);
