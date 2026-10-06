@@ -6,6 +6,13 @@ using System.Text.Json.Serialization;
 
 namespace EEBUS.SHIP.Messages
 {
+    /// <summary>
+    /// Part of the SHIP message exchange (SME). The SME consists of the following messages, in order:
+    /// <see cref="InitMessage"/> -> 
+    /// <see cref="ConnectionHelloMessage"/> -> 
+    /// <see cref="ProtocolHandshakeMessage"/> -> 
+    /// <see cref="PinCheckMessage"/>
+    /// </summary>
     public class ConnectionHelloMessage : ShipControlMessage<ConnectionHelloMessage>
     {
         static ConnectionHelloMessage()

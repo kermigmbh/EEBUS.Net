@@ -98,7 +98,7 @@ namespace TestProject1.Ship
             var devices = CreateDevices(withRegisteredRemote: false);
 
             var server = new TestServer(new FakeWebSocket(), devices);
-            server.SetState(Connection.EState.WaitingForAccessMethods);
+            server.SetState(Connection.EState.Connected);
 
             var accessMethods   = new AccessMethodsMessage("completely-unknown-device-id");
             var (newState, _)   = await accessMethods.NextServerState(server);

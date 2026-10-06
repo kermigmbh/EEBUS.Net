@@ -215,7 +215,17 @@ namespace EEBUS.SHIP.Messages
                 {
                     SpineDatagramPayload payload = SpineDatagramPayload;
                     string? cmdClassifier = payload.datagram?.header?.cmdClassifier;
-                    
+                    string? sourceDeviceId = payload.datagram?.header?.addressSource?.device;
+
+                    if (connection.Remote == null && sourceDeviceId != null)
+                    {
+                        var remote = connection.GetRemote(sourceDeviceId);
+                        if (remote != null)
+                        {
+                            connection.Remote = remote;
+                        }
+                    }
+
                     await payload.EvaluateAsync(connection);
 
                     if (cmdClassifier == "reply" || cmdClassifier == "notify" || cmdClassifier == "result")

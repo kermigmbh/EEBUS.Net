@@ -26,10 +26,10 @@ namespace EEBUS.SHIP.Messages
 
         public override async Task<(Connection.EState, Connection.ESubState)> NextServerState(Connection connection, ILogger? logger = null)
         {
-            if (connection.State == Connection.EState.WaitingForAccessMethodsRequest)
+            if (connection.State == Connection.EState.Connected)
             {
                 await Send(connection.WebSocket, logger).ConfigureAwait(false);
-                return (Connection.EState.WaitingForAccessMethods, Connection.ESubState.None);
+                return (Connection.EState.Connected, connection.SubState);
             }
 
             throw new Exception("Was waiting for AccessMethodsRequest");
@@ -37,12 +37,12 @@ namespace EEBUS.SHIP.Messages
 
         public override async Task<(Connection.EState, Connection.ESubState)> NextClientState(Connection connection, ILogger? logger = null)
         {
-            if (connection.State == Connection.EState.WaitingForAccessMethodsRequest)
+            if (connection.State == Connection.EState.Connected)
             {
                 AccessMethodsMessage method = new AccessMethodsMessage(connection.Local.DeviceId);
                 await method.Send(connection.WebSocket, logger).ConfigureAwait(false);
 
-                return (Connection.EState.WaitingForAccessMethods, Connection.ESubState.None);
+                return (Connection.EState.Connected, connection.SubState);
             }
 
             throw new Exception("Was waiting for AccessMethodsRequest");

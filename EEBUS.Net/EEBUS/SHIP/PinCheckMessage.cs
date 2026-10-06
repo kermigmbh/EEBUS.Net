@@ -5,6 +5,13 @@ using Microsoft.Extensions.Logging;
 
 namespace EEBUS.SHIP.Messages
 {
+    /// <summary>
+    /// Part of the SHIP message exchange (SME). The SME consists of the following messages, in order:
+    /// <see cref="InitMessage"/> -> 
+    /// <see cref="ConnectionHelloMessage"/> -> 
+    /// <see cref="ProtocolHandshakeMessage"/> -> 
+    /// <see cref="PinCheckMessage"/>
+    /// </summary>
     public class PinCheckMessage : ShipControlMessage<PinCheckMessage>
     {
         static PinCheckMessage()
@@ -55,7 +62,7 @@ namespace EEBUS.SHIP.Messages
             if (connection.State == Connection.EState.WaitingForPinCheck)
             {
                 await Send(connection.WebSocket, logger).ConfigureAwait(false);
-                return (Connection.EState.WaitingForAccessMethodsRequest, Connection.ESubState.None);
+                return (Connection.EState.Connected, Connection.ESubState.None);
             }
 
             throw new Exception("Was waiting for PinCheckit");
@@ -71,11 +78,6 @@ namespace EEBUS.SHIP.Messages
                 error = "Pinstate none expected!";
                 newState = Connection.EState.Stopped;
             }
-            //if (this.connectionPinState.inputPermissionSpecified != false)
-            //{
-            //    error = "Pinstate inputPermissionSpecified expected!";
-            //    newState = Connection.EState.Stopped;
-            //}
 
             return (newState, Connection.ESubState.None, error);
         }
@@ -87,7 +89,7 @@ namespace EEBUS.SHIP.Messages
                 AccessMethodsRequestMessage method = new AccessMethodsRequestMessage();
                 await method.Send(connection.WebSocket, logger).ConfigureAwait(false);
 
-                return (Connection.EState.WaitingForAccessMethodsRequest, Connection.ESubState.None);
+                return (Connection.EState.Connected, Connection.ESubState.None);
             }
 
             throw new Exception("Was waiting for PinCheckit");
@@ -98,11 +100,8 @@ namespace EEBUS.SHIP.Messages
     public class ConnectionPinStateType
     {
         public PinStateType pinState { get; set; }
-
-        //public bool inputPermissionSpecified { get; set; }
     }
 
-    /// <remarks/>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum PinStateType
     {

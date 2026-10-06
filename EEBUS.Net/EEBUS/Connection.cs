@@ -133,7 +133,7 @@ namespace EEBUS
 
         public LocalDevice Local { get { return this.devices.Local; } }
 
-        public RemoteDevice? Remote { get; protected set; }
+        public RemoteDevice? Remote { get; internal set; }
 
 
         public DataMessageQueue WaitingMessages { get; protected set; }
@@ -141,7 +141,7 @@ namespace EEBUS
 
         public abstract Task CloseAsync();
 
-        protected RemoteDevice? GetRemote(string id)
+        internal RemoteDevice? GetRemote(string id)
         {
             if (null == id)
                 return null;

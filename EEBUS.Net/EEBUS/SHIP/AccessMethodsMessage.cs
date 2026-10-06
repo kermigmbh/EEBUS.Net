@@ -1,4 +1,6 @@
 ﻿using EEBUS.Messages;
+using EEBUS.Models;
+using EEBUS.Net.EEBUS.Models;
 using Makaretu.Dns;
 using Microsoft.Extensions.Logging;
 using System.Text.Json.Serialization;
@@ -38,13 +40,15 @@ namespace EEBUS.SHIP.Messages
 
         public override async Task<(Connection.EState, Connection.ESubState)> NextServerState(Connection connection, ILogger? logger = null)
         {
-            if (connection.State == Connection.EState.WaitingForAccessMethods)
+            if (connection.State == Connection.EState.Connected)
             {
-                if (!connection.IsKnownRemote(GetId()))
+                RemoteDevice? remote = connection.GetRemote(GetId());
+                if (remote == null)
                 {
                     return (Connection.EState.Stopped, Connection.ESubState.None);
                 }
 
+                connection.Remote ??= remote;
                 //await Send(connection.WebSocket, logger).ConfigureAwait(false);
                 AccessMethodsMessage method = new AccessMethodsMessage(connection.Local.DeviceId);
                 await method.Send(connection.WebSocket, logger).ConfigureAwait(false);
@@ -56,9 +60,16 @@ namespace EEBUS.SHIP.Messages
 
         public override async Task<(Connection.EState, Connection.ESubState)> NextClientState(Connection connection, ILogger? logger = null)
         {
-            if (connection.State == Connection.EState.WaitingForAccessMethods)
+            if (connection.State == Connection.EState.Connected)
             {
-                return (Connection.EState.Connected, Connection.ESubState.None);
+                RemoteDevice? remote = connection.GetRemote(GetId());
+                if (remote == null)
+                {
+                    return (Connection.EState.Stopped, Connection.ESubState.None);
+                }
+                connection.Remote ??= remote;
+
+                return (Connection.EState.Connected, connection.SubState);
             }
 
             throw new Exception("Was waiting for AccessMethods");
