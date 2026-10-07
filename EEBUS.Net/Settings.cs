@@ -75,8 +75,11 @@ namespace EEBUS
 
         public UseCaseSettings[] UseCases { get; set; } = [];
         public EntityInformationType? EntityInformation { get; set; }
-        public FeatureInformationType[]? FeatureInformation { get; set; } = [];
+
+        public FeatureInformationType[]? FeatureInformation { get; set; }
+        public UseCaseInformationType[]? UseCaseInformation { get; set; }
     }
+    
 
     //public class FeatureSettings
     //{

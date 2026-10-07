@@ -87,13 +87,12 @@ namespace EEBUS.Models
 			{
 				List<EntityInformationType> infos = new();
 
-				int index = 0;
 				foreach (Entity entity in this.Entities)
 				{
 					EntityInformationType info = new();
 
 					info.description.entityAddress.device = this.DeviceId;
-					info.description.entityAddress.entity = [index++];
+					info.description.entityAddress.entity = entity.Index;
 					info.description.entityType = entity.Type;
 
 					infos.Add(info);

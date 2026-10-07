@@ -87,26 +87,33 @@ namespace EEBUS
 
 
                     AddressType? heartbeatSource = connection.GetLocalHeartbeatAddress(true);
-                    AddressType? heartbeatDestination = connection.GetRemoteHeartbeatAddress(false);
+                    if (heartbeatSource == null) return;
 
-                    if (heartbeatSource == null || heartbeatDestination == null) return;
+                    SendHeartbeatNotification(heartbeatSource, heartbeatClass.CreateNotify(connection), connection);
+                }
+            }
+
+            private void SendHeartbeatNotification(AddressType serverAddress, SpineCmdPayloadBase payload, Connection connection)
+            {
+                IEnumerable<AddressType> clientAddresses = connection.BindingAndSubscriptionManager.GetSubscriptionsByServerAddress(serverAddress, BindingSubscriptionDirection.Incoming);
+
+                foreach (var clientAddress in clientAddresses)
+                {
                     SpineDatagramPayload reply = new SpineDatagramPayload();
-                    reply.datagram.header.addressSource = heartbeatSource;
-                    reply.datagram.header.addressDestination = heartbeatDestination;
+                    reply.datagram.header.addressSource = serverAddress;
+                    reply.datagram.header.addressDestination = clientAddress;
                     reply.datagram.header.msgCounter = DataMessage.NextCount;
                     reply.datagram.header.cmdClassifier = "notify";
 
-                    SpineCmdPayloadBase? heartbeat = heartbeatClass.CreateNotify(connection);
-                    // serialize heartbeat into a JsonNode payload
-                    reply.datagram.payload = heartbeat?.ToJsonNode();
-
-                    DataMessage heartbeatMessage = new DataMessage();
-                    heartbeatMessage.SetPayload(JsonHelper.ToJsonNode(reply) ?? throw new Exception("Failed to serialize heartbeat message"));
-
-                    connection.PushDataMessage(heartbeatMessage);
+                    reply.datagram.payload = payload.ToJsonNode();
+                    DataMessage dataMessage = new DataMessage();
+                    dataMessage.SetPayload(JsonHelper.ToJsonNode(reply) ?? throw new Exception("Failed to serialize data message"));
+                    connection.PushDataMessage(dataMessage);
                 }
             }
         }
+
+       
 
         protected ILogger? Logger { get; private set; }
         public Connection(HostString host, WebSocket ws, Devices devices, ILogger? logger = null)

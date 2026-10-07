@@ -58,6 +58,7 @@ namespace ConsoleDemo
             Console.WriteLine("- connect <index>: connects to the remote device with index <index>, starting at 0");
             Console.WriteLine("- read: prints out all properties of the local device");
             Console.WriteLine("- ski: sets trusted ski");
+            Console.WriteLine("- visualize <message>: analyzes a ship message and prints the structure of a nodeManagementDetailedDiscoveryData or nodeManagementUseCaseData payload");
 
 
             while (true)
@@ -109,8 +110,11 @@ namespace ConsoleDemo
                     case "read":
                         Read();
                         break;
+                    case "visualize":
+                        MessageVisualizer.Visualize(input.Substring(tokens[0].Length));
+                        break;
                     default:
-                        Console.WriteLine("Invalid input: valid commands: remotes; connect <index>; read");
+                        Console.WriteLine("Invalid input: valid commands: remotes; connect <index>; read; visualize <message>");
                         break;
                 }
             }
