@@ -28,6 +28,14 @@ namespace EEBUS.Models
             this.local = local;
             this.Type = entityInfo.description.entityType;
 
+            int[] ownerAddress = entityInfo.description.entityAddress.entity.Take(entityInfo.description.entityAddress.entity.Length - 1).ToArray();
+            Entity? ownerEntity = local.Entities.FirstOrDefault(e => e.EqualIndex(ownerAddress));
+            if (ownerEntity != null)
+            {
+                this.owner = ownerEntity;
+                ownerEntity.Entities.Add(this);
+            }
+
             foreach (FeatureInformationType featureInfo in featureInfos)
             {
                 if (EqualIndex(featureInfo.description.featureAddress.entity))
@@ -51,14 +59,23 @@ namespace EEBUS.Models
 
         static public Entity? Create(int index, LocalDevice local, EntitySettings entitySettings)
         {
-            if (entityClasses.TryGetValue(entitySettings.Type, out Class cls))
+            if (entitySettings.EntityInformation != null && entitySettings.FeatureInformation != null)
             {
-                return cls.Create(index, local, entitySettings);
-            } else
+                return Create(local, entitySettings.EntityInformation, entitySettings.FeatureInformation);
+            }
+            else
             {
-                if (entityClasses.TryGetValue("Generic", out Class? genericClass) && genericClass != null)
+
+                if (entityClasses.TryGetValue(entitySettings.Type, out Class cls))
                 {
-                    return genericClass.Create(index, local, entitySettings);
+                    return cls.Create(index, local, entitySettings);
+                }
+                else
+                {
+                    if (entityClasses.TryGetValue("Generic", out Class? genericClass) && genericClass != null)
+                    {
+                        return genericClass.Create(index, local, entitySettings);
+                    }
                 }
             }
 
@@ -73,20 +90,21 @@ namespace EEBUS.Models
             int index = Index[Index.Length - 1];
 
             string type = entityInfo.description.entityType;
+            Entity? createdEntity = null;
 
             if (entityClasses.TryGetValue(type, out Class cls))
             {
-                return cls.Create(index, local, entityInfo, featureInfos);
+                createdEntity = cls.Create(index, local, entityInfo, featureInfos);
             }
             else
             {
                 if (entityClasses.TryGetValue("Generic", out Class? genericClass) && genericClass != null)
                 {
-                    return genericClass.Create(index, local, entityInfo, featureInfos);
+                    createdEntity = genericClass.Create(index, local, entityInfo, featureInfos);
                 }
             }
 
-            return null;
+            return createdEntity;
         }
 
         static protected Dictionary<string, Class> entityClasses = new Dictionary<string, Class>();

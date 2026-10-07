@@ -28,7 +28,10 @@ namespace EEBUS.SPINE.Commands
 				foreach ( Entity entity in connection.Local.Entities )
 					infos.AddRange( entity.UseCaseInformations );
 
-				data.useCaseInformation = infos.ToArray();
+				if (infos.Count > 0)
+				{
+					data.useCaseInformation = infos.ToArray();
+				}
 
 				return payload;
 			}

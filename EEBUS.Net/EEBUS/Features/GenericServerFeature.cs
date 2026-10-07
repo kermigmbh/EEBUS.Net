@@ -19,7 +19,7 @@ namespace EEBUS.Features
         }
 
         public GenericServerFeature(int index, Entity owner, FeatureInformationType featureInfo)
-            : base(index, "Generic", "server", owner, featureInfo)
+            : base(index, featureInfo.description.featureType, "server", owner, featureInfo)
         {
         }
 

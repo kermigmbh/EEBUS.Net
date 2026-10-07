@@ -57,8 +57,16 @@ namespace EEBUS.Models
 			string type  = featureInfo.description.featureType;
 			string role  = featureInfo.description.role;
 
-			if ( featureClasses.TryGetValue( type + "-" + role, out Class cls ) )
-				return cls.Create( index, owner, featureInfo );
+			if (featureClasses.TryGetValue(type + "-" + role, out Class cls))
+			{
+				return cls.Create(index, owner, featureInfo);
+			} else
+			{
+				if (featureClasses.TryGetValue("Generic-" + role, out Class? genericCls) && genericCls != null)
+                {
+                    return genericCls.Create(index, owner, featureInfo);
+                }
+            }
 
 			return null;
 		}

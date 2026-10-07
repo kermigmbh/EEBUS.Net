@@ -19,11 +19,16 @@ namespace EEBUS.SPINE.Commands
                 if (datagram.header.cmdClassifier != "read") return null;
 
                 NodeManagementBindingData data = new NodeManagementBindingData();
-                data.cmd[0].nodeManagementBindingData.bindingEntry = connection.BindingAndSubscriptionManager.GetBindings(Net.BindingSubscriptionDirection.Incoming).Select(b => new NodeManagementBindingEntryDataType
+                var bindingList = connection.BindingAndSubscriptionManager.GetBindings(Net.BindingSubscriptionDirection.Incoming).Select(b => new NodeManagementBindingEntryDataType
                 {
                     clientAddress = b.clientAddress,
                     serverAddress = b.serverAddress
                 }).ToList();
+
+                if (bindingList.Count > 0)
+                {
+                    data.cmd[0].nodeManagementBindingData.bindingEntry = bindingList;
+                }
 
                 return data;
             }
@@ -37,7 +42,7 @@ namespace EEBUS.SPINE.Commands
 
     public class NodeManagementBindingDataType
     {
-        public List<NodeManagementBindingEntryDataType> bindingEntry { get; set; } = new();
+        public List<NodeManagementBindingEntryDataType>? bindingEntry { get; set; }
     }
 
     public class NodeManagementBindingEntryDataType

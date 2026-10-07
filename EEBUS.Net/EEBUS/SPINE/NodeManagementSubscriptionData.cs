@@ -20,11 +20,16 @@ namespace EEBUS.SPINE.Commands
                     return null;
 
                 NodeManagementSubscriptionData data = new NodeManagementSubscriptionData();
-                data.cmd[0].nodeManagementSubscriptionData.subscriptionEntry = connection.BindingAndSubscriptionManager.GetSubscriptions(Net.BindingSubscriptionDirection.Incoming).Select(s => new NodeManagementSubscriptionEntryDataType()
+                var subscriptionList = connection.BindingAndSubscriptionManager.GetSubscriptions(Net.BindingSubscriptionDirection.Incoming).Select(s => new NodeManagementSubscriptionEntryDataType()
                 {
                     clientAddress = s.clientAddress,
                     serverAddress = s.serverAddress
                 }).ToList();
+
+                if (subscriptionList.Count > 0)
+                {
+                    data.cmd[0].nodeManagementSubscriptionData.subscriptionEntry = subscriptionList;
+                }
 
                 return data;
             }

@@ -20,7 +20,7 @@ namespace EEBUS.Features
         }
 
         public GenericClientFeature(int index, Entity owner, FeatureInformationType featureInfo)
-            : base(index, "Generic", "client", owner, featureInfo)
+            : base(index, featureInfo.description.featureType, "client", owner, featureInfo)
         {
         }
 

@@ -74,7 +74,23 @@ namespace EEBUS
         public string Type { get; set; }
 
         public UseCaseSettings[] UseCases { get; set; } = [];
+        public EntityInformationType? EntityInformation { get; set; }
+        public FeatureInformationType[]? FeatureInformation { get; set; } = [];
     }
+
+    //public class FeatureSettings
+    //{
+    //    public int Index { get; set; }
+    //    public string Type { get; set; }
+    //    public string Role { get; set; }
+    //}
+
+    //public class FunctionSettings
+    //{
+    //    public string FunctionName { get; set; }
+    //    public bool IsReadable { get; set; }
+    //    public bool IsWritable { get; set; }
+    //}
 
     public class UseCaseSettings
     {

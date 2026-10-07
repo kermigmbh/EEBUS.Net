@@ -135,10 +135,11 @@ Client connection closed with error. | Exception: System.NullReferenceException:
             using EEBUSManager manager2 = new EEBUSManager(Setup.GetSettingsFromDiscoveryData(NodeManagementDetailedDiscoveryData, NodeManagementUseCaseData)/*, logger: manager2Logger*/);
 
             await StartAndConnectManagersAsync(manager1, manager2);
-            await Task.Delay(10000);
+            await Task.Delay(10_000);
 
             var connection = manager2.GetConnection(manager1.GetLocalData().SKI);
             await SendDataMessageAsync(connection, MeasurementListDataAnswer);
+            await Task.Delay(5_000);
         }
     }
 }

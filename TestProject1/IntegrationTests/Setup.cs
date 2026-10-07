@@ -56,14 +56,14 @@ namespace TestProject1.IntegrationTests
                     Certificate = "EEBUS" + (_nodeNumber) + ".net"
                 };
 
-                EntityInformationType[]? entitySettings = discoveryMessage.cmd.First().nodeManagementDetailedDiscoveryData.entityInformation;
-                if (entitySettings == null) throw new Exception("Failed to parse entity settings");
+                EntityInformationType[]? entityInformationList = discoveryMessage.cmd.First().nodeManagementDetailedDiscoveryData.entityInformation;
+                if (entityInformationList == null) throw new Exception("Failed to parse entity settings");
 
                 List<EntitySettings> entities = [];
-                foreach (EntityInformationType entity in entitySettings)
+                foreach (EntityInformationType entityInformation in entityInformationList)
                 {
                     List<UseCaseSettings> useCases = [];
-                    IEnumerable<UseCaseInformationType>? entityUseCases = useCaseDataMessage.cmd.First().nodeManagementUseCaseData.useCaseInformation?.Where(uci => uci.address.entity.SequenceEqual(entity.description.entityAddress.entity));
+                    IEnumerable<UseCaseInformationType>? entityUseCases = useCaseDataMessage.cmd.First().nodeManagementUseCaseData.useCaseInformation?.Where(uci => uci.address.entity.SequenceEqual(entityInformation.description.entityAddress.entity));
 
                     foreach (UseCaseInformationType entityUseCase in entityUseCases ?? [])
                     {
@@ -80,7 +80,7 @@ namespace TestProject1.IntegrationTests
                         }
                     }
 
-                    entities.Add(new EntitySettings { Type = entity.description.entityType, UseCases = useCases.ToArray() });
+                    entities.Add(new EntitySettings { Type = entityInformation.description.entityType, UseCases = useCases.ToArray(), EntityInformation = entityInformation, FeatureInformation = discoveryMessage.cmd.First().nodeManagementDetailedDiscoveryData.featureInformation });
                 }
 
                 settings.Device.Entities = entities.ToArray();
