@@ -28,6 +28,30 @@
         public const string JSON_UTF8 = "JSON-UTF8";
     }
 
+    /// <summary>
+    /// Maximum SHIP specification version implemented by this stack. Per spec 13.4.4.2.2 every
+    /// version from 1.0 up to this one must be supported, so the supported range is [1.0, MAX].
+    /// </summary>
+    public class SHIPVersion
+    {
+        /// <summary>
+        /// Minimum SHIP specification major version implemented by this stack (1, per spec)
+        /// </summary>
+        public const ushort MIN_MAJOR = 1;
+        /// <summary>
+        /// Minimum SHIP specification minor version implemented by this stack (0, per spec)
+        /// </summary>
+        public const ushort MIN_MINOR = 0;
+        /// <summary>
+        /// Maximum SHIP specification major version implemented by this stack
+        /// </summary>
+        public const ushort MAX_MAJOR = 1;
+        /// <summary>
+        /// Maximum SHIP specification minor version implemented by this stack
+        /// </summary>
+        public const ushort MAX_MINOR = 0;
+    }
+
     public class SHIPHandshakeError
     {
         public const byte RFU                = 0;

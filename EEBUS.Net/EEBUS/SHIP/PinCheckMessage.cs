@@ -38,9 +38,9 @@ namespace EEBUS.SHIP.Messages
 
         public ConnectionPinStateType connectionPinState { get; set; } = new();
 
-        public override (Connection.EState, Connection.ESubState, string) ServerTest(Connection.EState state)
+        public override Task<(Connection.EState, Connection.ESubState, string)> ServerTestAsync(Connection.EState state, Connection? connection = null, ILogger? logger = null)
         {
-            string error = null;
+            string error = string.Empty;
             Connection.EState newState = state;
 
             if (this.connectionPinState.pinState != PinStateType.none)
@@ -54,10 +54,10 @@ namespace EEBUS.SHIP.Messages
             //    newState = Connection.EState.Stopped;
             //}
 
-            return (newState, Connection.ESubState.None, error);
+            return Task.FromResult((newState, Connection.ESubState.None, error));
         }
 
-        public override async Task<(Connection.EState, Connection.ESubState)> NextServerState(Connection connection, ILogger? logger = null)
+        public override async Task<(Connection.EState, Connection.ESubState)> NextServerStateAsync(Connection connection, ILogger? logger = null)
         {
             if (connection.State == Connection.EState.WaitingForPinCheck)
             {
@@ -68,9 +68,9 @@ namespace EEBUS.SHIP.Messages
             throw new Exception("Was waiting for PinCheckit");
         }
 
-        public override (Connection.EState, Connection.ESubState, string) ClientTest(Connection.EState state)
+        public override Task<(Connection.EState, Connection.ESubState, string)> ClientTestAsync(Connection.EState state, Connection? connection = null, ILogger? logger = null)
         {
-            string error = null;
+            string error = string.Empty;
             Connection.EState newState = state;
 
             if (this.connectionPinState.pinState != PinStateType.none)
@@ -79,10 +79,10 @@ namespace EEBUS.SHIP.Messages
                 newState = Connection.EState.Stopped;
             }
 
-            return (newState, Connection.ESubState.None, error);
+            return Task.FromResult((newState, Connection.ESubState.None, error));
         }
 
-        public override async Task<(Connection.EState, Connection.ESubState)> NextClientState(Connection connection, ILogger? logger = null)
+        public override async Task<(Connection.EState, Connection.ESubState)> NextClientStateAsync(Connection connection, ILogger? logger = null)
         {
             if (connection.State == Connection.EState.WaitingForPinCheck)
             {

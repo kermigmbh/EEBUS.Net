@@ -44,24 +44,24 @@ namespace EEBUS.Messages
 			return cls != null ? cls.Create( data/*, connection */) : null;
 		}
 
-		public virtual (Connection.EState, Connection.ESubState, string) ServerTest( Connection.EState state )
+		public virtual Task<(Connection.EState, Connection.ESubState, string)> ServerTestAsync( Connection.EState state, Connection? connection = null, ILogger? logger = null)
 		{
-			return (state, Connection.ESubState.None, null);
+			return Task.FromResult((state, Connection.ESubState.None, string.Empty));
 		}
 
-		public virtual (Connection.EState, Connection.ESubState, string) ClientTest( Connection.EState state )
+		public virtual Task<(Connection.EState, Connection.ESubState, string)> ClientTestAsync( Connection.EState state, Connection? connection = null, ILogger? logger = null)
 		{
-			return (state, Connection.ESubState.None, null);
+			return Task.FromResult((state, Connection.ESubState.None, string.Empty));
 		}
 
-		public virtual async Task<(Connection.EState, Connection.ESubState)> NextServerState( Connection connection, ILogger? logger = null)
+		public virtual async Task<(Connection.EState, Connection.ESubState)> NextServerStateAsync( Connection connection, ILogger? logger = null)
 		{
 			return (Connection.EState.ErrorOrTimeout, Connection.ESubState.None);
 		}
 
-		public virtual async Task<(Connection.EState, Connection.ESubState)> NextClientState( Connection connection, ILogger? logger = null)
+		public virtual async Task<(Connection.EState, Connection.ESubState)> NextClientStateAsync( Connection connection, ILogger? logger = null)
 		{
-			return await NextServerState( connection, logger );
+			return await NextServerStateAsync( connection, logger );
 		}
 
 		public abstract Task Send( WebSocket ws, ILogger? logger = null);

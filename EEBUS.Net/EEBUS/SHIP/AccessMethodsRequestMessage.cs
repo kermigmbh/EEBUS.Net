@@ -24,7 +24,7 @@ namespace EEBUS.SHIP.Messages
 
         public AccessMethodsRequestType accessMethodsRequest { get; set; } = new();
 
-        public override async Task<(Connection.EState, Connection.ESubState)> NextServerState(Connection connection, ILogger? logger = null)
+        public override async Task<(Connection.EState, Connection.ESubState)> NextServerStateAsync(Connection connection, ILogger? logger = null)
         {
             if (connection.State == Connection.EState.Connected)
             {
@@ -35,7 +35,7 @@ namespace EEBUS.SHIP.Messages
             throw new Exception("Was waiting for AccessMethodsRequest");
         }
 
-        public override async Task<(Connection.EState, Connection.ESubState)> NextClientState(Connection connection, ILogger? logger = null)
+        public override async Task<(Connection.EState, Connection.ESubState)> NextClientStateAsync(Connection connection, ILogger? logger = null)
         {
             if (connection.State == Connection.EState.Connected)
             {

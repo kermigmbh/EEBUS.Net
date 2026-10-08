@@ -101,7 +101,7 @@ namespace TestProject1.Ship
             server.SetState(Connection.EState.Connected);
 
             var accessMethods   = new AccessMethodsMessage("completely-unknown-device-id");
-            var (newState, _)   = await accessMethods.NextServerState(server);
+            var (newState, _)   = await accessMethods.NextServerStateAsync(server);
 
             Assert.Equal(Connection.EState.Stopped, newState);
         }

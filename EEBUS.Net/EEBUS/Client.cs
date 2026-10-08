@@ -125,22 +125,22 @@ namespace EEBUS
 			{
 				while (this.state != EState.Stopped && !cancellationToken.IsCancellationRequested)
 				{
+					var message = await ReceiveWithTimeoutAsync(cancellationToken).ConfigureAwait(false);
+					if (message is null)
+					{
+						await OnReceiveTimeoutAsync().ConfigureAwait(false);
+						break;
+					}
 
-					using CancellationTokenSource timeoutCts = new CancellationTokenSource(SHIPMessageTimeout.CMI_TIMEOUT);
-					using CancellationTokenSource linkedTokenSource =
-						CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
-
-					var message = await ReceiveAsync(linkedTokenSource.Token);
-
-					(this.state, this.subState, string error) = message.ClientTest(this.state);
+					(this.state, this.subState, string error) = await message.ClientTestAsync(this.state, this, Logger);
 
 					if (this.state == EState.Stopped && error != null)
 						throw new Exception(error);
 					if (error != null)
-                        Logger?.LogError(error);
+						Logger?.LogError(error);
 
 					EState oldState = this.state;
-					(this.state, this.subState) = await message.NextClientState(this, Logger).ConfigureAwait(false);
+					(this.state, this.subState) = await message.NextClientStateAsync(this, Logger).ConfigureAwait(false);
 
 					if (null != this.Remote)
 						this.Remote.SetClientState(this.state);

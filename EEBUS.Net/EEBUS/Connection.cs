@@ -1,4 +1,5 @@
-﻿using EEBUS.Messages;
+﻿using EEBUS.Enums;
+using EEBUS.Messages;
 using EEBUS.Models;
 using EEBUS.Net;
 using EEBUS.SHIP.Messages;
@@ -240,6 +241,146 @@ namespace EEBUS
             {
                 tcs?.TrySetResult(message);
             }
+        }
+
+        // Absolute deadline of the hello phase (T_hello_init, extended by T_hello_inc on
+        // each granted prolongation). Null when not in the hello phase.
+        private DateTime? _helloDeadlineUtc;
+
+        /// <summary>
+        /// Maximum time (ms) we wait for the next message in the given state, or null if
+        /// SHIP defines no receive timeout for that state (e.g. Connected).
+        /// </summary>
+        protected virtual int? GetReceiveTimeout(EState state)
+        {
+            switch (state)
+            {
+                case EState.WaitingForConnectionHello:
+                    if (_helloDeadlineUtc is null)
+                        return SHIPMessageTimeout.T_HELLO_INIT;
+                    double remaining = (_helloDeadlineUtc.Value - DateTime.UtcNow).TotalMilliseconds;
+                    return (int)Math.Max(SHIPMessageTimeout.T_HELLO_PROLONG_MIN, Math.Min(remaining, int.MaxValue));
+                case EState.WaitingForProtocolHandshake:
+                case EState.WaitingForProtocolHandshakeConfirm:
+                case EState.SendProtocolHandshakeConfirm:
+                    return 10_000;  //according to spec
+                case EState.Disconnected:
+                case EState.WaitingForPinCheck:
+                case EState.WaitingForAccessMethodsRequest:
+                case EState.WaitingForAccessMethods:
+                case EState.WaitingForCloseConfirm:
+                    return SHIPMessageTimeout.CMI_TIMEOUT;
+
+                default:
+                    return null;
+            }
+        }
+
+        /// <summary>
+        /// Starts the Wait-For-Ready-Timer if it is not already running.
+        /// Call this before sending the first hello message so that <see cref="WaitForReadyTimerValue"/> is valid.
+        /// </summary>
+        /// <param name="durationMs">Timer duration in ms, defaults to T_hello_init.</param>
+        internal void StartWaitForReadyTimer(int durationMs = SHIPMessageTimeout.T_HELLO_INIT)
+        {
+            if (_helloDeadlineUtc is null)
+            {
+                _helloDeadlineUtc = DateTime.UtcNow.AddMilliseconds(durationMs);
+                Logger?.LogDebug("Wait-For-Ready-Timer started, deadline {deadline:HH:mm:ss.fff} UTC", _helloDeadlineUtc);
+            }
+        }
+
+        /// <summary>
+        /// Remaining time (ms) of the Wait-For-Ready-Timer, to be sent in the <c>waiting</c> field of hello messages.
+        /// Returns null if the timer is not running; in that case the <c>waiting</c> element must be omitted.
+        /// </summary>
+        public uint? WaitForReadyTimerValue
+        {
+            get
+            {
+                if (_helloDeadlineUtc is null)
+                    return null;
+                double remaining = (_helloDeadlineUtc.Value - DateTime.UtcNow).TotalMilliseconds;
+                return (uint)Math.Clamp(remaining, 0, uint.MaxValue);
+            }
+        }
+
+        /// <summary>
+        /// Stops the Wait-For-Ready-Timer. Must be called when the hello phase is left.
+        /// </summary>
+        internal void StopWaitForReadyTimer()
+        {
+            _helloDeadlineUtc = null;
+        }
+
+        /// <summary>
+        /// Increases the Wait-For-Ready-Timer by the given amount (remaining + increment).
+        /// Called when a prolongation request of the peer is granted.
+        /// </summary>
+        /// <param name="incrementMs">Increment in ms, defaults to T_hello_inc.</param>
+        internal void ProlongHelloDeadline(int incrementMs = SHIPMessageTimeout.T_HELLO_INC)
+        {
+            if (_helloDeadlineUtc != null)
+            {
+                _helloDeadlineUtc = _helloDeadlineUtc.Value.AddMilliseconds(incrementMs);
+            }
+
+            Logger?.LogDebug("Hello deadline prolonged to {deadline:HH:mm:ss.fff} UTC", _helloDeadlineUtc);
+        }
+
+        /// <summary>
+        /// Receives the next message, applying the SHIP timeout for the current state.
+        /// </summary>
+        /// <returns>The message, or null if the SHIP timeout for the current state elapsed.</returns>
+        protected async Task<ShipMessageBase?> ReceiveWithTimeoutAsync(CancellationToken cancellationToken)
+        {
+            int? timeout = GetReceiveTimeout(this.state);
+            if (timeout is null)
+                return await ReceiveAsync(cancellationToken).ConfigureAwait(false);
+
+            using CancellationTokenSource timeoutCts = new CancellationTokenSource(timeout.Value);
+            using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
+
+            try
+            {
+                return await ReceiveAsync(linkedCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested && this.state != EState.Stopped)
+            {
+                Logger?.LogWarning("SHIP timeout ({timeout} ms) elapsed in state {state}/{subState}", timeout, this.state, this.subState);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Reacts to an elapsed SHIP timeout according to the current state and marks the connection as timed out.
+        /// </summary>
+        protected virtual async Task OnReceiveTimeoutAsync()
+        {
+            try
+            {
+                switch (this.state)
+                {
+                    case EState.WaitingForConnectionHello:
+                        // The Wait-For-Ready-Timer has timed out, which means we did not receive a ConnectionHello message from the peer in time. We need to abort the connection.
+                        await new ConnectionHelloMessage(ConnectionHelloPhaseType.aborted).Send(this.ws, Logger).ConfigureAwait(false);
+                        break;
+
+                    case EState.WaitingForProtocolHandshake:
+                    case EState.WaitingForProtocolHandshakeConfirm:
+                    case EState.SendProtocolHandshakeConfirm:
+                        await new ProtocolHandshakeErrorMessage(SHIPHandshakeError.TIMEOUT).Send(this.ws, Logger).ConfigureAwait(false);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogError(ex, "OnReceiveTimeoutAsync: failed to send timeout notification.");
+            }
+
+            this.state = EState.ErrorOrTimeout;
+            this.subState = ESubState.None;
+            StopWaitForReadyTimer();
         }
 
         private byte[] _receiveBuffer = new byte[10240];

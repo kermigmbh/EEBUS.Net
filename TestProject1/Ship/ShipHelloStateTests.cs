@@ -14,29 +14,29 @@ namespace TestProject1.Ship
             => ConnectionHelloMessage.FromJson(sentBytes.AsSpan());
 
         [Fact]
-        public void InitMessage_ServerTest_WithValidCmiHead_ReturnsNoError()
+        public async Task InitMessage_ServerTest_WithValidCmiHead_ReturnsNoError()
         {
             var msg = new InitMessage();
             // bytes sind schon korrekt initialisiert: { INIT, CMI_HEAD }
-            var (_, _, error) = msg.ServerTest(Connection.EState.Disconnected);
+            var (_, _, error) = await msg.ServerTestAsync(Connection.EState.Disconnected);
             Assert.Null(error);
         }
 
         [Fact]
-        public void InitMessage_ServerTest_WithInvalidPayload_ReturnsStoppedAndError()
+        public async Task InitMessage_ServerTest_WithInvalidPayload_ReturnsStoppedAndError()
         {
             var msg = new InitMessage { bytes = new byte[] { SHIPMessageType.INIT, 0xFF } };
-            var (newState, _, error) = msg.ServerTest(Connection.EState.Disconnected);
+            var (newState, _, error) = await msg.ServerTestAsync(Connection.EState.Disconnected);
 
             Assert.Equal(Connection.EState.Stopped, newState);
             Assert.NotNull(error);
         }
 
         [Fact]
-        public void InitMessage_ClientTest_WithValidCmiHead_ReturnsNoError()
+        public async Task InitMessage_ClientTest_WithValidCmiHead_ReturnsNoError()
         {
             var msg = new InitMessage();
-            var (_, _, error) = msg.ClientTest(Connection.EState.Disconnected);
+            var (_, _, error) = await msg.ClientTestAsync(Connection.EState.Disconnected);
             Assert.Null(error);
         }
 
@@ -48,7 +48,7 @@ namespace TestProject1.Ship
             client.SetState(Connection.EState.Disconnected);
 
             var initMsg = new InitMessage();
-            var (newState, newSubState) = await initMsg.NextServerState(client);
+            var (newState, newSubState) = await initMsg.NextServerStateAsync(client);
 
             Assert.Equal(Connection.EState.WaitingForConnectionHello, newState);
             Assert.Equal(Connection.ESubState.None, newSubState);
@@ -64,7 +64,7 @@ namespace TestProject1.Ship
             client.SetState(Connection.EState.WaitingForConnectionHello);
 
             var hello = new ConnectionHelloMessage(ConnectionHelloPhaseType.ready);
-            var (newState, newSubState) = await hello.NextServerState(client);
+            var (newState, newSubState) = await hello.NextServerStateAsync(client);
 
             Assert.Equal(Connection.EState.WaitingForProtocolHandshake, newState);
             Assert.Equal(Connection.ESubState.None, newSubState);
@@ -84,7 +84,7 @@ namespace TestProject1.Ship
             client.SetState(Connection.EState.WaitingForConnectionHello);
 
             var hello = new ConnectionHelloMessage(ConnectionHelloPhaseType.aborted);
-            var (newState, _) = await hello.NextServerState(client);
+            var (newState, _) = await hello.NextServerStateAsync(client);
 
             Assert.Equal(Connection.EState.Stopped, newState);
             Assert.Empty(fakeWs.SentMessages);
@@ -98,7 +98,7 @@ namespace TestProject1.Ship
             client.SetState(Connection.EState.Disconnected);
 
             var initMsg = new InitMessage();
-            var (newState, newSubState) = await initMsg.NextClientState(client);
+            var (newState, newSubState) = await initMsg.NextClientStateAsync(client);
 
             Assert.Equal(Connection.EState.WaitingForConnectionHello, newState);
             Assert.Equal(Connection.ESubState.None, newSubState);
@@ -118,7 +118,7 @@ namespace TestProject1.Ship
             client.SetState(Connection.EState.WaitingForConnectionHello);
 
             var hello = new ConnectionHelloMessage(ConnectionHelloPhaseType.ready);
-            var (newState, newSubState) = await hello.NextClientState(client);
+            var (newState, newSubState) = await hello.NextClientStateAsync(client);
 
             Assert.Equal(Connection.EState.WaitingForProtocolHandshake, newState);
             Assert.Equal(Connection.ESubState.None, newSubState);
@@ -139,7 +139,7 @@ namespace TestProject1.Ship
             client.SetState(Connection.EState.WaitingForConnectionHello);
 
             var hello = new ConnectionHelloMessage(ConnectionHelloPhaseType.aborted);
-            var (newState, _) = await hello.NextClientState(client);
+            var (newState, _) = await hello.NextClientStateAsync(client);
 
             Assert.Equal(Connection.EState.Stopped, newState);
             Assert.Empty(fakeWs.SentMessages);

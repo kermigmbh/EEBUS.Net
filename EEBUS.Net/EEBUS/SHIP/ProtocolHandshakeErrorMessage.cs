@@ -21,20 +21,20 @@ namespace EEBUS.SHIP.Messages
 
 		public new class Class : ShipControlMessage<ProtocolHandshakeErrorMessage>.Class
 		{
-			public override ProtocolHandshakeErrorMessage Create(ReadOnlySpan<byte> data/*, Connection connection*/ )
+			public override ProtocolHandshakeErrorMessage Create(ReadOnlySpan<byte> data)
 			{
-				return template.FromJsonVirtual( data/*, connection*/ );
+				return template.FromJsonVirtual(data);
 			}
 		}
 
 		public MessageProtocolHandshakeErrorType messageProtocolHandshakeError { get; set; } = new();
 
-		public override async Task<(Connection.EState, Connection.ESubState)> NextServerState( Connection connection, ILogger? logger = null)
+		public override async Task<(Connection.EState, Connection.ESubState)> NextServerStateAsync( Connection connection, ILogger? logger = null)
 		{
 			return (Connection.EState.Stopped, Connection.ESubState.None);
 		}
 
-		public override async Task<(Connection.EState, Connection.ESubState)> NextClientState( Connection connection, ILogger? logger = null)
+		public override async Task<(Connection.EState, Connection.ESubState)> NextClientStateAsync( Connection connection, ILogger? logger = null)
 		{
 			return (Connection.EState.Stopped, Connection.ESubState.None);
 		}

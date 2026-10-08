@@ -201,7 +201,7 @@ namespace EEBUS.SHIP.Messages
             this.data.payload = payload;
         }
 
-        public override async Task<(Connection.EState, Connection.ESubState)> NextServerState(Connection connection, ILogger? logger = null)
+        public override async Task<(Connection.EState, Connection.ESubState)> NextServerStateAsync(Connection connection, ILogger? logger = null)
         {
             if (connection.State == Connection.EState.WaitingForCloseConfirm)
             {

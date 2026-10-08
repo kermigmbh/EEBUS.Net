@@ -39,9 +39,14 @@ namespace EEBUS
             {
                 while (this.ws.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
                 {
-                    var message = await ReceiveAsync(cancellationToken);
+                    var message = await ReceiveWithTimeoutAsync(cancellationToken).ConfigureAwait(false);
+                    if (message is null)
+                    {
+                        await OnReceiveTimeoutAsync().ConfigureAwait(false);
+                        break;
+                    }
 
-                    (this.state, this.subState, string error) = message.ServerTest(this.state);
+                    (this.state, this.subState, string error) = await message.ServerTestAsync(this.state, this).ConfigureAwait(false);
 
                     if (this.state == EState.Stopped && error != null)
                         throw new Exception(error);
@@ -49,7 +54,7 @@ namespace EEBUS
                         Logger?.LogError(error);
 
                     EState oldState = this.state;
-                    (this.state, this.subState) = await message.NextServerState(this, Logger).ConfigureAwait(false);
+                    (this.state, this.subState) = await message.NextServerStateAsync(this, Logger).ConfigureAwait(false);
 
                     //if (null == this.Remote)
                     //{

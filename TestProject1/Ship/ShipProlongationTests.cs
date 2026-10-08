@@ -38,7 +38,7 @@ namespace TestProject1.Ship
             var client = CreateTestClient(fakeWs);
             client.SetState(Connection.EState.WaitingForConnectionHello);
 
-            await MakeProlongationRequest(30_000).NextServerState(client);
+            await MakeProlongationRequest(30_000).NextServerStateAsync(client);
 
             Assert.Single(fakeWs.SentMessages);
             var sent = ParseHello(fakeWs.SentMessages[0]);
@@ -55,7 +55,7 @@ namespace TestProject1.Ship
             var client = CreateTestClient(fakeWs);
             client.SetState(Connection.EState.WaitingForConnectionHello);
 
-            var (newState, _) = await MakeProlongationRequest().NextServerState(client);
+            var (newState, _) = await MakeProlongationRequest().NextServerStateAsync(client);
 
             Assert.Equal(
                 Connection.EState.WaitingForConnectionHello,
@@ -69,7 +69,7 @@ namespace TestProject1.Ship
             var client = CreateTestClient(fakeWs);
             client.SetState(Connection.EState.WaitingForConnectionHello);
 
-            var (newState, _) = await MakeProlongationGrant(30_000).NextServerState(client);
+            var (newState, _) = await MakeProlongationGrant(30_000).NextServerStateAsync(client);
 
             Assert.Equal(
                 Connection.EState.WaitingForConnectionHello,
@@ -83,7 +83,7 @@ namespace TestProject1.Ship
             var client = CreateTestClient(fakeWs);
             client.SetState(Connection.EState.WaitingForConnectionHello);
 
-            await MakeProlongationGrant().NextServerState(client);
+            await MakeProlongationGrant().NextServerStateAsync(client);
 
             Assert.Empty(fakeWs.SentMessages);
         }
@@ -97,7 +97,7 @@ namespace TestProject1.Ship
 
             try
             {
-                await MakeProlongationRequest(30_000).NextClientState(client);
+                await MakeProlongationRequest(30_000).NextClientStateAsync(client);
 
                 Assert.Single(fakeWs.SentMessages);
                 var sent = ParseHello(fakeWs.SentMessages[0]);
@@ -125,19 +125,19 @@ namespace TestProject1.Ship
             try
             {
                 // 1. Anfrage → GRANT, FirstPending
-                var (state1, sub1) = await MakeProlongationRequest().NextClientState(client);
+                var (state1, sub1) = await MakeProlongationRequest().NextClientStateAsync(client);
                 Assert.Equal(Connection.EState.WaitingForConnectionHello, state1);
                 Assert.Equal(Connection.ESubState.FirstPending, sub1);
                 client.SetState(state1, sub1);
 
                 // 2. Anfrage → GRANT, SecondPending
-                var (state2, sub2) = await MakeProlongationRequest().NextClientState(client);
+                var (state2, sub2) = await MakeProlongationRequest().NextClientStateAsync(client);
                 Assert.Equal(Connection.EState.WaitingForConnectionHello, state2);
                 Assert.Equal(Connection.ESubState.SecondPending, sub2);
                 client.SetState(state2, sub2);
 
                 // 3. Anfrage → Stopped (keine weitere Verlängerung)
-                var (state3, _) = await MakeProlongationRequest().NextClientState(client);
+                var (state3, _) = await MakeProlongationRequest().NextClientStateAsync(client);
                 Assert.Equal(Connection.EState.Stopped, state3);
             }
             catch (Exception ex) when (ex is NullReferenceException or ArgumentNullException)
@@ -153,7 +153,7 @@ namespace TestProject1.Ship
             var client = CreateTestClient(fakeWs);
             client.SetState(Connection.EState.WaitingForConnectionHello);
 
-            var (newState, _) = await MakeProlongationGrant(30_000).NextClientState(client);
+            var (newState, _) = await MakeProlongationGrant(30_000).NextClientStateAsync(client);
 
             Assert.Equal(
                 Connection.EState.WaitingForConnectionHello,
@@ -169,7 +169,7 @@ namespace TestProject1.Ship
 
             try
             {
-                await MakeProlongationGrant().NextClientState(client);
+                await MakeProlongationGrant().NextClientStateAsync(client);
                 Assert.Empty(fakeWs.SentMessages);
             }
             catch (Exception ex) when (ex.Message.Contains("Was waiting for Init"))

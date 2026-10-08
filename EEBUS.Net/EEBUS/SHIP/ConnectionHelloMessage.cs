@@ -1,4 +1,5 @@
-﻿using EEBUS.Messages;
+﻿using EEBUS.Enums;
+using EEBUS.Messages;
 using EEBUS.Net;
 using EEBUS.UseCases.ControllableSystem;
 using Microsoft.Extensions.Logging;
@@ -29,7 +30,7 @@ namespace EEBUS.SHIP.Messages
             this.connectionHello.phase = phase;
         }
 
-        public ConnectionHelloMessage(ConnectionHelloPhaseType phase, uint waiting)
+        public ConnectionHelloMessage(ConnectionHelloPhaseType phase, uint? waiting)
         {
             this.connectionHello.phase = phase;
             this.connectionHello.waiting = waiting;
@@ -45,32 +46,37 @@ namespace EEBUS.SHIP.Messages
 
         public ConnectionHelloType connectionHello { get; set; } = new();
 
-        public override async Task<(Connection.EState, Connection.ESubState)> NextServerState(Connection connection, ILogger? logger = null)
+        public override async Task<(Connection.EState, Connection.ESubState)> NextServerStateAsync(Connection connection, ILogger? logger = null)
         {
+            //TODO: spec says that if we receive a message that is not a hello message while in this state, we should send an abort message
+
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.ready)
             {
-                await Send(connection.WebSocket, logger).ConfigureAwait(false);
+                connection.StopWaitForReadyTimer();
                 return (Connection.EState.WaitingForProtocolHandshake, Connection.ESubState.None);
             }
 
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.pending && connection.SubState == Connection.ESubState.None)
             {
-                if (this.connectionHello.prolongationRequest)
+                if (this.connectionHello.prolongationRequest == true)
                 {
-                    this.connectionHello.prolongationRequest = false;
-                    await Send(connection.WebSocket, logger).ConfigureAwait(false);
+                    //grant prolongation request by increasing the Wait-For-Ready-Timer and sending a hello message with state ready and the current value of the Wait-For-Ready-Timer
+                    connection.ProlongHelloDeadline();
+                    await new ConnectionHelloMessage(ConnectionHelloPhaseType.ready, connection.WaitForReadyTimerValue).Send(connection.WebSocket, logger).ConfigureAwait(false);
                     return (Connection.EState.WaitingForConnectionHello, Connection.ESubState.FirstPending);
                 } else
                 {
-                    return (connection.State, connection.SubState); //if we receive a pending hello message that is not a prolongation request, we can ignore it
+                    return (connection.State, connection.SubState); //if we receive a pending hello message that is not a prolongation request, no action is required, we can ignore it
                 }
             }
 
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.pending && connection.SubState == Connection.ESubState.FirstPending)
             {
-                if (this.connectionHello.prolongationRequest)
+                //We have received one pending message with a prolongation request, so we can accept a second one
+                if (this.connectionHello.prolongationRequest == true)
                 {
-                    await Send(connection.WebSocket, logger).ConfigureAwait(false);
+                    connection.ProlongHelloDeadline();
+                    await new ConnectionHelloMessage(ConnectionHelloPhaseType.ready, connection.WaitForReadyTimerValue).Send(connection.WebSocket, logger).ConfigureAwait(false);
                     return (Connection.EState.WaitingForConnectionHello, Connection.ESubState.SecondPending);
                 } else
                 {
@@ -80,9 +86,8 @@ namespace EEBUS.SHIP.Messages
 
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.pending && connection.SubState == Connection.ESubState.SecondPending)
             {
-                this.connectionHello.phase = ConnectionHelloPhaseType.aborted;
                 await UpdateConnectionStatusAsync(connection, DeviceConnectionStatus.Aborted).ConfigureAwait(false);
-                await Send(connection.WebSocket, logger).ConfigureAwait(false);
+                await new ConnectionHelloMessage(ConnectionHelloPhaseType.aborted).Send(connection.WebSocket, logger).ConfigureAwait(false);
                 return (Connection.EState.Stopped, Connection.ESubState.None);
             }
 
@@ -105,22 +110,22 @@ namespace EEBUS.SHIP.Messages
             }
         }
 
-        public override async Task<(Connection.EState, Connection.ESubState)> NextClientState(Connection connection, ILogger? logger = null)
+        public override async Task<(Connection.EState, Connection.ESubState)> NextClientStateAsync(Connection connection, ILogger? logger = null)
         {
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.ready)
             {
-
-                ProtocolHandshakeMessage message = new ProtocolHandshakeMessage(ProtocolHandshakeTypeType.announceMax, 1, 0);
+                connection.StopWaitForReadyTimer();
+                ProtocolHandshakeMessage message = new ProtocolHandshakeMessage(ProtocolHandshakeTypeType.announceMax, SHIPVersion.MAX_MAJOR, SHIPVersion.MAX_MINOR);
                 await message.Send(connection.WebSocket, logger).ConfigureAwait(false);
                 return (Connection.EState.WaitingForProtocolHandshake, Connection.ESubState.None);
             }
 
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.pending && connection.SubState == Connection.ESubState.None)
             {
-                if (this.connectionHello.prolongationRequest)
+                if (this.connectionHello.prolongationRequest == true)
                 {
-                    this.connectionHello.prolongationRequest = false;   //a prolongation grant does not have the prolongationRequest set to true
-                    await Resend(connection.WebSocket, logger).ConfigureAwait(false);
+                    connection.ProlongHelloDeadline();
+                    await new ConnectionHelloMessage(ConnectionHelloPhaseType.ready, connection.WaitForReadyTimerValue).Send(connection.WebSocket, logger).ConfigureAwait(false);
                     return (Connection.EState.WaitingForConnectionHello, Connection.ESubState.FirstPending);
                 }
                 else
@@ -131,10 +136,10 @@ namespace EEBUS.SHIP.Messages
 
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.pending && connection.SubState == Connection.ESubState.FirstPending)
             {
-                if (this.connectionHello.prolongationRequest)
+                if (this.connectionHello.prolongationRequest == true)
                 {
-                    this.connectionHello.prolongationRequest = false;   //a prolongation grant does not have the prolongationRequest set to true
-                    await Resend(connection.WebSocket, logger).ConfigureAwait(false);
+                    connection.ProlongHelloDeadline();
+                    await new ConnectionHelloMessage(ConnectionHelloPhaseType.ready, connection.WaitForReadyTimerValue).Send(connection.WebSocket, logger).ConfigureAwait(false);
                     return (Connection.EState.WaitingForConnectionHello, Connection.ESubState.SecondPending);
                 }
                 else
@@ -144,7 +149,11 @@ namespace EEBUS.SHIP.Messages
             }
 
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.pending && connection.SubState == Connection.ESubState.SecondPending)
+            {
+                await UpdateConnectionStatusAsync(connection, DeviceConnectionStatus.Aborted).ConfigureAwait(false);
+                await new ConnectionHelloMessage(ConnectionHelloPhaseType.aborted).Send(connection.WebSocket, logger).ConfigureAwait(false);
                 return (Connection.EState.Stopped, Connection.ESubState.None);
+            }
 
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.aborted)
             {
@@ -161,9 +170,9 @@ namespace EEBUS.SHIP.Messages
     {
         public ConnectionHelloPhaseType phase { get; set; }
 
-        public uint waiting { get; set; }
+        public uint? waiting { get; set; }
 
-        public bool prolongationRequest { get; set; }
+        public bool? prolongationRequest { get; set; }
     }
 
     [JsonConverter(typeof(JsonStringEnumConverter))]

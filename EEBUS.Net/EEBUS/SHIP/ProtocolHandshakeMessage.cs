@@ -45,9 +45,9 @@ namespace EEBUS.SHIP.Messages
             return this.messageProtocolHandshake.IsEqual(other.messageProtocolHandshake);
         }
 
-        public override (Connection.EState, Connection.ESubState, string) ServerTest(Connection.EState state)
+        public override Task<(Connection.EState, Connection.ESubState, string)> ServerTestAsync(Connection.EState state, Connection? connection = null, ILogger? logger = null)
         {
-            string error = null;
+            string error = string.Empty;
             Connection.EState newState = state;
             Connection.ESubState newSubState = Connection.ESubState.None;
 
@@ -63,7 +63,9 @@ namespace EEBUS.SHIP.Messages
                 newState = Connection.EState.SendProtocolHandshakeError;
                 newSubState = Connection.ESubState.FormatMismatch;
             }
-            else if (this.messageProtocolHandshake.version.major != 1 && this.messageProtocolHandshake.version.minor != 0)
+            else if (state == Connection.EState.WaitingForProtocolHandshake
+                ? this.messageProtocolHandshake.version.CompareTo(new MessageProtocolHandshakeTypeVersion(SHIPVersion.MIN_MAJOR, SHIPVersion.MIN_MINOR)) < 0
+                : !this.messageProtocolHandshake.version.IsSupported())
             {
                 error = "Protocol version mismatch!";
                 newState = Connection.EState.SendProtocolHandshakeError;
@@ -76,15 +78,16 @@ namespace EEBUS.SHIP.Messages
                 newSubState = Connection.ESubState.FormatMismatch;
             }
 
-            return (newState, newSubState, error);
+            return Task.FromResult((newState, newSubState, error));
         }
 
-        public override async Task<(Connection.EState, Connection.ESubState)> NextServerState(Connection connection, ILogger? logger = null)
+        public override async Task<(Connection.EState, Connection.ESubState)> NextServerStateAsync(Connection connection, ILogger? logger = null)
         {
             if (connection.State == Connection.EState.WaitingForProtocolHandshake)
             {
-                this.messageProtocolHandshake.handshakeType = ProtocolHandshakeTypeType.select;
-                await Send(connection.WebSocket, logger).ConfigureAwait(false);
+                // spec 2390: select the maximum version supported by both partners
+                MessageProtocolHandshakeTypeVersion selected = MessageProtocolHandshakeTypeVersion.SelectCommon(this.messageProtocolHandshake.version);
+                await new ProtocolHandshakeMessage(ProtocolHandshakeTypeType.select, selected.major, selected.minor).Send(connection.WebSocket, logger).ConfigureAwait(false);
                 return (Connection.EState.SendProtocolHandshakeConfirm, Connection.ESubState.None);
             }
             else if (connection.State == Connection.EState.SendProtocolHandshakeConfirm)
@@ -95,21 +98,21 @@ namespace EEBUS.SHIP.Messages
             {
                 ProtocolHandshakeErrorMessage message = new ProtocolHandshakeErrorMessage(SHIPHandshakeError.SELECTION_MISMATCH);
                 await message.Send(connection.WebSocket, logger).ConfigureAwait(false);
-                return await message.NextServerState(connection, logger).ConfigureAwait(false);
+                return (Connection.EState.Stopped, Connection.ESubState.None);
             }
             else if (connection.State == Connection.EState.SendProtocolHandshakeError && connection.SubState == Connection.ESubState.UnexpectedMessage)
             {
                 ProtocolHandshakeErrorMessage message = new ProtocolHandshakeErrorMessage(SHIPHandshakeError.UNEXPECTED_MESSAGE);
                 await message.Send(connection.WebSocket, logger).ConfigureAwait(false);
-                return await message.NextServerState(connection, logger).ConfigureAwait(false);
+                return (Connection.EState.Stopped, Connection.ESubState.None);
             }
 
             throw new Exception("ProtocolHandshake aborted!");
         }
 
-        public override (Connection.EState, Connection.ESubState, string) ClientTest(Connection.EState state)
+        public override Task<(Connection.EState, Connection.ESubState, string)> ClientTestAsync(Connection.EState state, Connection? connection = null, ILogger? logger = null)
         {
-            string error = null;
+            string error = string.Empty;
             Connection.EState newState = state;
             Connection.ESubState newSubState = Connection.ESubState.None;
 
@@ -125,7 +128,7 @@ namespace EEBUS.SHIP.Messages
                 newState = Connection.EState.SendProtocolHandshakeError;
                 newSubState = Connection.ESubState.FormatMismatch;
             }
-            else if (this.messageProtocolHandshake.version.major != 1 && this.messageProtocolHandshake.version.minor != 0)
+            else if (!this.messageProtocolHandshake.version.IsSupported())
             {
                 error = "Protocol version mismatch!";
                 newState = Connection.EState.SendProtocolHandshakeError;
@@ -142,10 +145,10 @@ namespace EEBUS.SHIP.Messages
                 newState = Connection.EState.SendProtocolHandshakeConfirm;
             }
 
-            return (newState, newSubState, error);
+            return Task.FromResult((newState, newSubState, error));
         }
 
-        public override async Task<(Connection.EState, Connection.ESubState)> NextClientState(Connection connection, ILogger? logger = null)
+        public override async Task<(Connection.EState, Connection.ESubState)> NextClientStateAsync(Connection connection, ILogger? logger = null)
         {
             if (connection.State == Connection.EState.SendProtocolHandshakeConfirm)
             {
@@ -160,13 +163,13 @@ namespace EEBUS.SHIP.Messages
             {
                 ProtocolHandshakeErrorMessage message = new ProtocolHandshakeErrorMessage(SHIPHandshakeError.SELECTION_MISMATCH);
                 await message.Send(connection.WebSocket, logger).ConfigureAwait(false);
-                return await message.NextClientState(connection, logger).ConfigureAwait(false);
+                return (Connection.EState.Stopped, Connection.ESubState.None);
             }
             else if (connection.State == Connection.EState.SendProtocolHandshakeError && connection.SubState == Connection.ESubState.UnexpectedMessage)
             {
                 ProtocolHandshakeErrorMessage message = new ProtocolHandshakeErrorMessage(SHIPHandshakeError.UNEXPECTED_MESSAGE);
                 await message.Send(connection.WebSocket, logger).ConfigureAwait(false);
-                return await message.NextClientState(connection, logger).ConfigureAwait(false);
+                return (Connection.EState.Stopped, Connection.ESubState.None);
             }
 
             throw new Exception("ProtocolHandshake aborted!");
@@ -221,6 +224,31 @@ namespace EEBUS.SHIP.Messages
         public ushort major { get; set; }
 
         public ushort minor { get; set; }
+
+        public static MessageProtocolHandshakeTypeVersion Max => new(SHIPVersion.MAX_MAJOR, SHIPVersion.MAX_MINOR);
+
+        public int CompareTo(MessageProtocolHandshakeTypeVersion other)
+        {
+            int result = this.major.CompareTo(other.major);
+            return result != 0 ? result : this.minor.CompareTo(other.minor);
+        }
+
+        /// <summary>
+        /// True if this version lies within the range supported by this stack, i.e. it is greater than the min supported version and less than or equal to the max supported version
+        /// </summary>
+        public bool IsSupported()
+        {
+            return CompareTo(new MessageProtocolHandshakeTypeVersion(SHIPVersion.MIN_MAJOR, SHIPVersion.MIN_MINOR)) >= 0
+                && CompareTo(Max) <= 0;
+        }
+
+        /// <summary>
+        /// Highest version supported by both this stack and a peer announcing <paramref name="peerMax"/> (spec line 2390).
+        /// </summary>
+        public static MessageProtocolHandshakeTypeVersion SelectCommon(MessageProtocolHandshakeTypeVersion peerMax)
+        {
+            return peerMax.CompareTo(Max) < 0 ? new(peerMax.major, peerMax.minor) : Max;
+        }
 
         public bool IsEqual(MessageProtocolHandshakeTypeVersion other)
         {

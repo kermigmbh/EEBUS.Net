@@ -93,7 +93,7 @@ namespace TestProject1.ConsistencyTests
             Assert.NotNull(data);
             Assert.Single(data.cmd);
 
-            return data.cmd[0].nodeManagementBindingData.bindingEntry;
+            return data.cmd[0].nodeManagementBindingData.bindingEntry ?? [];
         }
 
         private async Task<List<NodeManagementSubscriptionEntryDataType>> ReadSubscriptionEntriesAsync(Connection connection, AddressType clientAddress)
