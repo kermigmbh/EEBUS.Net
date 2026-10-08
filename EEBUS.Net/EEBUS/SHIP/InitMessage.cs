@@ -87,7 +87,7 @@ namespace EEBUS.SHIP.Messages
             {
                 //As a client, we already sent an init message at the start, so after receiving the peer's init messsage, we can enter the next SME state and send a hello message. We also start the WaitForReadyTimer; if we do not receive a hello answer in time, we will abort the connection.
                 connection.StartWaitForReadyTimer();
-                ConnectionHelloMessage message = new ConnectionHelloMessage(ConnectionHelloPhaseType.ready, connection.WaitForReadyTimerValue);
+                ConnectionHelloMessage message = new ConnectionHelloMessage(ConnectionHelloPhaseType.ready, SHIPMessageTimeout.T_HELLO_INIT);
                 await message.Send(connection.WebSocket, logger).ConfigureAwait(false);
 
                 return (Connection.EState.WaitingForConnectionHello, Connection.ESubState.None);

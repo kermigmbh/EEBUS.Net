@@ -502,7 +502,6 @@ namespace EEBUS
 
             if (clientAddress == null || serverAddress == null)
             {
-                Logger?.LogInformation("HeartbeatSubscription: Could not find valid client or server address for heartbeat subscription. ClientAddress: {clientAddress}, ServerAddress: {serverAddress}", clientAddress, serverAddress);
                 return;
             }
 
