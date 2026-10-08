@@ -65,7 +65,7 @@ namespace EEBUS.SHIP.Messages
                 return (Connection.EState.Connected, Connection.ESubState.None);
             }
 
-            throw new Exception("Was waiting for PinCheckit");
+            throw new Exception("Was waiting for PinCheck");
         }
 
         public override Task<(Connection.EState, Connection.ESubState, string)> ClientTestAsync(Connection.EState state, Connection? connection = null, ILogger? logger = null)

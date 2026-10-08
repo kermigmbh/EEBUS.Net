@@ -42,7 +42,10 @@ namespace EEBUS.SHIP.Messages
             {
                 error = "Expected SMI_HEAD payload in INIT message!";
                 newState = Connection.EState.Stopped;
-                await new InitMessage().Send(connection.WebSocket, logger).ConfigureAwait(false);   //Send back a normal init with CmiHead = 0 and close the connection
+                if (connection != null)
+                {
+                    await new InitMessage().Send(connection.WebSocket, logger).ConfigureAwait(false);   //Send back a normal init with CmiHead = 0 and close the connection
+                }
             }
 
             return (newState, Connection.ESubState.None, error);

@@ -433,7 +433,12 @@ namespace EEBUS
                 throw new Exception("Message couldn't be recognized");
             }
 
-            Logger?.LogDebug(DateTime.Now.ToString("HH:mm:ss.fff") + " <--- " + Encoding.UTF8.GetString(messageSpan) + "\n");
+            // CMI frames are raw bytes (0x00 0x00); logging them as UTF-8 yields NUL characters
+            // that truncate the line in most log sinks, so log them in the same form as the send path.
+            string logText = messageSpan[0] == SHIPMessageType.INIT
+                ? message.ToEEBUSJson()
+                : Encoding.UTF8.GetString(messageSpan);
+            Logger?.LogDebug(DateTime.Now.ToString("HH:mm:ss.fff") + " <--- " + logText + "\n");
 
             return message;
         }

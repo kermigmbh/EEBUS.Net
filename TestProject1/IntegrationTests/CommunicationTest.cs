@@ -22,10 +22,10 @@ namespace TestProject1.IntegrationTests
         [Fact]
         public async Task TwoEEBUSDevicesConnectivityAsync()
         {
-            ILogger manager1Logger = GetLogger("Manager1");
-            ILogger manager2Logger = GetLogger("Manager2");
+            ILogger manager1Logger = GetLogger("Manager1", minLogLevel: LogLevel.Debug);
+            //ILogger manager2Logger = GetLogger("Manager2", minLogLevel: LogLevel.Debug);
             using EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(), logger: manager1Logger);
-            using EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings(), logger: manager2Logger);
+            using EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings()/*, logger: manager2Logger*/);
 
             await StartAndConnectManagersAsync(manager1, manager2);
 

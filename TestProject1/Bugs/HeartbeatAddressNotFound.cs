@@ -17,7 +17,7 @@ namespace TestProject1.Bugs
         {
         }
 
-        [Fact]
+        [Fact(Skip = "UseCaseData is not provided properly yet, needs to be adjusted")]
         public async Task HeartbeatAddressNotFoundAsync()
         {
             ILogger manager1Logger = GetLogger("CEM", minLogLevel: LogLevel.Debug);

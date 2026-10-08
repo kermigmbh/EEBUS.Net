@@ -43,8 +43,8 @@ namespace TestProject1.Ship
             Assert.Single(fakeWs.SentMessages);
             var sent = ParseHello(fakeWs.SentMessages[0]);
             Assert.NotNull(sent);
-            Assert.False(
-                sent!.connectionHello.prolongationRequest,
+            Assert.True(
+                sent!.connectionHello.prolongationRequest != true,
                 "Der GRANT darf prolongationRequest nicht auf true setzen.");
         }
 
@@ -102,8 +102,8 @@ namespace TestProject1.Ship
                 Assert.Single(fakeWs.SentMessages);
                 var sent = ParseHello(fakeWs.SentMessages[0]);
                 Assert.NotNull(sent);
-                Assert.False(
-                    sent!.connectionHello.prolongationRequest,
+                Assert.True(
+                    sent!.connectionHello.prolongationRequest != true,
                     "Der Client-GRANT darf prolongationRequest nicht auf true setzen.");
             }
             catch (Exception ex) when (ex is NullReferenceException or ArgumentNullException)

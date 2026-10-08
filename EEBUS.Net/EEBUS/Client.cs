@@ -134,9 +134,9 @@ namespace EEBUS
 
 					(this.state, this.subState, string error) = await message.ClientTestAsync(this.state, this, Logger);
 
-					if (this.state == EState.Stopped && error != null)
+					if (this.state == EState.Stopped && !string.IsNullOrEmpty(error))
 						throw new Exception(error);
-					if (error != null)
+					if (!string.IsNullOrEmpty(error))
 						Logger?.LogError(error);
 
 					EState oldState = this.state;
