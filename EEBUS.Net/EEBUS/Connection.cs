@@ -323,9 +323,8 @@ namespace EEBUS
             if (_helloDeadlineUtc != null)
             {
                 _helloDeadlineUtc = _helloDeadlineUtc.Value.AddMilliseconds(incrementMs);
+                Logger?.LogDebug("Hello deadline prolonged to {deadline:HH:mm:ss.fff} UTC", _helloDeadlineUtc);
             }
-
-            Logger?.LogDebug("Hello deadline prolonged to {deadline:HH:mm:ss.fff} UTC", _helloDeadlineUtc);
         }
 
         /// <summary>
