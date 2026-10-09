@@ -11,9 +11,8 @@ using Microsoft.Extensions.Logging;
 namespace EEBUS
 {
     /// <summary>
-    /// Eine Server Instanz verwaltet eine Websocket Instanz, die mit einem wss:// Aufruf von einem anderen Device entstanden ist
-    /// Es wird auf ankommende Nachrichten gewartet und meist mit Echo darauf reagiert
-    /// </summary>
+	/// Represents a server connnection to a remote device that was initiated by a peer's ship node
+	/// </summary>
     public class Server : Connection
     {
         private readonly string _ski;
@@ -27,7 +26,12 @@ namespace EEBUS
 
         public async Task Do(CancellationToken cancellationToken)
         {
+            //Following the spec, we do not send an Init message here, instead we wait for the peer's init message to start the Ship Message Exchange (SME). When we receive the Init message,
+            //further processing takes place in the class InitMessage.cs
 			Logger?.LogDebug("Starting Server for ski {serverSki}", _ski);
+
+            //Initialize the heartbeat timer to send a heartbeat message every 4 seconds. The heartbeat message will be sent to the remote device to keep the connection alive and to check if the remote device is still responsive.
+            //Currently, this is only relevant for the use cases LPC and LPP
             var heart = new HeartBeatTask();
             Timer beat = new System.Threading.Timer(arg => heart.Beat(arg), this, 4000, 4000);
 
@@ -55,15 +59,6 @@ namespace EEBUS
 
                     EState oldState = this.state;
                     (this.state, this.subState) = await message.NextServerStateAsync(this, Logger).ConfigureAwait(false);
-
-                    //if (null == this.Remote)
-                    //{
-                    //    var id = message.GetId();
-                    //    if (id != null)
-                    //    {
-                    //        this.Remote = GetRemote(message.GetId());
-                    //    }
-                    //}
 
                     if (null != this.Remote)
                         this.Remote.SetServerState(this.state);

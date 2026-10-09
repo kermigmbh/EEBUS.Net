@@ -1,4 +1,5 @@
 ﻿using EEBUS.KeyValues;
+using EEBUS.Net.EEBUS;
 using EEBUS.SPINE.Commands;
 using EEBUS.StateMachines;
 using EEBUS.UseCases;
@@ -6,7 +7,10 @@ using System.Security.Cryptography;
 
 namespace EEBUS.Models
 {
-	public class LocalDevice : Device
+    /// <summary>
+    /// Represents the local ship node with its device information and entities. This class is used to manage the local device's settings, secrets, and provides methods to retrieve device and entity information.
+    /// </summary>
+    public class LocalDevice : Device
 	{
 		private byte[]? _secret;
 		private string? _fingerprint;
@@ -125,13 +129,13 @@ namespace EEBUS.Models
 			{
 				FailsafeConsumptionActivePowerLimitKeyValue? lpcFailsafeLimitKeyValue = GetKeyValue<FailsafeConsumptionActivePowerLimitKeyValue>();
 				if (null != lpcFailsafeLimitKeyValue)
-					return lpcFailsafeLimitKeyValue.Value;
+					return ScaledNumber.ToLong(lpcFailsafeLimitKeyValue.Value, lpcFailsafeLimitKeyValue.Scale);
 			}
 			else
 			{
 				FailsafeProductionActivePowerLimitKeyValue? lppFailsafeLimitKeyValue = GetKeyValue<FailsafeProductionActivePowerLimitKeyValue>();
 				if (null != lppFailsafeLimitKeyValue)
-					return lppFailsafeLimitKeyValue.Value;
+					return ScaledNumber.ToLong(lppFailsafeLimitKeyValue.Value, lppFailsafeLimitKeyValue.Scale);
 			}
 			return 0;
 		}

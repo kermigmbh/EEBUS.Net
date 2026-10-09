@@ -1,4 +1,5 @@
 ﻿using EEBUS.Models;
+using EEBUS.Net.EEBUS;
 using EEBUS.SPINE.Commands;
 using EEBUS.UseCases;
 using EEBUS.UseCases.ControllableSystem;
@@ -60,14 +61,15 @@ namespace EEBUS.KeyValues
 		{
 			// value.scaledNumber.number is nullable, fall back to existing Value if null
 			this.Value = value.scaledNumber?.number ?? this.Value;
-		}
+			this.Scale = value.scaledNumber?.scale ?? this.Scale;
+        }
 
 		public override async Task SendEventAsync( Connection connection )
 		{
 			List<LPPEvents> lppEvents = connection.Local.GetUseCaseEvents<LPPEvents>();
 			foreach (var lpp in lppEvents)
 			{
-				await lpp.DataUpdateFailsafeProductionActivePowerLimitAsync(0, this.Value, connection.Remote?.SKI.ToString() ?? string.Empty);
+				await lpp.DataUpdateFailsafeProductionActivePowerLimitAsync(0, ScaledNumber.ToLong(this.Value, this.Scale), connection.Remote?.SKI.ToString() ?? string.Empty);
 			}
 		}
 	}

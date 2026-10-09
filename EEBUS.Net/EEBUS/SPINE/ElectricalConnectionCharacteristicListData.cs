@@ -2,6 +2,7 @@
 using EEBUS.Messages;
 using EEBUS.Models;
 using EEBUS.Net;
+using EEBUS.Net.EEBUS;
 using EEBUS.Net.EEBUS.Data.DataStructures;
 using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.Net.EEBUS.SPINE.Types;
@@ -116,8 +117,12 @@ namespace EEBUS.SPINE.Commands
                     var consumptionDataStructures = localDevice.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>().Where(ds => ds.CharacteristicType == "contractualConsumptionNominalMax");
                     foreach (var consumptionDataStructure in consumptionDataStructures)
                     {
-                        didChange = didChange || (deviceData.Lpc.ContractualNominalMax != null && consumptionDataStructure.Number != deviceData.Lpc.ContractualNominalMax);
-                        consumptionDataStructure.Number = deviceData.Lpc.ContractualNominalMax ?? consumptionDataStructure.Number;
+                        if (deviceData.Lpc.ContractualNominalMax != null)
+                        {
+                            didChange = didChange || ScaledNumber.ToLong(consumptionDataStructure.Number, consumptionDataStructure.Scale) != deviceData.Lpc.ContractualNominalMax;
+                            consumptionDataStructure.Number = deviceData.Lpc.ContractualNominalMax.Value;
+                            consumptionDataStructure.Scale = 0;
+                        }
                     }
                 }
 
@@ -126,8 +131,12 @@ namespace EEBUS.SPINE.Commands
                     var productionDataStructures = localDevice.GetDataStructures<ElectricalConnectionCharacteristicDataStructure>().Where(ds => ds.CharacteristicType == "contractualProductionNominalMax");
                     foreach (var productionDataStructure in productionDataStructures)
                     {
-                        didChange = didChange || (deviceData.Lpp.ContractualNominalMax != null && productionDataStructure.Number != deviceData.Lpp.ContractualNominalMax);
-                        productionDataStructure.Number = deviceData.Lpp.ContractualNominalMax ?? productionDataStructure.Number;
+                        if (deviceData.Lpp.ContractualNominalMax != null)
+                        {
+                            didChange = didChange || ScaledNumber.ToLong(productionDataStructure.Number, productionDataStructure.Scale) != deviceData.Lpp.ContractualNominalMax;
+                            productionDataStructure.Number = deviceData.Lpp.ContractualNominalMax.Value;
+                            productionDataStructure.Scale = 0;
+                        }
                     }
                 }
 

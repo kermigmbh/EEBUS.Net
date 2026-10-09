@@ -53,10 +53,13 @@ namespace EEBUS.SHIP.Messages
 
             if (state == Connection.EState.WaitingForProtocolHandshake && this.messageProtocolHandshake.handshakeType != ProtocolHandshakeTypeType.announceMax)
             {
+                //In this state, we expect the peer to send a handshake message where they announce their maximum supported SHIP version and the supported text formats. If they send a different type of handshake message, we consider it an error.
                 error = "Protocol version max announcement expected!";
                 newState = Connection.EState.SendProtocolHandshakeError;
                 newSubState = Connection.ESubState.UnexpectedMessage;
             }
+
+            //TODO: the state WaitingForProtocolHandshakeConfirm is not used, check if we still need this guard
             else if (state == Connection.EState.WaitingForProtocolHandshakeConfirm && this.messageProtocolHandshake.handshakeType != ProtocolHandshakeTypeType.select)
             {
                 error = "Protocol format mismatch!";
@@ -67,12 +70,14 @@ namespace EEBUS.SHIP.Messages
                 ? this.messageProtocolHandshake.version.CompareTo(new MessageProtocolHandshakeTypeVersion(SHIPVersion.MIN_MAJOR, SHIPVersion.MIN_MINOR)) < 0
                 : !this.messageProtocolHandshake.version.IsSupported())
             {
+                //The peer answered our proposal with a verson we do not support
                 error = "Protocol version mismatch!";
                 newState = Connection.EState.SendProtocolHandshakeError;
                 newSubState = Connection.ESubState.FormatMismatch;
             }
             else if ((this.messageProtocolHandshake.formats.format.Length == 0) || (this.messageProtocolHandshake.formats.format[0] != SHIPMessageFormat.JSON_UTF8))
             {
+                //The peer answered our proposal with a verson we do not support
                 error = "Protocol format mismatch!";
                 newState = Connection.EState.SendProtocolHandshakeError;
                 newSubState = Connection.ESubState.FormatMismatch;
@@ -81,27 +86,37 @@ namespace EEBUS.SHIP.Messages
             return Task.FromResult((newState, newSubState, error));
         }
 
+        /*After the connection hello message, we wait for the peer's protocol handshake message, where they announce their maximum supported SHIP version and the supported text formats.
+          We then select the maximum version supported by both partners and send back a protocol handshake message with the selected version and text format.
+          Example:
+            1. Peer sends a handshake message announcing max version 1.1 and format UTF-8. That means the peer supports versions 1.0 and 1.1, and the only supported text format is UTF-8.
+            2. Since we (currently) only support version 1.0, we send a protocol handshake message with version 1.0 and format UTF-8
+               If the peer accepts this selection, they will send back the message we sent
+        */
         public override async Task<(Connection.EState, Connection.ESubState)> NextServerStateAsync(Connection connection, ILogger? logger = null)
         {
             if (connection.State == Connection.EState.WaitingForProtocolHandshake)
             {
-                // spec 2390: select the maximum version supported by both partners
+                //We select the highest version supported by both us and the peer and send back a select message
                 MessageProtocolHandshakeTypeVersion selected = MessageProtocolHandshakeTypeVersion.SelectCommon(this.messageProtocolHandshake.version);
                 await new ProtocolHandshakeMessage(ProtocolHandshakeTypeType.select, selected.major, selected.minor).Send(connection.WebSocket, logger).ConfigureAwait(false);
                 return (Connection.EState.SendProtocolHandshakeConfirm, Connection.ESubState.None);
             }
             else if (connection.State == Connection.EState.SendProtocolHandshakeConfirm)
             {
+                //The peer confirmed our proposed selection by sending our message back, so we can enter the next SME state
                 return (Connection.EState.WaitingForPinCheck, Connection.ESubState.None);
             }
             else if (connection.State == Connection.EState.SendProtocolHandshakeError && connection.SubState == Connection.ESubState.FormatMismatch)
             {
+                //The peer answered our proposal with a version we do not support, so we send back an error message and close the connection
                 ProtocolHandshakeErrorMessage message = new ProtocolHandshakeErrorMessage(SHIPHandshakeError.SELECTION_MISMATCH);
                 await message.Send(connection.WebSocket, logger).ConfigureAwait(false);
                 return (Connection.EState.Stopped, Connection.ESubState.None);
             }
             else if (connection.State == Connection.EState.SendProtocolHandshakeError && connection.SubState == Connection.ESubState.UnexpectedMessage)
             {
+                //The peer sent a handshake message we did not expect in the current state, so we send back an error message and close the connection
                 ProtocolHandshakeErrorMessage message = new ProtocolHandshakeErrorMessage(SHIPHandshakeError.UNEXPECTED_MESSAGE);
                 await message.Send(connection.WebSocket, logger).ConfigureAwait(false);
                 return (Connection.EState.Stopped, Connection.ESubState.None);
@@ -118,10 +133,12 @@ namespace EEBUS.SHIP.Messages
 
             if (state == Connection.EState.WaitingForProtocolHandshake && this.messageProtocolHandshake.handshakeType != ProtocolHandshakeTypeType.select)
             {
+                //In this state, we expect the peer to send a handshake message where they select the version and format we announced in our previous handshake message. If they send a different type of handshake message, we consider it an error.
                 error = "Protocol version selection expected!";
                 newState = Connection.EState.SendProtocolHandshakeError;
                 newSubState = Connection.ESubState.UnexpectedMessage;
             }
+            //TODO: the state WaitingForProtocolHandshakeConfirm is not used, check if we still need this guard
             else if (state == Connection.EState.WaitingForProtocolHandshakeConfirm && this.messageProtocolHandshake.handshakeType != ProtocolHandshakeTypeType.select)
             {
                 error = "Protocol format mismatch!";
@@ -130,12 +147,14 @@ namespace EEBUS.SHIP.Messages
             }
             else if (!this.messageProtocolHandshake.version.IsSupported())
             {
+                //The peer selected a version we do not support
                 error = "Protocol version mismatch!";
                 newState = Connection.EState.SendProtocolHandshakeError;
                 newSubState = Connection.ESubState.FormatMismatch;
             }
             else if ((this.messageProtocolHandshake.formats.format.Length == 0) || (this.messageProtocolHandshake.formats.format[0] != SHIPMessageFormat.JSON_UTF8))
             {
+                //The peer selected a format we do not support
                 error = "Protocol format mismatch!";
                 newState = Connection.EState.SendProtocolHandshakeError;
                 newSubState = Connection.ESubState.FormatMismatch;
@@ -148,25 +167,32 @@ namespace EEBUS.SHIP.Messages
             return Task.FromResult((newState, newSubState, error));
         }
 
+        /*
+         * We received an answer to our protocol handshake message where the peer selected the version and format they support
+         */
         public override async Task<(Connection.EState, Connection.ESubState)> NextClientStateAsync(Connection connection, ILogger? logger = null)
         {
             if (connection.State == Connection.EState.SendProtocolHandshakeConfirm)
             {
+                //We confirm the peer's selection by sending back the same message we received, and then we enter the next SME state by sending a PinCheckMessage
                 this.messageProtocolHandshake.handshakeType = ProtocolHandshakeTypeType.select;
                 await Send(connection.WebSocket, logger).ConfigureAwait(false);
 
+                //We do not implement a PIN requirement, so we send a missage with PinStateType none, indicating we do not require a pin
                 PinCheckMessage message = new PinCheckMessage(PinStateType.none);
                 await message.Send(connection.WebSocket, logger).ConfigureAwait(false);
                 return (Connection.EState.WaitingForPinCheck, Connection.ESubState.None);
             }
             else if (connection.State == Connection.EState.SendProtocolHandshakeError && connection.SubState == Connection.ESubState.FormatMismatch)
             {
+                //The peer selected an invalid version, e.g. a version we do not support, so we send back an error message and close the connection
                 ProtocolHandshakeErrorMessage message = new ProtocolHandshakeErrorMessage(SHIPHandshakeError.SELECTION_MISMATCH);
                 await message.Send(connection.WebSocket, logger).ConfigureAwait(false);
                 return (Connection.EState.Stopped, Connection.ESubState.None);
             }
             else if (connection.State == Connection.EState.SendProtocolHandshakeError && connection.SubState == Connection.ESubState.UnexpectedMessage)
             {
+                //The peer sent a handshake message we did not expect in the current state, so we send back an error message and close the connection
                 ProtocolHandshakeErrorMessage message = new ProtocolHandshakeErrorMessage(SHIPHandshakeError.UNEXPECTED_MESSAGE);
                 await message.Send(connection.WebSocket, logger).ConfigureAwait(false);
                 return (Connection.EState.Stopped, Connection.ESubState.None);

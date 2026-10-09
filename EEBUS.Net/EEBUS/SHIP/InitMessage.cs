@@ -51,6 +51,7 @@ namespace EEBUS.SHIP.Messages
             return (newState, Connection.ESubState.None, error);
         }
 
+        //A peer has sent us its init message, we reply with our init message and enter the SME state "Hello" by sending a hello message. The next step of the SME is processed in ConnectionHelloMessage.cs.
         public override async Task<(Connection.EState, Connection.ESubState)> NextServerStateAsync(Connection connection, ILogger? logger = null)
         {
             if (connection.State == Connection.EState.Disconnected || connection.State == Connection.EState.Connected)
@@ -58,7 +59,7 @@ namespace EEBUS.SHIP.Messages
                 //Send an init answer back to the peer
                 await new InitMessage().Send(connection.WebSocket, logger).ConfigureAwait(false);
 
-                //We received an init message, so we can enter the next SME state and send a hello message. We also start the WaitForReadyTimer; if we do not receive a hello answer in time, we will abort the connection.
+                //We initalize our WaitForReadyTimer; if we do not receive a hello answer in time, we will abort the connection.
                 connection.StartWaitForReadyTimer();
                 await new ConnectionHelloMessage(ConnectionHelloPhaseType.ready, connection.WaitForReadyTimerValue).Send(connection.WebSocket, logger).ConfigureAwait(false);
                 return (Connection.EState.WaitingForConnectionHello, Connection.ESubState.None);
@@ -81,11 +82,12 @@ namespace EEBUS.SHIP.Messages
             return Task.FromResult((newState, Connection.ESubState.None, error));
         }
 
+        //We receive an answer to the init message we sent in Client.cs, so we can enter the SME state "Hello" by sending a hello message. The next step of the SME is processed in ConnectionHelloMessage.cs.
         public override async Task<(Connection.EState, Connection.ESubState)> NextClientStateAsync(Connection connection, ILogger? logger = null)
         {
             if (connection.State == Connection.EState.Disconnected || connection.State == Connection.EState.Connected)
             {
-                //As a client, we already sent an init message at the start, so after receiving the peer's init messsage, we can enter the next SME state and send a hello message. We also start the WaitForReadyTimer; if we do not receive a hello answer in time, we will abort the connection.
+                //We initalize our WaitForReadyTimer; if we do not receive a hello answer in time, we will abort the connection.
                 connection.StartWaitForReadyTimer();
                 ConnectionHelloMessage message = new ConnectionHelloMessage(ConnectionHelloPhaseType.ready, SHIPMessageTimeout.T_HELLO_INIT);
                 await message.Send(connection.WebSocket, logger).ConfigureAwait(false);

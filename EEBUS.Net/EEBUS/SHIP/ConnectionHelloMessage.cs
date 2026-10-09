@@ -46,6 +46,16 @@ namespace EEBUS.SHIP.Messages
 
         public ConnectionHelloType connectionHello { get; set; } = new();
 
+        /*We get an answer to the hello message we sent in InitMessage.cs. There are several possible outcomes here:
+         *  1. We receive a hello message with phase ready, which means we can proceed to the next step in the handshake process (ProtocolHandshakeMessage). We do not need to do anything here, as we
+         *     need to wait for the client to send its ProtocolHandshakeMessage. We can stop the Wait-For-Ready-Timer, as we have received a ready message.
+         *     
+         *  2. We receive a hello message with phase pending and prolongationRequest = true. This means the peer needs more time for verifying trust to us. We grant 2 prolongation requests before closing the connection.
+         *     For granting a prolongation request, we increase the Wait-For-Ready-Timer and send a hello message with phase ready and the current value of the Wait-For-Ready-Timer.
+         *     If prolongationRequest = false and the phase is pending, the peer just informs us that it is still pending, but we don't need to do anything in this case.
+         *     
+         *  3. We receive a hello message with phase aborted, which means the peer has aborted the connection. We should also abort the connection and stop the handshake process.
+         * */
         public override async Task<(Connection.EState, Connection.ESubState)> NextServerStateAsync(Connection connection, ILogger? logger = null)
         {
             //TODO: spec says that if we receive a message that is not a hello message while in this state, we should send an abort message
@@ -86,9 +96,16 @@ namespace EEBUS.SHIP.Messages
 
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.pending && connection.SubState == Connection.ESubState.SecondPending)
             {
-                await UpdateConnectionStatusAsync(connection, DeviceConnectionStatus.Aborted).ConfigureAwait(false);
-                await new ConnectionHelloMessage(ConnectionHelloPhaseType.aborted).Send(connection.WebSocket, logger).ConfigureAwait(false);
-                return (Connection.EState.Stopped, Connection.ESubState.None);
+                if (this.connectionHello.prolongationRequest == true)
+                {
+                    //We have already granted 2 prolongation requests, so we abort the connection at this point
+                    await UpdateConnectionStatusAsync(connection, DeviceConnectionStatus.Aborted).ConfigureAwait(false);
+                    await new ConnectionHelloMessage(ConnectionHelloPhaseType.aborted).Send(connection.WebSocket, logger).ConfigureAwait(false);
+                    return (Connection.EState.Stopped, Connection.ESubState.None);
+                } else
+                {
+                    return (connection.State, connection.SubState); //if we receive a pending hello message that is not a prolongation request, we can ignore it
+                }
             }
 
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.aborted)
@@ -110,6 +127,16 @@ namespace EEBUS.SHIP.Messages
             }
         }
 
+        /*We get an answer to the hello message we sent in InitMessage.cs. There are several possible outcomes here:
+         *  1. We receive a hello message with phase ready, which means we can proceed to the next step in the handshake process by sending a ProtocolHandshakeMessage.
+         *     With this message, we announce the maximum SHIP version we support as well as the text formats we support (in our case only UTF-8).
+         *     
+         *  2. We receive a hello message with phase pending and prolongationRequest = true. This means the peer needs more time for verifying trust to us. We grant 2 prolongation requests before closing the connection.
+         *     For granting a prolongation request, we increase the Wait-For-Ready-Timer and send a hello message with phase ready and the current value of the Wait-For-Ready-Timer.
+         *     If prolongationRequest = false and the phase is pending, the peer just informs us that it is still pending, but we don't need to do anything in this case.
+         *     
+         *  3. We receive a hello message with phase aborted, which means the peer has aborted the connection. We should also abort the connection and stop the handshake process.
+         * */
         public override async Task<(Connection.EState, Connection.ESubState)> NextClientStateAsync(Connection connection, ILogger? logger = null)
         {
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.ready)
@@ -124,6 +151,7 @@ namespace EEBUS.SHIP.Messages
             {
                 if (this.connectionHello.prolongationRequest == true)
                 {
+                    //grant prolongation request by increasing the Wait-For-Ready-Timer and sending a hello message with state ready and the current value of the Wait-For-Ready-Timer
                     connection.ProlongHelloDeadline();
                     await new ConnectionHelloMessage(ConnectionHelloPhaseType.ready, connection.WaitForReadyTimerValue).Send(connection.WebSocket, logger).ConfigureAwait(false);
                     return (Connection.EState.WaitingForConnectionHello, Connection.ESubState.FirstPending);
@@ -138,6 +166,7 @@ namespace EEBUS.SHIP.Messages
             {
                 if (this.connectionHello.prolongationRequest == true)
                 {
+                    //grant prolongation request by increasing the Wait-For-Ready-Timer and sending a hello message with state ready and the current value of the Wait-For-Ready-Timer
                     connection.ProlongHelloDeadline();
                     await new ConnectionHelloMessage(ConnectionHelloPhaseType.ready, connection.WaitForReadyTimerValue).Send(connection.WebSocket, logger).ConfigureAwait(false);
                     return (Connection.EState.WaitingForConnectionHello, Connection.ESubState.SecondPending);
@@ -150,9 +179,17 @@ namespace EEBUS.SHIP.Messages
 
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.pending && connection.SubState == Connection.ESubState.SecondPending)
             {
-                await UpdateConnectionStatusAsync(connection, DeviceConnectionStatus.Aborted).ConfigureAwait(false);
-                await new ConnectionHelloMessage(ConnectionHelloPhaseType.aborted).Send(connection.WebSocket, logger).ConfigureAwait(false);
-                return (Connection.EState.Stopped, Connection.ESubState.None);
+                if (this.connectionHello.prolongationRequest == true)
+                {
+                    //We have already granted 2 prolongation requests, so we abort the connection at this point
+                    await UpdateConnectionStatusAsync(connection, DeviceConnectionStatus.Aborted).ConfigureAwait(false);
+                    await new ConnectionHelloMessage(ConnectionHelloPhaseType.aborted).Send(connection.WebSocket, logger).ConfigureAwait(false);
+                    return (Connection.EState.Stopped, Connection.ESubState.None);
+                }
+                else
+                {
+                    return (connection.State, connection.SubState); //if we receive a pending hello message that is not a prolongation request, we can ignore it
+                }
             }
 
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.aborted)

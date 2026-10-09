@@ -31,7 +31,7 @@ namespace TestProject1.IntegrationTests
             _defaultLogger.LogTrace($"[{testName}] {message}");
         }
 
-        protected ILogger GetLogger(string categoryName, [CallerMemberName] string testName = "", LogLevel? minLogLevel = null)
+        protected ILogger GetLogger(string categoryName, [CallerMemberName] string testName = "", LogLevel minLogLevel = LogLevel.Debug)
         {
             return new TestOutputLogger(_output, $"[{testName}] {categoryName}", minLogLevel);
         }

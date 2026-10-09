@@ -11,6 +11,9 @@ using Microsoft.Extensions.Logging;
 
 namespace EEBUS
 {
+    /// <summary>
+    /// Handles incoming ship service and pairing requests via mDNS and manages discovered remote devices.
+    /// </summary>
     public class MDNSClient
     {
         private Devices? devices;

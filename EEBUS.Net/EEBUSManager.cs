@@ -3,6 +3,7 @@ using EEBUS.Features;
 using EEBUS.KeyValues;
 using EEBUS.Messages;
 using EEBUS.Models;
+using EEBUS.Net.EEBUS;
 using EEBUS.Net.EEBUS.Data.DataStructures;
 using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.Net.Events;
@@ -68,6 +69,7 @@ namespace EEBUS.Net
                 serviceDiscovery = EEBusServiceDiscovery.Create(settings.FilterLinkLocalAddresses);
             }
 
+            //Run the static constructors for all classes in the EEBUS namespaces to ensure that the static registration of data structures, features, key values, and use cases is executed.
             foreach (string ns in new string[] {"EEBUS.SHIP.Messages", "EEBUS.SPINE.Commands", "EEBUS.Entities",
                                                  "EEBUS.UseCases.ControllableSystem", "EEBUS.UseCases.EnergyGuard", "EEBUS.UseCases.GridConnectionPoint", "EEBUS.UseCases.MonitoringAppliance",
                                                  "EEBUS.UseCases.MonitoredUnit", "EEBUS.Features" })
@@ -81,9 +83,12 @@ namespace EEBUS.Net
 
             _cert = CertificateGenerator.GenerateCert(settings.BasePath, settings.Certificate);
             byte[] hash = SHA1.HashData(_cert.GetPublicKey());
+
+            //Fingerprint is used for ship pairing
             byte[] fpHash = SHA256.HashData(_cert.GetRawCertData());
             string fingerprint = Convert.ToHexString(fpHash);
 
+            //Every ship node advertises its own ship service instance and listens to incoming ship service instances
             _mDNSClient = new MDNSClient(serviceDiscovery, CanEvaluateShipPairingRequests, logger);
             _mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port, serviceDiscovery, settings.FilterLinkLocalAddresses);
 
@@ -94,6 +99,8 @@ namespace EEBUS.Net
             _devices.ServerStateChanged += OnServerStateChanged;
             _devices.ClientStateChanged += OnClientStateChanged;
 
+
+            //Register event handlers. The events can be triggered by calling localDevice.GetUseCaseEvents()
             lpcStateMachine = new LpcLimitStateMachine(localDevice, logger);
             lpcStateMachine.RegisterEventHandler(new LPCEventHandler(this));
             lppStateMachine = new LppLimitStateMachine(localDevice);
@@ -113,6 +120,11 @@ namespace EEBUS.Net
             _ = Task.Run(() => ReconnectLoopAsync(_cts.Token));
         }
 
+        /// <summary>
+        /// Periodically checks for stale connections and attempts reconnection if possible
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         private async Task ReconnectLoopAsync(CancellationToken cancellationToken)
         {
             Thread.CurrentThread.IsBackground = true;
@@ -167,8 +179,6 @@ namespace EEBUS.Net
             var pairedAddCu = pairedSnapshot.FirstOrDefault(p => p.TrustType == EEBUS.Models.ShipTrustType.AddCu);
             if (pairedAddCu == null) return true;  //no device yet paired via ship pairing, so we can accept new requests
 
-            //var remote = Devices.Remote.First(r => r.Id == pairedAddCu.TrustId);   //the remote device corresponding to the paired device
-            //TODO: Check if this change is correct!
             var remote = _devices.GetRemote(pairedAddCu.TrustId);   //the remote device corresponding to the paired device
             if (remote == null) return false;
 
@@ -178,14 +188,9 @@ namespace EEBUS.Net
                             && connection.State != Connection.EState.Stopped
                             && connection.State != Connection.EState.ErrorOrTimeout;
             if (isConnected) return false;  //do not process pairing requests when we are still connected to an addCu device
-            
             if (remote.LastDisconnectUtc == null) return false;
 
             TimeSpan diff = DateTime.UtcNow - remote.LastDisconnectUtc.Value;
-            //if (diff.TotalMinutes > 15)
-            //{
-            //    //addCuRemote.TrustType = EEBUS.Models.ShipTrustType.SkiVerification;
-            //}
             return diff.TotalMinutes > 15;  //if the device was not connected for more than 15 minutes, we can accept new requests
         }
 
@@ -212,13 +217,11 @@ namespace EEBUS.Net
             lock (_lock)
             {
                 _trustedSkis.Remove(ski);
-                //TODO: shouldn't we close the connection, too?
             }
         }
 
         private void OnRemoteDeviceFound(RemoteDevice device)
         {
-            //using var _ = Push(new RemoteDeviceFound(device));
             _logger?.LogInformation("Remote device found: {deviceName} ({deviceSki})", device.Name, device.SKI.ToString());
             OnDeviceFound?.Invoke(this, device);
         }
@@ -279,12 +282,21 @@ namespace EEBUS.Net
         private DeviceConnectionStatusEventHandler deviceConnectionStatusEventHandler;
         private class NotifyEventHandler(EEBUSManager EEBusManager) : NotifyEvents
         {
+            /// <summary>
+            /// Notifies all subscribers of the local feature with the provided <paramref name="payload"/>. The notification is sent to all clients that have subscribed to the feature identified by <paramref name="localFeatureAddress"/>.
+            /// </summary>
+            /// <param name="payload"></param>
+            /// <param name="localFeatureAddress"></param>
+            /// <returns></returns>
+            /// <exception cref="Exception"></exception>
             public async Task NotifyAsync(JsonNode? payload, AddressType localFeatureAddress)
             {
                 if (payload == null) return;
                 AddressType serverAddress = localFeatureAddress;
 
                 var connections = EEBusManager._connections.Values.ToList();
+
+                //We look for all subscribers across all connections and broadcast the notification to all of them
                 foreach (Connection connection in connections)
                 {
                     IEnumerable<AddressType> clientAddresses = connection.BindingAndSubscriptionManager.GetSubscriptionsByServerAddress(serverAddress, BindingSubscriptionDirection.Incoming);
@@ -308,11 +320,19 @@ namespace EEBUS.Net
 
         private class DeviceConnectionStatusEventHandler(EEBUSManager EEBusManager) : DeviceConnectionStatusEvents
         {
+            /// <summary>
+            /// Handles connection status updates for a connection
+            /// </summary>
+            /// <param name="connection"></param>
+            /// <returns></returns>
             public async Task DeviceConnectionStatusUpdatedAsync(Connection connection)
             {
+                //Usually, we have this flow: Unknown -> NodeDiscoveryCompleted -> UseCaseDiscoveryCompleted. When the use case discovery is completed, we assume the device is fully connected
+
                 EEBusManager._logger?.LogDebug("Status Changed for device {ski}: {status}", connection.Remote?.SKI.ToString(), connection.ConnectionStatus.ToString());
                 if (connection.ConnectionStatus == DeviceConnectionStatus.UseCaseDiscoveryCompleted)
                 {
+                    //TODO: this code does not work properly, but it is correct that the spec describes this mechanism
                     //if (connection.Remote != null && EEBusManager.Localdevice.SKI > connection.Remote.SKI)  //device with bigger ski shall close old connections according to spec
                     //{
                     //    var existing = EEBusManager.Connections.FirstOrDefault(c => c.Remote != null && c.Remote.SKI == connection.Remote.SKI);
@@ -364,7 +384,7 @@ namespace EEBUS.Net
                 {
                     mgcpData = new MgcpData
                     {
-                        PvCurtailmentLimitFactor = pvCurtailmentLimitFactor.Data.value.scaledNumber?.number
+                        PvCurtailmentLimitFactor = pvCurtailmentLimitFactor.Data.value.scaledNumber?.ToLong()
                     };
                 }
 
@@ -510,13 +530,13 @@ namespace EEBUS.Net
                 if (data.LimitDirection == "consume")
                 {
                     lpcActive = data.LimitActive;
-                    lpcLimit = data.Number;
+                    lpcLimit = ScaledNumber.ToLong(data.Number, data.Scale);
                     lpcDuration = data.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(data.EndTime);
                 }
                 else if (data.LimitDirection == "produce")
                 {
                     lppActive = data.LimitActive;
-                    lppLimit = data.Number;
+                    lppLimit = ScaledNumber.ToLong(data.Number, data.Scale);
                     lppDuration = data.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(data.EndTime);
                 }
             }
@@ -584,13 +604,13 @@ namespace EEBUS.Net
                 if (data.LimitDirection == "consume")
                 {
                     lpcActive = data.LimitActive;
-                    lpcLimit = data.Number;
+                    lpcLimit = ScaledNumber.ToLong(data.Number, data.Scale);
                     lpcDuration = data.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(data.EndTime);
                 }
                 else if (data.LimitDirection == "produce")
                 {
                     lppActive = data.LimitActive;
-                    lppLimit = data.Number;
+                    lppLimit = ScaledNumber.ToLong(data.Number, data.Scale);
                     lppDuration = data.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(data.EndTime);
                 }
             }
@@ -599,21 +619,21 @@ namespace EEBUS.Net
             {
                 if (data.CharacteristicType == "contractualConsumptionNominalMax")
                 {
-                    lpcContractualNominalMax = data.Number;
+                    lpcContractualNominalMax = ScaledNumber.ToLong(data.Number, data.Scale);
                 }
                 else if (data.CharacteristicType == "contractualProductionNominalMax")
                 {
-                    lppContractualNominalMax = data.Number;
+                    lppContractualNominalMax = ScaledNumber.ToLong(data.Number, data.Scale);
                 }
             }
 
             FailsafeConsumptionActivePowerLimitKeyValue? lpcFailsafeLimitKeyValue = local.GetKeyValue<FailsafeConsumptionActivePowerLimitKeyValue>();
             if (null != lpcFailsafeLimitKeyValue)
-                lpcFailsafeLimit = lpcFailsafeLimitKeyValue.Value;
+                lpcFailsafeLimit = ScaledNumber.ToLong(lpcFailsafeLimitKeyValue.Value, lpcFailsafeLimitKeyValue.Scale);
 
             FailsafeProductionActivePowerLimitKeyValue? lppFailsafeLimitKeyValue = local.GetKeyValue<FailsafeProductionActivePowerLimitKeyValue>();
             if (null != lppFailsafeLimitKeyValue)
-                lppFailsafeLimit = lppFailsafeLimitKeyValue.Value;
+                lppFailsafeLimit = ScaledNumber.ToLong(lppFailsafeLimitKeyValue.Value, lppFailsafeLimitKeyValue.Scale);
 
             FailsafeDurationMinimumKeyValue? failsafeDurationKeyValue = local.GetKeyValue<FailsafeDurationMinimumKeyValue>();
             if (null != failsafeDurationKeyValue)
@@ -662,7 +682,6 @@ namespace EEBUS.Net
             RemoteDevice? remote = _devices.GetRemotes().FirstOrDefault(r => r.SKI.ToString() == ski);
             if (remote == null) return null;
 
-            //var connection = Connections.FirstOrDefault(c => c.Remote != null && c.Remote.SKI.ToString() == ski);
             if (!_connections.TryGetValue(ski, out Connection? connection))
             {
                 return null;
@@ -683,7 +702,7 @@ namespace EEBUS.Net
 
             MgcpData mgcpData = new();
             KeyValue? pvCurtailmentKeyValue = remote.KeyValues.FirstOrDefault(kv => kv.KeyName == "pvCurtailmentLimitFactor");
-            mgcpData.PvCurtailmentLimitFactor = pvCurtailmentKeyValue?.Data.value.scaledNumber?.number;
+            mgcpData.PvCurtailmentLimitFactor = pvCurtailmentKeyValue?.Data.value.scaledNumber?.ToLong();
 
             return new DeviceData
             {
@@ -729,7 +748,14 @@ namespace EEBUS.Net
                 Ski = rd.SKI.ToString(),
             });
         }
-        
+
+        /// <summary>
+        /// Writes the provided <paramref name="deviceData"/> to the local device of the connection with device with <paramref name="remoteSki"/>.
+        /// </summary>
+        /// <param name="deviceData"></param>
+        /// <param name="remoteSki"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
         public async Task WriteDataAsync(DeviceData deviceData, string remoteSki)
         {
             if (!_connections.TryGetValue(remoteSki, out Connection? connection))
@@ -813,6 +839,11 @@ namespace EEBUS.Net
             }
         }
 
+        /// <summary>
+        /// Attempts to connect to the remote device with ski <paramref name="ski"/>. Returns true if the connection attempt was successful, false otherwise.
+        /// </summary>
+        /// <param name="ski"></param>
+        /// <returns></returns>
         public async Task<bool> TryConnectAsync(string ski)
         {
             SKI Ski = new SKI(ski);
@@ -829,7 +860,7 @@ namespace EEBUS.Net
                 if (_connections.TryGetValue(ski, out Connection? existingConnection) && existingConnection != null)
                 {
                     if (existingConnection.WebSocket?.State == WebSocketState.Open) 
-                        return false;
+                        return false;   //We are already connected
 
                     // Stale connection - tear it down before opening a new one.
                     await DisconnectAsync(ski).ConfigureAwait(false);
@@ -984,35 +1015,6 @@ namespace EEBUS.Net
                 wsClient = null;
             }
         }
-
-        ///// <summary>
-        ///// Disconnects the active connection whose remote device has the given SKI.
-        ///// </summary>
-        ///// <param name="remoteSki">The SKI of the remote device to disconnect.</param>
-        ///// <returns>
-        ///// <c>true</c> if a matching connection was found and disconnect was attempted;
-        ///// <c>false</c> if no connection currently matches the given SKI.
-        ///// </returns>
-        //public async Task<bool> DisconnectAsync(string remoteSki)
-        //{
-        //    if (string.IsNullOrEmpty(remoteSki))
-        //        return false;
-
-        //    // Find the matching connection explicitly instead of relying on
-        //    // FirstOrDefault().Key, which would otherwise hand back a default
-        //    // HostString on a miss and silently "disconnect" nothing.
-        //    var match = _connections.FirstOrDefault(c =>
-        //        c.Value?.Remote?.SKI.ToString() == remoteSki);
-
-        //    if (match.Value == null)
-        //    {
-        //        Debug.WriteLine($"DisconnectAsync: no active connection found for SKI {remoteSki}");
-        //        return false;
-        //    }
-
-        //    await DisconnectAsync(match.Key).ConfigureAwait(false);
-        //    return true;
-        //}
 
         public void Start()
         {

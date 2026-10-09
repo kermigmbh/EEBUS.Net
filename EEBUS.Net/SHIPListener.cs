@@ -22,6 +22,9 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace EEBUS
 {
+    /// <summary>
+    /// Listens for incoming SHIP connection attempts and manages the server-side lifecycle of those connections.
+    /// </summary>
     public class SHIPListener
     {
 
@@ -29,7 +32,6 @@ namespace EEBUS
         private CancellationTokenSource _cts = new CancellationTokenSource();
         private WebApplication? _app;
         private X509Certificate2? _serverCertificate;
-        //public event EventHandler<DeviceConnectionChangedEventArgs>? OnDeviceConnectionChanged;
         private ILogger? _logger;
 
         public Func<DeviceConnectionChangedEventArgs, Task>? OnDeviceConnectionChanged;
@@ -64,7 +66,6 @@ namespace EEBUS
             {
                 try
                 {
-                    //var listener = new SHIPListener(devices);
                     await StartStandaloneInternalAsync(port, _cts.Token);
                 }
                 catch (Exception ex)

@@ -245,6 +245,7 @@ namespace EEBUS.SPINE.Commands
 					if (lpcFailsafeLimitKeyValue != null)
 					{
 						lpcFailsafeLimitKeyValue.Value = deviceData.Lpc.FailSafeLimit.Value;
+						lpcFailsafeLimitKeyValue.Scale = 0;
 						didChange = true;
 					}
 				}
@@ -255,6 +256,7 @@ namespace EEBUS.SPINE.Commands
 					if (lppFailsafeLimitKeyValue != null)
 					{
 						lppFailsafeLimitKeyValue.Value = deviceData.Lpp.FailSafeLimit.Value;
+						lppFailsafeLimitKeyValue.Scale = 0;
 						didChange = true;
 					}
 				}
@@ -275,6 +277,7 @@ namespace EEBUS.SPINE.Commands
                     if (pvCurtailmentLimitFactorKeyValue != null)
                     {
                         pvCurtailmentLimitFactorKeyValue.Value = deviceData.Mgcp.PvCurtailmentLimitFactor.Value;
+                        pvCurtailmentLimitFactorKeyValue.Scale = 0;
                         didChange = true;
                     }
                 }

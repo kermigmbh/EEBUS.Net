@@ -11,6 +11,9 @@ using EEBUS.Models;
 
 namespace EEBUS
 {
+    /// <summary>
+    /// Broadcasts the ship service over mdns.
+    /// </summary>
     public class MDNSService
     {
         private ServiceProfile serviceProfile;

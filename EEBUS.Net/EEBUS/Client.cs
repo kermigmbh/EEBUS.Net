@@ -12,6 +12,9 @@ using System.Text.Json;
 
 namespace EEBUS
 {
+	/// <summary>
+	/// Represents a client connnection to a remote device that was initiated by our ship node
+	/// </summary>
 	public class Client : Connection
 	{
 		public Client(HostString host, WebSocket ws, Devices devices, RemoteDevice remoteDevice, ILogger? logger = null)
@@ -104,17 +107,14 @@ namespace EEBUS
 			this.state = EState.Disconnected;
 			this.subState = ESubState.None;
 
-			InitMessage initMessage = new InitMessage();
-
+            //Start the Ship Message Exchange (SME) by sending the InitMessage to the remote device. Once the SME is finished, the connection state will be set to Connected and the heartbeat timer will be started.
+            InitMessage initMessage = new InitMessage();
 			await initMessage.Send(this.ws, Logger).ConfigureAwait(false);
 
-			var heart = new HeartBeatTask();
+            //Initialize the heartbeat timer to send a heartbeat message every 4 seconds. The heartbeat message will be sent to the remote device to keep the connection alive and to check if the remote device is still responsive.
+			//Currently, this is only relevant for the use cases LPC and LPP
+            var heart = new HeartBeatTask();
 			Timer beat = new System.Threading.Timer(arg => heart.Beat(arg), this, 4000, 4000);
-            //var ecc = new ElectricalConnectionCharacteristicTask();
-            //var eccSend = new System.Threading.Timer(ecc.SendData, this, 2000, Timeout.Infinite);
-
-            //var md = new MeasurementDataTask();
-            //var mdSend = new System.Threading.Timer(md.SendData, this, 3000, 3000);
 
             if (this.Remote != null)
             {
@@ -123,6 +123,7 @@ namespace EEBUS
 
             try
 			{
+				//Main receive loop. When the peer sends a message to us, it gets processed here.
 				while (this.state != EState.Stopped && !cancellationToken.IsCancellationRequested)
 				{
 					var message = await ReceiveWithTimeoutAsync(cancellationToken).ConfigureAwait(false);
@@ -147,8 +148,8 @@ namespace EEBUS
 
 					if (this.state == EState.Connected && this.state != oldState && !cancellationToken.IsCancellationRequested)
 					{
+						//Now that the SME handshake is complete, we send a NodeManagementDetailedDiscovery read message to understand the peer's node structure (entities, features, functions)
 						RequestRemoteDeviceConfiguration();
-						// ReadAndSubscribe();
 					}
 
 					ResolvePendingRequest(message);

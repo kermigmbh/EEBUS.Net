@@ -59,6 +59,7 @@ namespace EEBUS.KeyValues
 		{
 			// value.scaledNumber.number is nullable, fall back to existing Value if null
 			this.Value = value.scaledNumber?.number ?? this.Value;
+			this.Scale = value.scaledNumber?.scale ?? this.Scale;
 		}
 
 		public override async Task SendEventAsync( Connection connection )

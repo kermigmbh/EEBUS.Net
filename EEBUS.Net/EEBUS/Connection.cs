@@ -445,9 +445,7 @@ namespace EEBUS
 
         public void RequestRemoteDeviceConfiguration()
         {
-            //The order here is important! We first need to get the discovery data to create the entities
             SendNodeManagementDetailedDiscoveryRead();
-            //SendUseCaseDiscoveryRead();
         }
 
         private void SendNodeManagementDetailedDiscoveryRead()
