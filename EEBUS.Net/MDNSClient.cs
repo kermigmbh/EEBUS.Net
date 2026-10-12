@@ -70,29 +70,34 @@ namespace EEBUS
         {
             Thread.CurrentThread.IsBackground = true;
 
-            //MulticastService mdns = new MulticastService();
-            //ServiceDiscovery sd = new ServiceDiscovery();
-
             _serviceDiscovery.ServiceDiscovered += Sd_ServiceDiscovered;
             _serviceDiscovery.ServiceInstanceDiscovered += Sd_ServiceInstanceDiscovered;
             _serviceDiscovery.Mdns.AnswerReceived += Mdns_AnswerReceived;
 
             try
             {
-                //mdns.Start();
-
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    _serviceDiscovery.QueryAllServices();
-                    //sd.QueryServiceInstances("_ship._tcp");
-                    devices?.GarbageCollect();
+                    try
+                    {
+                        _serviceDiscovery.QueryAllServices();
+                        devices?.GarbageCollect();
+                    }
+                    catch (Exception ex)
+                    {
+                        // Keep the discovery loop alive; a single failed query must not stop discovery permanently.
+                        _logger.LogError(ex, "[MDNS] An error occurred in MDNSClient, retrying.");
+                    }
 
                     await Task.Delay(5000, cancellationToken).ConfigureAwait(false);
                 }
             }
+            catch (OperationCanceledException)
+            {
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[MDNS] An error occurred in MDNSClient.");
+                _logger.LogError(ex, "[MDNS] MDNSClient terminated unexpectedly.");
             }
             finally
             {
@@ -108,8 +113,6 @@ namespace EEBUS
                 {
                     _serviceDiscovery.Dispose();
                 }
-                //sd.Dispose();
-                //mdns.Stop();
             }
         }
         private void Sd_ServiceDiscovered(object? sender, DomainName e)
@@ -165,6 +168,12 @@ namespace EEBUS
 
             lock (_lock)
             {
+                // TODO: Goodbye packets (RFC 6762 §10.1, TTL = 0) are currently treated like regular announcements.
+                // The instance/host cache is refreshed and GetOrCreateRemote renews the RemoteDevice age, so a device
+                // that announced its shutdown stays in Devices until GarbageCollect drops it (~1 h). Connection attempts
+                // in that window just fail. Also, GetOrCreateRemote never updates the Url of an existing RemoteDevice,
+                // so an IP/port change of a known device is not picked up. Consider: on TTL 0 PTR/SRV remove the
+                // instance from the cache and the RemoteDevice from Devices; on changed SRV/A update the Url.
                 foreach (ResourceRecord record in records)
                 {
                     switch (record)

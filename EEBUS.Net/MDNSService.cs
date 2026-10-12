@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
@@ -16,6 +16,25 @@ namespace EEBUS
     /// </summary>
     public class MDNSService
     {
+        /// <summary>
+        /// Interval in which the multicast sockets of the mDNS library are recreated.
+        /// <para>
+        /// Background: in the field devices stopped being visible via mDNS after running for a long time, without any
+        /// exception or log entry. Cause: the UDP receive loop inside <see cref="MulticastService"/> terminates silently
+        /// on any socket error (e.g. ICMP port unreachable on Windows, transient NIC errors on Linux). The object stays
+        /// alive and the advertised records are still in the catalog, but no query ever reaches the responder again, so
+        /// nothing on our side can notice it. The library only recovers on a <c>NetworkAddressChanged</c> event.
+        /// </para>
+        /// <para>
+        /// Fix: periodically call <see cref="IMulticastService.Start"/>. This recreates the sockets (same code path the
+        /// library runs on an address change) but keeps all event handlers, so <see cref="ServiceDiscovery"/> keeps
+        /// answering and <see cref="MDNSClient"/>, which shares the same instance, keeps receiving. Never use
+        /// <see cref="IMulticastService.Stop"/> for this, it clears all event handlers and would break both permanently.
+        /// <see cref="ServiceDiscovery.Advertise"/> only registers records in memory and does not need to be repeated.
+        /// </para>
+        /// </summary>
+        private static readonly TimeSpan RefreshInterval = TimeSpan.FromMinutes(5);
+
         private ServiceProfile serviceProfile;
         private readonly Settings settings;
         private readonly ServiceDiscovery _sd;
@@ -73,11 +92,36 @@ namespace EEBUS
                 AddProperty("model", localDevice.Model);
                 AddProperty("serial", localDevice.Serial);
 
+                bool advertised = false;
+
                 try
                 {
-                    _sd.Advertise(this.serviceProfile);
+                    while (!cancellationToken.IsCancellationRequested)
+                    {
+                        try
+                        {
+                            if (!advertised)
+                            {
+                                _sd.Advertise(this.serviceProfile);
+                                advertised = true;
+                            }
+                            else
+                            {
+                                // Recreates the sockets in case the receive loop died silently, see RefreshInterval.
+                                // Start() keeps the event handlers, Stop() would clear them.
+                                _sd.Mdns.Start();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"{DateTime.UtcNow} - mDNS {(advertised ? "refresh" : "advertise")} failed: {ex}");
+                        }
 
-                    await Task.Delay(-1, cancellationToken).ConfigureAwait(false);
+                        await Task.Delay(RefreshInterval, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
                 }
                 catch (Exception ex)
                 {
