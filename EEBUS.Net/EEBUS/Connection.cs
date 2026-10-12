@@ -258,8 +258,8 @@ namespace EEBUS
                 case EState.WaitingForConnectionHello:
                     if (_helloDeadlineUtc is null)
                         return SHIPMessageTimeout.T_HELLO_INIT;
-                    double remaining = (_helloDeadlineUtc.Value - DateTime.UtcNow).TotalMilliseconds;
-                    return (int)Math.Max(SHIPMessageTimeout.T_HELLO_PROLONG_MIN, Math.Min(remaining, int.MaxValue));
+                    double remaining = (_helloDeadlineUtc.Value - DateTime.UtcNow).TotalMilliseconds;  //TODO: 4Urs: add safety, if user changed clock back, maybe T_HELLO_PROLONG_MIN as fallback?
+                    return (int)Math.Max(SHIPMessageTimeout.T_HELLO_PROLONG_MIN, Math.Min(remaining, int.MaxValue)); //TODO: 4Urs: Isnt this always "remaining"? Math.Min(remaining, int.MaxValue)
                 case EState.WaitingForProtocolHandshake:
                 case EState.WaitingForProtocolHandshakeConfirm:
                 case EState.SendProtocolHandshakeConfirm:
@@ -300,7 +300,7 @@ namespace EEBUS
             {
                 if (_helloDeadlineUtc is null)
                     return null;
-                double remaining = (_helloDeadlineUtc.Value - DateTime.UtcNow).TotalMilliseconds;
+                double remaining = (_helloDeadlineUtc.Value - DateTime.UtcNow).TotalMilliseconds;  //TODO: 4Urs: add safety, if user changed clock back ?
                 return (uint)Math.Clamp(remaining, 0, uint.MaxValue);
             }
         }
@@ -322,7 +322,7 @@ namespace EEBUS
         {
             if (_helloDeadlineUtc != null)
             {
-                _helloDeadlineUtc = _helloDeadlineUtc.Value.AddMilliseconds(incrementMs);
+                _helloDeadlineUtc = _helloDeadlineUtc.Value.AddMilliseconds(incrementMs); //TODO: 4Urs: add safety, if user changed clock back ?
                 Logger?.LogDebug("Hello deadline prolonged to {deadline:HH:mm:ss.fff} UTC", _helloDeadlineUtc);
             }
         }
@@ -347,7 +347,7 @@ namespace EEBUS
             catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested && this.state != EState.Stopped)
             {
                 Logger?.LogWarning("SHIP timeout ({timeout} ms) elapsed in state {state}/{subState}", timeout, this.state, this.subState);
-                return null;
+                return null; //TODO: 4Urs: better to throw timeout exception and catch it in upper layer oder kann receive niemals null zurückgeben?
             }
         }
 
