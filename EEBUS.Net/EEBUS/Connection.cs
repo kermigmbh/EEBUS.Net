@@ -141,7 +141,7 @@ namespace EEBUS
 
         public LocalDevice Local { get { return this.devices.Local; } }
 
-        public RemoteDevice? Remote { get; internal set; }
+        public RemoteDevice? Remote { get; protected internal set; }
 
 
         public DataMessageQueue WaitingMessages { get; protected set; }
@@ -149,7 +149,7 @@ namespace EEBUS
 
         public abstract Task CloseAsync();
 
-        internal RemoteDevice? GetRemote(string id)
+        protected internal RemoteDevice? GetRemote(string id)
         {
             if (null == id)
                 return null;
@@ -157,7 +157,7 @@ namespace EEBUS
             return this.devices.GetRemote(id);
         }
 
-        internal bool IsKnownRemote(string id)
+        protected internal bool IsKnownRemote(string id)
         {
             var remote = this.devices.GetRemote(id);
             return remote != null;
@@ -245,7 +245,9 @@ namespace EEBUS
 
         // Absolute deadline of the hello phase (T_hello_init, extended by T_hello_inc on
         // each granted prolongation). Null when not in the hello phase.
-        private DateTime? _helloDeadlineUtc;
+        // Based on the monotonic Environment.TickCount64 (ms since boot) rather than
+        // DateTime.UtcNow, so that system clock adjustments cannot shorten or extend the timer.
+        private long? _helloDeadlineTicks;
 
         /// <summary>
         /// Maximum time (ms) we wait for the next message in the given state, or null if
@@ -256,14 +258,16 @@ namespace EEBUS
             switch (state)
             {
                 case EState.WaitingForConnectionHello:
-                    if (_helloDeadlineUtc is null)
+                    if (_helloDeadlineTicks is null)
+                    {
+                        Logger?.LogWarning("Wait-For-Ready-Timer not started in state {state}, falling back to T_hello_init", state);
                         return SHIPMessageTimeout.T_HELLO_INIT;
-                    double remaining = (_helloDeadlineUtc.Value - DateTime.UtcNow).TotalMilliseconds;  //TODO: 4Urs: add safety, if user changed clock back, maybe T_HELLO_PROLONG_MIN as fallback?
-                    return (int)Math.Max(SHIPMessageTimeout.T_HELLO_PROLONG_MIN, Math.Min(remaining, int.MaxValue)); //TODO: 4Urs: Isnt this always "remaining"? Math.Min(remaining, int.MaxValue)
+                    }
+                    return (int?)WaitForReadyTimerValue;
                 case EState.WaitingForProtocolHandshake:
                 case EState.WaitingForProtocolHandshakeConfirm:
                 case EState.SendProtocolHandshakeConfirm:
-                    return 10_000;  //according to spec
+                    return SHIPMessageTimeout.HANDSHAKE_TIMEOUT;  //according to spec
                 case EState.Disconnected:
                 case EState.WaitingForPinCheck:
                 case EState.WaitingForAccessMethodsRequest:
@@ -283,10 +287,10 @@ namespace EEBUS
         /// <param name="durationMs">Timer duration in ms, defaults to T_hello_init.</param>
         internal void StartWaitForReadyTimer(int durationMs = SHIPMessageTimeout.T_HELLO_INIT)
         {
-            if (_helloDeadlineUtc is null)
+            if (_helloDeadlineTicks is null)
             {
-                _helloDeadlineUtc = DateTime.UtcNow.AddMilliseconds(durationMs);
-                Logger?.LogDebug("Wait-For-Ready-Timer started, deadline {deadline:HH:mm:ss.fff} UTC", _helloDeadlineUtc);
+                _helloDeadlineTicks = Environment.TickCount64 + durationMs;
+                Logger?.LogDebug("Wait-For-Ready-Timer started, {duration} ms", durationMs);
             }
         }
 
@@ -298,9 +302,9 @@ namespace EEBUS
         {
             get
             {
-                if (_helloDeadlineUtc is null)
+                if (_helloDeadlineTicks is null)
                     return null;
-                double remaining = (_helloDeadlineUtc.Value - DateTime.UtcNow).TotalMilliseconds;  //TODO: 4Urs: add safety, if user changed clock back ?
+                long remaining = _helloDeadlineTicks.Value - Environment.TickCount64;
                 return (uint)Math.Clamp(remaining, 0, uint.MaxValue);
             }
         }
@@ -310,7 +314,7 @@ namespace EEBUS
         /// </summary>
         internal void StopWaitForReadyTimer()
         {
-            _helloDeadlineUtc = null;
+            _helloDeadlineTicks = null;
         }
 
         /// <summary>
@@ -320,18 +324,18 @@ namespace EEBUS
         /// <param name="incrementMs">Increment in ms, defaults to T_hello_inc.</param>
         internal void ProlongHelloDeadline(int incrementMs = SHIPMessageTimeout.T_HELLO_INC)
         {
-            if (_helloDeadlineUtc != null)
+            if (_helloDeadlineTicks != null)
             {
-                _helloDeadlineUtc = _helloDeadlineUtc.Value.AddMilliseconds(incrementMs); //TODO: 4Urs: add safety, if user changed clock back ?
-                Logger?.LogDebug("Hello deadline prolonged to {deadline:HH:mm:ss.fff} UTC", _helloDeadlineUtc);
+                _helloDeadlineTicks += incrementMs;
+                Logger?.LogDebug("Wait-For-Ready-Timer prolonged by {increment} ms, {remaining} ms remaining", incrementMs, WaitForReadyTimerValue);
             }
         }
 
         /// <summary>
         /// Receives the next message, applying the SHIP timeout for the current state.
         /// </summary>
-        /// <returns>The message, or null if the SHIP timeout for the current state elapsed.</returns>
-        protected async Task<ShipMessageBase?> ReceiveWithTimeoutAsync(CancellationToken cancellationToken)
+        /// <exception cref="TimeoutException">The SHIP timeout for the current state elapsed.</exception>
+        protected async Task<ShipMessageBase> ReceiveWithTimeoutAsync(CancellationToken cancellationToken)
         {
             int? timeout = GetReceiveTimeout(this.state);
             if (timeout is null)
@@ -344,10 +348,9 @@ namespace EEBUS
             {
                 return await ReceiveAsync(linkedCts.Token).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested && this.state != EState.Stopped)
+            catch (OperationCanceledException ex) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested && this.state != EState.Stopped)
             {
-                Logger?.LogWarning("SHIP timeout ({timeout} ms) elapsed in state {state}/{subState}", timeout, this.state, this.subState);
-                return null; //TODO: 4Urs: better to throw timeout exception and catch it in upper layer oder kann receive niemals null zurückgeben?
+                throw new TimeoutException($"SHIP timeout ({timeout} ms) elapsed in state {this.state}/{this.subState}", ex);
             }
         }
 

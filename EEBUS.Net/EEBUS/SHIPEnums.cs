@@ -16,6 +16,7 @@
         public const int T_HELLO_PROLONG_THR_INC     = 30 * 1000;   // maximum allowed are 30 seconds, according to spec
         public const int T_HELLO_PROLONG_WAITING_GAP = 15 * 1000;   // maximum allowed are 15 seconds, according to spec
         public const int T_HELLO_PROLONG_MIN         = 1000;        // maximum allowed is 1 second, according to spec
+        public const int HANDSHAKE_TIMEOUT = 10_000; //according to spec
     }
 
     public class SHIPMessageValue

@@ -127,11 +127,6 @@ namespace EEBUS
 				while (this.state != EState.Stopped && !cancellationToken.IsCancellationRequested)
 				{
 					var message = await ReceiveWithTimeoutAsync(cancellationToken).ConfigureAwait(false);
-					if (message is null)
-					{
-						await OnReceiveTimeoutAsync().ConfigureAwait(false);
-						break;
-					}
 
 					(this.state, this.subState, string error) = await message.ClientTestAsync(this.state, this, Logger);
 
@@ -155,9 +150,18 @@ namespace EEBUS
 					ResolvePendingRequest(message);
 				}
 			}
+			catch (TimeoutException ex)
+			{
+				Logger?.LogWarning(ex.Message);
+				await OnReceiveTimeoutAsync().ConfigureAwait(false);
+				if (this.Remote != null)
+				{
+					this.Remote.LastDisconnectUtc = DateTime.UtcNow;
+				}
+			}
 			catch (Exception ex)
 			{
-              Logger?.LogError(ex, "Client connection closed with error.");
+			  Logger?.LogError(ex, "Client connection closed with error.");
 				this.state = EState.ErrorOrTimeout;
 				if (this.Remote != null)
 				{

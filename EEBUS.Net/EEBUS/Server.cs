@@ -44,11 +44,6 @@ namespace EEBUS
                 while (this.ws.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
                 {
                     var message = await ReceiveWithTimeoutAsync(cancellationToken).ConfigureAwait(false);
-                    if (message is null)
-                    {
-                        await OnReceiveTimeoutAsync().ConfigureAwait(false);
-                        break;
-                    }
 
                     (this.state, this.subState, string error) = await message.ServerTestAsync(this.state, this).ConfigureAwait(false);
 
@@ -72,6 +67,16 @@ namespace EEBUS
 
                     if (this.state == EState.Stopped)
                         throw new Exception("Communication stopped!");
+                }
+            }
+            catch (TimeoutException ex)
+            {
+                Logger?.LogWarning(ex.Message);
+                await OnReceiveTimeoutAsync().ConfigureAwait(false);
+                if (null != this.Remote)
+                {
+                    this.Remote.SetServerState(EState.Stopped);
+                    this.Remote.LastDisconnectUtc = DateTime.UtcNow;
                 }
             }
             catch (Exception ex)
