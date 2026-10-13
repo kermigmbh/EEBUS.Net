@@ -33,6 +33,16 @@ namespace EEBUS.StateMachines
         Task OnEffectiveLimitChanged(EffectiveLimit newLimit);
 
         /// <summary>
+        /// Called when the configured failsafe limit value changes (from a DeviceConfiguration write)
+        /// </summary>
+        /// <param name="oldLimit">The previous failsafe limit in Watts</param>
+        /// <param name="newLimit">The new failsafe limit in Watts</param>
+        Task OnFailsafeLimitChanged(long oldLimit, long newLimit)
+        {
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
         /// Called when entering the Failsafe state
         /// </summary>
         /// <param name="reason">Reason for entering failsafe (e.g., "Heartbeat timeout")</param>

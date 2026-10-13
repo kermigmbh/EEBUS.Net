@@ -446,6 +446,24 @@ namespace EEBUS.Net
                 EEBusManager._logger?.LogDebug($"Left Failsafe");
             }
 
+            public async Task OnFailsafeLimitChanged(long oldLimit, long newLimit)
+            {
+                EEBusManager._logger?.LogDebug($"LPC Failsafe Limit changed {oldLimit} -> {newLimit}");
+
+                var changedCallback = EEBusManager.OnDeviceDataChanged;
+                if (changedCallback != null)
+                {
+                    var deviceData = new DeviceData
+                    {
+                        Lpc = new LpcLppData
+                        {
+                            FailSafeLimit = newLimit
+                        }
+                    };
+                    await changedCallback(deviceData);
+                }
+            }
+
             public async Task OnEffectiveLimitChanged(EffectiveLimit limit)
             {
                 EEBusManager._logger?.LogDebug("UpdateLimit");
@@ -491,6 +509,25 @@ namespace EEBUS.Net
             {
                 //using var _ = Push(new LimitDataChanged(false, active, limit, duration));
             }
+
+            public async Task OnFailsafeLimitChanged(long oldLimit, long newLimit)
+            {
+                EEBusManager._logger?.LogDebug($"LPP Failsafe Limit changed {oldLimit} -> {newLimit}");
+
+                var changedCallback = EEBusManager.OnDeviceDataChanged;
+                if (changedCallback != null)
+                {
+                    var deviceData = new DeviceData
+                    {
+                        Lpp = new LpcLppData
+                        {
+                            FailSafeLimit = newLimit
+                        }
+                    };
+                    await changedCallback(deviceData);
+                }
+            }
+
             public async Task OnStateChanged(LimitState oldState, LimitState newState, string reason)
             {
                 var changedCallback = EEBusManager.OnDeviceDataChanged;

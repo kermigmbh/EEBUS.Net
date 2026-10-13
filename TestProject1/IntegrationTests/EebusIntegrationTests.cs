@@ -1,7 +1,10 @@
 ﻿using EEBUS;
 using EEBUS.Enums;
+using EEBUS.Messages;
 using EEBUS.Models;
 using EEBUS.Net;
+using EEBUS.SHIP.Messages;
+using EEBUS.SPINE.Commands;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -141,6 +144,57 @@ namespace TestProject1.IntegrationTests
 
             //logger?.LogDebug(DateTime.Now.ToString("HH:mm:ss.fff") + " ---> " + this.ToEEBUSJson() + "\n");
             await connection.WebSocket.SendAsync(dataToSend, WebSocketMessageType.Binary, true, new CancellationTokenSource(timeoutMilliseconds).Token).ConfigureAwait(false);
+        }
+
+        protected async Task SendDataMessageAsync(Connection connection, ShipMessageBase message, int timeoutMilliseconds = SHIPMessageTimeout.CMI_TIMEOUT)
+        {
+            string json = message.ToEEBUSJson();
+            await SendDataMessageAsync(connection, json, timeoutMilliseconds);
+        }
+
+        protected DataMessage CreateLimitWriteMessage(AddressType clientAddress, AddressType serverAddress, uint limitId, long number, short scale, bool limitactive)
+        {
+            var loadControlLimitListData = new LoadControlLimitListData()
+            {
+                cmd = [new CmdLoadControlLimitListDataType() {
+                    loadControlLimitListData = new() {
+                        loadControlLimitData = [
+                            new LoadControlLimitDataType() {
+                                limitId = limitId,
+                                value = new ScaledNumberType {
+                                    number = number,
+                                    scale = scale
+                                },
+                                isLimitActive = limitactive
+                            }
+                        ]
+                    }
+                }]
+            };
+            return DataMessage.CreateWrite(clientAddress, serverAddress, loadControlLimitListData);
+        }
+
+        protected DataMessage CreateFailSafeLimitWriteMessage(AddressType clientAddress, AddressType serverAddress, int keyId, long number, short scale)
+        {
+            var deviceConfigurationKeyValueListData = new DeviceConfigurationKeyValueListData()
+            {
+                cmd = [new CmdDeviceConfigurationKeyValueListDataType() {
+                    deviceConfigurationKeyValueListData = new() {
+                        deviceConfigurationKeyValueData = [
+                            new DeviceConfigurationKeyValueDataType() {
+                                keyId = keyId,
+                                value = new EEBUS.SPINE.Commands.ValueType {
+                                    scaledNumber = new ScaledNumberType() {
+                                        number = number,
+                                        scale = scale
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }]
+            };
+            return DataMessage.CreateWrite(clientAddress, serverAddress, deviceConfigurationKeyValueListData);
         }
     }
 }

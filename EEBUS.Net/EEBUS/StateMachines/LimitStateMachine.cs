@@ -140,13 +140,14 @@ namespace EEBUS.StateMachines
         /// <summary>
         /// Update the failsafe limit value (from DeviceConfiguration write)
         /// </summary>
-        public Task DataUpdateFailsafeActivePowerLimitAsync(long value)
+        public async Task DataUpdateFailsafeActivePowerLimitAsync(long value)
         {
             Task task = Task.CompletedTask;
+            long oldValue;
 
             lock (_lock)
             {
-                var oldValue = _failsafeLimit;
+                oldValue = _failsafeLimit;
                 _failsafeLimit = value;
 
                 Debug.WriteLine($"[LimitStateMachine:{_direction}] Failsafe limit updated: {oldValue}W -> {value}W");
@@ -158,7 +159,9 @@ namespace EEBUS.StateMachines
                     task = NotifyEffectiveLimitChanged();
                 }
             }
-            return task;
+
+            await task;
+            await NotifyFailsafeLimitChanged(oldValue, value);
         }
 
         /// <summary>
@@ -876,6 +879,21 @@ namespace EEBUS.StateMachines
                 try
                 {
                     await handler.OnEffectiveLimitChanged(effectiveLimit);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[LimitStateMachine:{_direction}] Error in event handler: {ex.Message}");
+                }
+            }
+        }
+
+        private async Task NotifyFailsafeLimitChanged(long oldLimit, long newLimit)
+        {
+            foreach (var handler in _eventHandlers)
+            {
+                try
+                {
+                    await handler.OnFailsafeLimitChanged(oldLimit, newLimit);
                 }
                 catch (Exception ex)
                 {

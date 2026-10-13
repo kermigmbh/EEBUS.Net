@@ -48,6 +48,7 @@ namespace EEBUS.SHIP.Messages
         }
 
         public static DataMessage CreateRead(AddressType source, AddressType destination, SpineCmdPayloadBase? payload) => Create(source, destination, "read", payload);
+        public static DataMessage CreateWrite(AddressType source, AddressType destination, SpineCmdPayloadBase? payload) => Create(source, destination, "write", payload);
         public static DataMessage CreateSubscriptionRequest(Connection connection, AddressType clientAddress, AddressType serverAddress, string serverFeatureType, string clientDeviceId, string serverDeviceId)
         {
             //Fixed address for subscription
