@@ -9,6 +9,7 @@ using EEBUS.UseCases.ControllableSystem;
 using System.Text.Json.Nodes;
 using System.Collections.Generic;
 using EEBUS.UseCases;
+using EEBUS.Net.EEBUS;
 
 namespace EEBUS.Controllers
 {
@@ -57,7 +58,7 @@ namespace EEBUS.Controllers
 
 			public Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync( FailsafeLimitWriteRequest request )
 			{
-				Console.WriteLine( $"LPC Failsafe Limit Write Request: Value={request.Value}" );
+				Console.WriteLine( $"LPC Failsafe Limit Write Request: Value={ScaledNumber.ToLong(request.Value, request.Scale)}" );
 				return Task.FromResult(WriteApprovalResult.Accept());
 			}
 

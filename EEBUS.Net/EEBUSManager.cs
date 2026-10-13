@@ -409,7 +409,7 @@ namespace EEBUS.Net
 
             public Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync(FailsafeLimitWriteRequest request)
             {
-                EEBusManager._logger?.LogDebug($"LPC Failsafe Limit Write Request: Value={request.Value}");
+                EEBusManager._logger?.LogDebug($"LPC Failsafe Limit Write Request: Value={ScaledNumber.ToLong(request.Value, request.Scale)}");
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
@@ -477,7 +477,7 @@ namespace EEBUS.Net
 
             public Task<WriteApprovalResult> ApproveFailsafeLimitWriteAsync(FailsafeLimitWriteRequest request)
             {
-                EEBusManager._logger?.LogDebug($"LPP Failsafe Limit Write Request: Value={request.Value}");
+                EEBusManager._logger?.LogDebug($"LPP Failsafe Limit Write Request: Value={ScaledNumber.ToLong(request.Value, request.Scale)}");
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
