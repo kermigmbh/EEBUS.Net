@@ -52,6 +52,7 @@ namespace EEBUS.Net
         public Func<LimitDataChangedEventArgs, Task>? OnLimitDataChanged;
         public Func<DeviceData, Task>? OnDeviceDataChanged { get; set; }
         public Func<RemoteDevice, DeviceConnectionStatus, Task>? OnDeviceConnectionStatusChanged { get; set; }
+        internal Func<ShipMessageBase, Connection, Task<bool>>? BeforeMessageSent { get; set; }
 
         private CancellationTokenSource _cts = new();
         private X509Certificate2 _cert;
@@ -109,11 +110,13 @@ namespace EEBUS.Net
             monitoringUseCasesEventHandler = new MonitoringUseCasesEventHandler(this);
             notifyEventHandler = new NotifyEventHandler(this);
             deviceConnectionStatusEventHandler = new DeviceConnectionStatusEventHandler(this);
+            _messageEventHandler = new MessageEventHandler(this);
             _devices.Local.AddUseCaseEvents(this.lpcStateMachine);
             _devices.Local.AddUseCaseEvents(this.lppStateMachine);
             _devices.Local.AddUseCaseEvents(this.notifyEventHandler);
             _devices.Local.AddUseCaseEvents(this.monitoringUseCasesEventHandler);
             _devices.Local.AddUseCaseEvents(this.deviceConnectionStatusEventHandler);
+            _devices.Local.AddUseCaseEvents(this._messageEventHandler);
             _settings = settings;
             this._serviceDiscovery = serviceDiscovery;
 
@@ -280,6 +283,20 @@ namespace EEBUS.Net
         private MonitoringUseCasesEventHandler monitoringUseCasesEventHandler;
         private NotifyEventHandler notifyEventHandler;
         private DeviceConnectionStatusEventHandler deviceConnectionStatusEventHandler;
+        private MessageEventHandler _messageEventHandler;
+
+        private class MessageEventHandler(EEBUSManager EEBusManager) : MessageEvents
+        {
+            public async Task<bool> BeforeMessageSentAsync(ShipMessageBase message, Connection connection)
+            {
+                if (EEBusManager.BeforeMessageSent != null)
+                {
+                    return await EEBusManager.BeforeMessageSent(message, connection);
+                }
+                return true;
+            }
+        }
+
         private class NotifyEventHandler(EEBUSManager EEBusManager) : NotifyEvents
         {
             /// <summary>
@@ -977,13 +994,17 @@ namespace EEBUS.Net
                 Client client = new Client(hostString, wsClient, _devices, device, _logger);
                 if (!_connections.TryAdd(ski, client))
                 {
+                    _logger?.LogDebug("Could not add client with ski  " + ski + " to connections.");
+
                     // Another path inserted a connection for this host while we were
                     // connecting; drop ours to avoid leaking a duplicate socket.
                     wsClient.Dispose();
                     wsClient = null;
+                    _logger?.LogDebug("Connection with remote device " + client.Remote.Name + " already exists.");
+
                     return false;
                 }
-
+                _logger?.LogDebug("Added client with ski " + ski + " to connections.");
                 // Ownership of wsClient is transferred to the Client/Connection.
                 wsClient = null;
                 await client.Run(_cts.Token).ConfigureAwait(false);
@@ -1013,10 +1034,13 @@ namespace EEBUS.Net
 
             try
             {
-                // send close message
-                CloseMessage closeMessage = new CloseMessage(ConnectionClosePhaseType.announce);
-                closeMessage.connectionClose.reason = ConnectionCloseReasonType.removedConnection;
-                await client.PushCloseMessageAsync(closeMessage);
+                if (client.State == Connection.EState.Connected)
+                {
+                    // send close message
+                    CloseMessage closeMessage = new CloseMessage(ConnectionClosePhaseType.announce);
+                    closeMessage.connectionClose.reason = ConnectionCloseReasonType.removedConnection;
+                    await client.PushCloseMessageAsync(closeMessage);
+                }
 
                 // now close websocket
                 await wsClient.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None).ConfigureAwait(false);
@@ -1109,9 +1133,11 @@ namespace EEBUS.Net
         private async Task OnDeviceConnectionRequestAsync(DeviceConnectionRequestEventArgs e)
         {
             string ski = e.Ski.ToString();
+            _logger.LogDebug("Received connection request from device with SKI " + ski);
             if (_connections.TryGetValue(ski, out Connection? existingConnection) && existingConnection != null)
             {
                 //Connection exists already, close the old one before accepting the new one
+                _logger?.LogDebug("Closing existing " + existingConnection.GetType().Name + " connection with remote device " + existingConnection.Remote.Name);
                 await DisconnectAsync(ski).ConfigureAwait(false);
             }
         }
@@ -1122,7 +1148,17 @@ namespace EEBUS.Net
 
             if (e.ChangeType == DeviceConnectionChangeType.Connected)
             {
+                if (_connections.TryGetValue(e.Connection.Remote.SKI.ToString(), out Connection? existingConnection) && existingConnection != null)
+                {
+                    if (existingConnection.Local.SKI > existingConnection.Remote.SKI)
+                    {
+                        //Connection exists already, close the old one before accepting the new one
+                        _logger?.LogDebug("Closing existing " + existingConnection.GetType().Name + " connection with remote device " + existingConnection.Remote.Name);
+                        await DisconnectAsync(e.Connection.Remote.SKI.ToString()).ConfigureAwait(false);
+                    }
+                }
                 _connections[e.Connection.Remote.SKI.ToString()] = e.Connection;
+                _logger?.LogDebug("Added server with ski " + e.Connection.Remote.SKI.ToString() + " to connections.");
             }
             else
             {

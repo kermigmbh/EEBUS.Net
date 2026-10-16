@@ -104,10 +104,11 @@ namespace EEBUS
 
 		private async Task RunInternalAsync(CancellationToken cancellationToken)
 		{
-			this.state = EState.Disconnected;
+			this.state = EState.WaitingForInit;
 			this.subState = ESubState.None;
 
             //Start the Ship Message Exchange (SME) by sending the InitMessage to the remote device. Once the SME is finished, the connection state will be set to Connected and the heartbeat timer will be started.
+			Logger?.LogDebug("Client.RunInternalAsync: Sending InitMessage from " + this.Local.Name + " to remote device " + this.Remote?.Name);
             InitMessage initMessage = new InitMessage();
 			await initMessage.Send(this.ws, Logger).ConfigureAwait(false);
 

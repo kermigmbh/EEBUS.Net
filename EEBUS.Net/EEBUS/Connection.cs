@@ -4,6 +4,7 @@ using EEBUS.Models;
 using EEBUS.Net;
 using EEBUS.SHIP.Messages;
 using EEBUS.SPINE.Commands;
+using EEBUS.UseCases.ControllableSystem;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -36,6 +37,7 @@ namespace EEBUS
         public enum EState
         {
             Disconnected,
+            WaitingForInit,
             WaitingForConnectionHello,
             WaitingForProtocolHandshake,
             SendProtocolHandshakeError,
@@ -162,6 +164,30 @@ namespace EEBUS
             var remote = this.devices.GetRemote(id);
             return remote != null;
         }
+
+        public async Task SendMessageAsync(ShipMessageBase message)
+        {
+            bool sendPermitted = true;
+            var events = this.Local.GetUseCaseEvents<MessageEvents>();
+            foreach (var ev in events)
+            {
+                try
+                {
+                    sendPermitted = sendPermitted && await ev.BeforeMessageSentAsync(message, this).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogError(ex, "SendMessageAsync: BeforeMessageSentAsync threw an exception.");
+                    sendPermitted = true;
+                }
+            }
+
+            if (sendPermitted)
+            {
+                await message.Send(WebSocket, Logger).ConfigureAwait(false);
+            }
+        }
+
         public async Task<DataMessage> PushDataMessageAsync(DataMessage message) 
         {
             uint timeout = 5000;
@@ -269,6 +295,7 @@ namespace EEBUS
                 case EState.SendProtocolHandshakeConfirm:
                     return SHIPMessageTimeout.HANDSHAKE_TIMEOUT;  //according to spec
                 case EState.Disconnected:
+                case EState.WaitingForInit:
                 case EState.WaitingForPinCheck:
                 case EState.WaitingForAccessMethodsRequest:
                 case EState.WaitingForAccessMethods:

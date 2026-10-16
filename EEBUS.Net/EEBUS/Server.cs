@@ -30,6 +30,8 @@ namespace EEBUS
             //further processing takes place in the class InitMessage.cs
 			Logger?.LogDebug("Starting Server for ski {serverSki}", _ski);
 
+            this.state = EState.WaitingForInit;
+
             //Initialize the heartbeat timer to send a heartbeat message every 4 seconds. The heartbeat message will be sent to the remote device to keep the connection alive and to check if the remote device is still responsive.
             //Currently, this is only relevant for the use cases LPC and LPP
             var heart = new HeartBeatTask();

@@ -57,4 +57,9 @@ namespace EEBUS.UseCases.ControllableSystem
 		Task DeviceConfigurationChangedAsync(Device device);
 		Task DataUpdateMeasurementsAsync(List<MeasurementData.MeasurementData> measurementData, string ski);
 	}
+
+	internal interface MessageEvents : UseCaseEvents
+    {
+		Task<bool> BeforeMessageSentAsync(ShipMessageBase message, Connection connection);
+    }
 }
