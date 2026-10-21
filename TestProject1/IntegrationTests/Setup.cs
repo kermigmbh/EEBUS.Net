@@ -28,7 +28,7 @@ namespace TestProject1.IntegrationTests
             return payload;
         }
 
-        public static Settings GetSettingsFromDiscoveryData(string nodeManagementDetailedDiscoveryMessage, string nodeManagementUseCaseDataMessaage)
+        public static Settings GetSettingsFromDiscoveryData(string nodeManagementDetailedDiscoveryMessage, string nodeManagementUseCaseDataMessaage, bool withPeriodicReconnect = true)
         {
             SpineDatagramPayload discoveryPayload = GetPayload(nodeManagementDetailedDiscoveryMessage);
             NodeManagementDetailedDiscoveryData? discoveryMessage = JsonHelper.FromJsonNode<NodeManagementDetailedDiscoveryData>(discoveryPayload.datagram.payload);
@@ -53,7 +53,8 @@ namespace TestProject1.IntegrationTests
                         Serial = "123456",
                         Port = (ushort)(7000 + _nodeNumber),
                     },
-                    Certificate = "EEBUS" + (_nodeNumber) + ".net"
+                    Certificate = "EEBUS" + (_nodeNumber) + ".net",
+                    EnablePeriodicReconnect = withPeriodicReconnect
                 };
 
                 EntityInformationType[]? entityInformationList = discoveryMessage.cmd.First().nodeManagementDetailedDiscoveryData.entityInformation;
@@ -88,7 +89,7 @@ namespace TestProject1.IntegrationTests
             }
         }
 
-        public static Settings GetCEMSettings(LimitSettings? initLimits = null)
+        public static Settings GetCEMSettings(LimitSettings? initLimits = null, bool withPeriodicReconnect = true)
         {
             lock (_lock)
             {
@@ -135,14 +136,15 @@ namespace TestProject1.IntegrationTests
                                   ]
                     },
                     //Certificate = "XCenterEEBUS"
-                    Certificate = "EEBUS" + (_nodeNumber) + ".net"
+                    Certificate = "EEBUS" + (_nodeNumber) + ".net",
+                    EnablePeriodicReconnect = withPeriodicReconnect
                 };
                 return settings1;
             }
         }
 
 
-        public static Settings GetControlBoxSettings(LimitSettings? initLimits = null)
+        public static Settings GetControlBoxSettings(LimitSettings? initLimits = null, bool withPeriodicReconnect = true)
         {
             lock (_lock)
             {
@@ -178,13 +180,14 @@ namespace TestProject1.IntegrationTests
                         ]
                     },
                     //Certificate = "XCenterEEBUS"
-                    Certificate = "EEBUS" + _nodeNumber + ".net"
+                    Certificate = "EEBUS" + _nodeNumber + ".net",
+                    EnablePeriodicReconnect = withPeriodicReconnect
                 };
                 return settings2;
             }
         }
 
-        public static Settings GetEMeterSettings(MeasurementSettings? initMeasurements = null)
+        public static Settings GetEMeterSettings(MeasurementSettings? initMeasurements = null, bool withPeriodicReconnect = true)
         {
             lock (_lock)
             {
@@ -211,13 +214,14 @@ namespace TestProject1.IntegrationTests
                             ]}
                         ]
                     },
-                    Certificate = "EEBUS" + _nodeNumber + ".net"
+                    Certificate = "EEBUS" + _nodeNumber + ".net",
+                    EnablePeriodicReconnect = withPeriodicReconnect
                 };
                 return settings;
             }
         }
 
-        public static Settings GetGridConnectionPointSettings(MeasurementSettings? initMeasurements = null, int? pvCurtailmentLimitFactor = null)
+        public static Settings GetGridConnectionPointSettings(MeasurementSettings? initMeasurements = null, int? pvCurtailmentLimitFactor = null, bool withPeriodicReconnect = true)
         {
             lock (_lock)
             {
@@ -245,13 +249,14 @@ namespace TestProject1.IntegrationTests
                             ]}
                         ]
                     },
-                    Certificate = "EEBUS" + _nodeNumber + ".net"
+                    Certificate = "EEBUS" + _nodeNumber + ".net",
+                    EnablePeriodicReconnect = withPeriodicReconnect
                 };
                 return settings;
             }
         }
 
-        public static Settings GetEMeterMonitorSettings(MeasurementSettings? initMeasurements = null)
+        public static Settings GetEMeterMonitorSettings(MeasurementSettings? initMeasurements = null, bool withPeriodicReconnect = true)
         {
             lock (_lock)
             {
@@ -284,13 +289,14 @@ namespace TestProject1.IntegrationTests
                         ]
                     },
 
-                    Certificate = "EEBUS" + _nodeNumber + ".net"
+                    Certificate = "EEBUS" + _nodeNumber + ".net",
+                    EnablePeriodicReconnect = withPeriodicReconnect
                 };
                 return settings;
             }
         }
 
-        public static Settings GetControlBoxWithMultipleCEMEntitiesSettings(LimitSettings? initLimits = null)
+        public static Settings GetControlBoxWithMultipleCEMEntitiesSettings(LimitSettings? initLimits = null, bool withPeriodicReconnect = true)
         {
             lock (_lock)
             {
@@ -414,7 +420,8 @@ namespace TestProject1.IntegrationTests
                         ]
                     },
 
-                    Certificate = "EEBUS" + _nodeNumber + ".net"
+                    Certificate = "EEBUS" + _nodeNumber + ".net",
+                    EnablePeriodicReconnect = withPeriodicReconnect
                 };
                 return settings;
             }

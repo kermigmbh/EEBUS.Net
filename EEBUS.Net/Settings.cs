@@ -15,6 +15,7 @@ namespace EEBUS
         /// (e.g. an <c>eth0:0</c> alias). Set to <c>false</c> to get the plain library behavior.
         /// </summary>
         public bool FilterLinkLocalAddresses { get; set; } = true;
+        public bool EnablePeriodicReconnect { get; set; } = true;
     }
 
     public class DeviceSettings

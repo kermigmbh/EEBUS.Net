@@ -36,6 +36,9 @@ namespace EEBUS
 
         public enum EState
         {
+            /// <summary>Connection object exists (websocket is open), but the SHIP state machine has not been started yet.</summary>
+            Created,
+            /// <summary>Terminal state: the SHIP connection has been closed.</summary>
             Disconnected,
             WaitingForInit,
             WaitingForConnectionHello,
@@ -126,7 +129,7 @@ namespace EEBUS
             this.devices = devices;
             Logger = logger;
 
-            this.WaitingMessages = new(this, logger);
+            this.WaitingMessages = new(this, Logger);
             this.BindingAndSubscriptionManager = new BindingAndSubscriptionManager(this);
         }
 
@@ -294,6 +297,7 @@ namespace EEBUS
                 case EState.WaitingForProtocolHandshakeConfirm:
                 case EState.SendProtocolHandshakeConfirm:
                     return SHIPMessageTimeout.HANDSHAKE_TIMEOUT;  //according to spec
+                case EState.Created:
                 case EState.Disconnected:
                 case EState.WaitingForInit:
                 case EState.WaitingForPinCheck:
