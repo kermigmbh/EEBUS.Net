@@ -28,13 +28,13 @@ namespace TestProject1.IntegrationTests
             return payload;
         }
 
-        public static Settings GetSettingsFromDiscoveryData(string nodeManagementDetailedDiscoveryMessage, string nodeManagementUseCaseDataMessaage, bool withPeriodicReconnect = true)
+        public static Settings GetSettingsFromDiscoveryData(string nodeManagementDetailedDiscoveryMessage, string nodeManagementUseCaseDataMessage, bool withPeriodicReconnect = true)
         {
             SpineDatagramPayload discoveryPayload = GetPayload(nodeManagementDetailedDiscoveryMessage);
             NodeManagementDetailedDiscoveryData? discoveryMessage = JsonHelper.FromJsonNode<NodeManagementDetailedDiscoveryData>(discoveryPayload.datagram.payload);
             if (discoveryMessage == null) throw new Exception("Failed to parse discovery message");
 
-            SpineDatagramPayload useCaseDataPayload = GetPayload(nodeManagementUseCaseDataMessaage);
+            SpineDatagramPayload useCaseDataPayload = GetPayload(nodeManagementUseCaseDataMessage);
             NodeManagementUseCaseData? useCaseDataMessage = JsonHelper.FromJsonNode<NodeManagementUseCaseData>(useCaseDataPayload.datagram.payload);
             if (useCaseDataMessage == null) throw new Exception("Failed to parse use case data message");
 

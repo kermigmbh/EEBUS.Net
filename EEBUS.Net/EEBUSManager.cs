@@ -997,7 +997,7 @@ namespace EEBUS.Net
                 Client client = new Client(hostString, wsClient, _devices, device, _logger);
                 // Ownership of wsClient is transferred to the Client/Connection.
                 wsClient = null;
-                if (!await RegisterConnectionAsync(ski, client, Ski).ConfigureAwait(false))
+                if (!await RegisterConnectionAsync(client).ConfigureAwait(false))
                 {
                     return false;
                 }
@@ -1093,44 +1093,47 @@ namespace EEBUS.Net
         /// connections for up to <see cref="DoubleConnectionTimeoutMs"/> and lets the peer decide; only if the peer does not act, the older connection is closed.
         /// Returns false if <paramref name="newConnection"/> was closed instead of being registered.
         /// </summary>
-        private async Task<bool> RegisterConnectionAsync(string ski, Connection newConnection, SKI remoteSki)
+        private async Task<bool> RegisterConnectionAsync(Connection newConnection)
         {
-            while (!_connections.TryAdd(ski, newConnection))
+            if (newConnection.Remote == null) return false;
+
+            string remoteSki = newConnection.Remote?.SKI.ToString();
+            while (!_connections.TryAdd(remoteSki, newConnection))
             {
                 //Connection exists already, so we need to decide what to do with it
 
-                if (!_connections.TryGetValue(ski, out Connection? existing) || existing == null)
+                if (!_connections.TryGetValue(remoteSki, out Connection? existing) || existing == null)
                     continue;   //connection was already removed in the meantime, return to the loop and try to add the new connection again
 
                 if (ReferenceEquals(existing, newConnection))
                     return true;    //the same connection is already registered, nothing to do
 
-                if (!IsConnectionAlive(existing) || _devices.Local.SKI > remoteSki)
+                if (!IsConnectionAlive(existing) || _devices.Local.SKI > newConnection.Remote.SKI)
                 {
                     //Stale connection, or we have the bigger SKI: keep the most recent connection and close the old one (SHIP 12.2.3)
-                    if (!_connections.TryRemove(new KeyValuePair<string, Connection>(ski, existing)))
+                    if (!_connections.TryRemove(new KeyValuePair<string, Connection>(remoteSki, existing)))
                         continue;   //connection was already removed in the meantime, return to the loop and try to add the new connection again
 
                     string reason = IsConnectionAlive(existing) ? "local SKI is bigger" : "existing connection is stale";
-                    _logger?.LogDebug("Double connection with remote device " + newConnection.Remote?.Name + " detected, closing connection with ski " + ski + " (" + reason + ")");
+                    _logger?.LogDebug("Double connection with remote device " + newConnection.Remote?.Name + " detected, closing connection with ski " + remoteSki + " (" + reason + ")");
                     await CloseConnectionAsync(existing, notifyConnectionStatus: false).ConfigureAwait(false);
                     continue;
                 }
 
                 //We have the smaller SKI: the peer decides which connection survives. Keep the older connection in the side table
                 //and wait for the peer to close it; if it does not do so within 3 seconds, we close it ourselves.
-                if (!_connections.TryUpdate(ski, newConnection, existing))  //replace existing connection with the new one
+                if (!_connections.TryUpdate(remoteSki, newConnection, existing))  //replace existing connection with the new one
                     continue;
 
-                if (_duplicateConnections.TryRemove(ski, out Connection? previousDuplicate) && previousDuplicate != null)
+                if (_duplicateConnections.TryRemove(remoteSki, out Connection? previousDuplicate) && previousDuplicate != null)
                 {
                     //more than two connections to the same node - close the oldest one, the peer should have dealt with it already
                     await CloseConnectionAsync(previousDuplicate, notifyConnectionStatus: false).ConfigureAwait(false);
                 }
-                _duplicateConnections[ski] = existing;
+                _duplicateConnections[remoteSki] = existing;
 
                 _logger?.LogDebug("Double connection with remote device " + newConnection.Remote?.Name + " detected, waiting for peer to close one of them (remote SKI is bigger)");
-                _ = Task.Run(() => ResolveDoubleConnectionAfterTimeoutAsync(ski, _cts.Token));
+                _ = Task.Run(() => ResolveDoubleConnectionAfterTimeoutAsync(remoteSki, _cts.Token));
                 return true;
             }
 
@@ -1264,7 +1267,7 @@ namespace EEBUS.Net
             string ski = e.Connection.Remote.SKI.ToString();
             if (e.ChangeType == DeviceConnectionChangeType.Connected)
             {
-                if (await RegisterConnectionAsync(ski, e.Connection, e.Connection.Remote.SKI).ConfigureAwait(false))
+                if (await RegisterConnectionAsync(e.Connection).ConfigureAwait(false))
                 {
                     _logger?.LogDebug("Added connection with ski " + ski + " to connections.");
                 }
