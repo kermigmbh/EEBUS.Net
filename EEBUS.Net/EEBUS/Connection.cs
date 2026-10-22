@@ -346,6 +346,7 @@ namespace EEBUS
         internal void StopWaitForReadyTimer()
         {
             _helloDeadlineTicks = null;
+            Logger?.LogDebug("Wait-For-Ready-Timer stopped");
         }
 
         /// <summary>
