@@ -49,10 +49,10 @@ namespace EEBUS
 
                     (this.state, this.subState, string error) = await message.ServerTestAsync(this.state, this).ConfigureAwait(false);
 
-                    if (this.state == EState.Stopped && !string.IsNullOrEmpty(error))
-                        throw new Exception(error);
                     if (!string.IsNullOrEmpty(error))
-                        Logger?.LogError(error);
+                        Logger?.LogWarning("Server message test failed: {error}", error);
+                    if (this.state == EState.Stopped)
+                        break;
 
                     EState oldState = this.state;
                     (this.state, this.subState) = await message.NextServerStateAsync(this, Logger).ConfigureAwait(false);
@@ -68,13 +68,33 @@ namespace EEBUS
                     ResolvePendingRequest(message);
 
                     if (this.state == EState.Stopped)
-                        throw new Exception("Communication stopped!");
+                        break;
+                }
+
+                if (this.state == EState.Stopped)
+                {
+                    Logger?.LogDebug("Server connection stopped.");
+                    if (null != this.Remote)
+                    {
+                        this.Remote.SetServerState(EState.Stopped);
+                        this.Remote.LastDisconnectUtc = DateTime.UtcNow;
+                    }
                 }
             }
             catch (TimeoutException ex)
             {
                 Logger?.LogWarning(ex.Message);
                 await OnReceiveTimeoutAsync().ConfigureAwait(false);
+                if (null != this.Remote)
+                {
+                    this.Remote.SetServerState(EState.Stopped);
+                    this.Remote.LastDisconnectUtc = DateTime.UtcNow;
+                }
+            }
+            catch (OperationCanceledException) when (this.state == EState.Stopped || cancellationToken.IsCancellationRequested)
+            {
+                //Regular end of the connection: the peer sent a WebSocket close frame or we are shutting down
+                Logger?.LogDebug("Server connection closed.");
                 if (null != this.Remote)
                 {
                     this.Remote.SetServerState(EState.Stopped);
@@ -105,7 +125,10 @@ namespace EEBUS
         {
             try
             {
-                await this.ws.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Closing!", CancellationToken.None).ConfigureAwait(false);
+                if (this.ws.State == WebSocketState.Open || this.ws.State == WebSocketState.CloseReceived)
+                {
+                    await this.ws.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Closing!", CancellationToken.None).ConfigureAwait(false);
+                }
             }
             catch (Exception ex)
             {

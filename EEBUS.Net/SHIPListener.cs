@@ -1,4 +1,5 @@
-﻿using EEBUS.Models;
+﻿using EEBUS.Enums;
+using EEBUS.Models;
 using EEBUS.Net.Events;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Connections;
@@ -245,7 +246,12 @@ namespace EEBUS
                         await OnDeviceConnectionRequest(new DeviceConnectionRequestEventArgs(ski));
                     }
 
-                    var socket = await httpContext.WebSockets.AcceptWebSocketAsync("ship").ConfigureAwait(false);
+                    var socket = await httpContext.WebSockets.AcceptWebSocketAsync(new WebSocketAcceptContext
+                    {
+                        SubProtocol = "ship",
+                        KeepAliveInterval = TimeSpan.FromMilliseconds(SHIPMessageTimeout.WS_KEEP_ALIVE_INTERVAL),
+                        KeepAliveTimeout = TimeSpan.FromMilliseconds(SHIPMessageTimeout.WS_KEEP_ALIVE_TIMEOUT)
+                    }).ConfigureAwait(false);
                     if (socket == null || socket.State != WebSocketState.Open)
                     {
                         _logger?.LogError("Failed to accept socket from " + httpContext.Request.Host.ToUriComponent());

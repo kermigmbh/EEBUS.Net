@@ -225,7 +225,7 @@ namespace EEBUS
         /// <returns>The answer to <paramref name="closeMessage"/>, or null if no answer was sent within the specified maxTime</returns>
         public async Task<CloseMessage?> PushCloseMessageAsync(CloseMessage closeMessage)
         {
-            uint timeout = closeMessage.connectionClose.maxTime;
+            uint timeout = closeMessage.connectionClose.maxTime ?? CloseMessage.DefaultMaxTimeMs;
             string messageId = closeMessage.GetId();
 
             TaskCompletionSource<ShipMessageBase?> tcs = new TaskCompletionSource<ShipMessageBase?>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -235,8 +235,8 @@ namespace EEBUS
             try
             {
                 //TODO: rework DataMessageQueue to be able to handle every kind of message, so we can also send the close message over the queue. Could include an option enum, e.g. insert at the start/end, delete queue before insert, etc.
-                await closeMessage.Send(WebSocket, Logger).ConfigureAwait(false);
                 this.state = EState.WaitingForCloseConfirm;
+                await SendMessageAsync(closeMessage).ConfigureAwait(false);
 
                 try
                 {
@@ -266,6 +266,15 @@ namespace EEBUS
             string? referencedId = message.GetReferencedId();
             if (string.IsNullOrEmpty(referencedId)) return;
 
+            CompletePendingRequest(referencedId, message);
+        }
+
+        /// <summary>
+        /// Completes the pending request with the given id, if any. Used by <see cref="ResolvePendingRequest"/> and for cases where a
+        /// request-type message must be treated as the answer (e.g. a SHIP close announce received while we are waiting for a close confirm).
+        /// </summary>
+        internal void CompletePendingRequest(string referencedId, ShipMessageBase message)
+        {
             if (_pendingRequests.TryGetValue(referencedId, out TaskCompletionSource<ShipMessageBase?>? tcs))
             {
                 tcs?.TrySetResult(message);
