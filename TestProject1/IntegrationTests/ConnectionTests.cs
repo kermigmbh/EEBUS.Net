@@ -173,53 +173,54 @@ namespace TestProject1.IntegrationTests
             Assert.Null(manager1.GetConnection(manager2Ski));
         }
 
-        [Fact]
-        public async Task WHEN_DoubleConnectionIsOpened_THEN_OnlyOneConnectionSurvives()
-        {
-            ILogger manager1Logger = GetLogger("Manager1");
-            ILogger manager2Logger = GetLogger("Manager2");
-            using EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(withPeriodicReconnect: false), logger: manager1Logger);
-            using EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings(withPeriodicReconnect: false), logger: manager2Logger);
+        //TODO: this test was AI generated, check again
+        //[Fact]
+        //public async Task WHEN_DoubleConnectionIsOpened_THEN_OnlyOneConnectionSurvives()
+        //{
+        //    ILogger manager1Logger = GetLogger("Manager1");
+        //    ILogger manager2Logger = GetLogger("Manager2");
+        //    using EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(withPeriodicReconnect: false), logger: manager1Logger);
+        //    using EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings(withPeriodicReconnect: false), logger: manager2Logger);
 
-            string manager1Ski = manager1.GetLocalData().SKI;
-            string manager2Ski = manager2.GetLocalData().SKI;
+        //    string manager1Ski = manager1.GetLocalData().SKI;
+        //    string manager2Ski = manager2.GetLocalData().SKI;
 
-            await StartAndConnectManagersAsync(manager1, manager2);
+        //    await StartAndConnectManagersAsync(manager1, manager2);
 
-            Connection? firstConnection = manager1.GetConnection(manager2Ski);
-            Assert.NotNull(firstConnection);
-            Assert.IsType<Client>(firstConnection);
+        //    Connection? firstConnection = manager1.GetConnection(manager2Ski);
+        //    Assert.NotNull(firstConnection);
+        //    Assert.IsType<Client>(firstConnection);
 
-            // Open a second connection from manager2 to manager1 while the first one is still alive (SHIP 12.2.3)
-            bool connected = await manager2.TryConnectAsync(manager1Ski, allowDoubleConnection: true);
-            Assert.True(connected);
+        //    // Open a second connection from manager2 to manager1 while the first one is still alive (SHIP 12.2.3)
+        //    bool connected = await manager2.TryConnectAsync(manager1Ski, allowDoubleConnection: true);
+        //    Assert.True(connected);
 
-            bool manager1IsBigger = new SKI(manager1Ski) > new SKI(manager2Ski);
-            EEBUSManager bigger = manager1IsBigger ? manager1 : manager2;
-            EEBUSManager smaller = manager1IsBigger ? manager2 : manager1;
-            string biggerSki = manager1IsBigger ? manager1Ski : manager2Ski;
-            string smallerSki = manager1IsBigger ? manager2Ski : manager1Ski;
+        //    bool manager1IsBigger = new SKI(manager1Ski) > new SKI(manager2Ski);
+        //    EEBUSManager bigger = manager1IsBigger ? manager1 : manager2;
+        //    EEBUSManager smaller = manager1IsBigger ? manager2 : manager1;
+        //    string biggerSki = manager1IsBigger ? manager1Ski : manager2Ski;
+        //    string smallerSki = manager1IsBigger ? manager2Ski : manager1Ski;
 
-            // The node with the bigger SKI closes the older connection right away; the smaller one waits for the peer (<= 3 s + ping window).
-            await WaitUntilAsync<object?>(() => smaller.HasDuplicateConnection(biggerSki) ? null : new object(), timeoutMs: 15000, description: "duplicate connection resolved");
+        //    // The node with the bigger SKI closes the older connection right away; the smaller one waits for the peer (<= 3 s + ping window).
+        //    await WaitUntilAsync<object?>(() => smaller.HasDuplicateConnection(biggerSki) ? null : new object(), timeoutMs: 15000, description: "duplicate connection resolved");
 
-            Connection? biggerConnection = bigger.GetConnection(smallerSki);
-            Connection? smallerConnection = smaller.GetConnection(biggerSki);
-            Assert.NotNull(biggerConnection);
-            Assert.NotNull(smallerConnection);
-            Assert.Equal(WebSocketState.Open, biggerConnection!.WebSocket.State);
-            Assert.Equal(WebSocketState.Open, smallerConnection!.WebSocket.State);
+        //    Connection? biggerConnection = bigger.GetConnection(smallerSki);
+        //    Connection? smallerConnection = smaller.GetConnection(biggerSki);
+        //    Assert.NotNull(biggerConnection);
+        //    Assert.NotNull(smallerConnection);
+        //    Assert.Equal(WebSocketState.Open, biggerConnection!.WebSocket.State);
+        //    Assert.Equal(WebSocketState.Open, smallerConnection!.WebSocket.State);
 
-            // The surviving connection is the newer one (manager2 -> manager1): manager2 is the client, manager1 the server
-            Assert.IsType<Client>(manager2.GetConnection(manager1Ski));
-            Assert.IsType<Server>(manager1.GetConnection(manager2Ski));
-            Assert.NotSame(firstConnection, manager1.GetConnection(manager2Ski));
-            Assert.NotEqual(WebSocketState.Open, firstConnection!.WebSocket.State);
+        //    // The surviving connection is the newer one (manager2 -> manager1): manager2 is the client, manager1 the server
+        //    Assert.IsType<Client>(manager2.GetConnection(manager1Ski));
+        //    Assert.IsType<Server>(manager1.GetConnection(manager2Ski));
+        //    Assert.NotSame(firstConnection, manager1.GetConnection(manager2Ski));
+        //    Assert.NotEqual(WebSocketState.Open, firstConnection!.WebSocket.State);
 
-            // Both sides are still usable: the surviving connection completes SME + discovery
-            await WaitUntilAsync<object?>(() => manager1.GetConnectionStatus(manager2Ski) == DeviceConnectionStatus.UseCaseDiscoveryCompleted ? new object() : null, timeoutMs: 15000, description: "manager1 discovery completed");
-            await WaitUntilAsync<object?>(() => manager2.GetConnectionStatus(manager1Ski) == DeviceConnectionStatus.UseCaseDiscoveryCompleted ? new object() : null, timeoutMs: 15000, description: "manager2 discovery completed");
-        }
+        //    // Both sides are still usable: the surviving connection completes SME + discovery
+        //    await WaitUntilAsync<object?>(() => manager1.GetConnectionStatus(manager2Ski) == DeviceConnectionStatus.UseCaseDiscoveryCompleted ? new object() : null, timeoutMs: 15000, description: "manager1 discovery completed");
+        //    await WaitUntilAsync<object?>(() => manager2.GetConnectionStatus(manager1Ski) == DeviceConnectionStatus.UseCaseDiscoveryCompleted ? new object() : null, timeoutMs: 15000, description: "manager2 discovery completed");
+        //}
 
         [Fact]
         public async Task WHEN_DoubleConnectionIsOpened_THEN_SecondConnectAttemptWithoutOverrideIsRejected()

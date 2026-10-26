@@ -85,34 +85,23 @@ namespace EEBUS
             {
                 Logger?.LogWarning(ex.Message);
                 await OnReceiveTimeoutAsync().ConfigureAwait(false);
-                if (null != this.Remote)
-                {
-                    this.Remote.SetServerState(EState.Stopped);
-                    this.Remote.LastDisconnectUtc = DateTime.UtcNow;
-                }
             }
             catch (OperationCanceledException) when (this.state == EState.Stopped || cancellationToken.IsCancellationRequested)
             {
                 //Regular end of the connection: the peer sent a WebSocket close frame or we are shutting down
                 Logger?.LogDebug("Server connection closed.");
-                if (null != this.Remote)
-                {
-                    this.Remote.SetServerState(EState.Stopped);
-                    this.Remote.LastDisconnectUtc = DateTime.UtcNow;
-                }
             }
             catch (Exception ex)
             {
-                if (null != this.Remote)
-                {
-                    this.Remote.SetServerState(EState.Stopped);
-                    this.Remote.LastDisconnectUtc = DateTime.UtcNow;
-                }
-
                 Logger?.LogError(ex, "Error during Server.Do");
             }
             finally
             {
+                if (null != this.Remote)
+                {
+                    this.Remote.SetServerState(EState.Stopped);
+                    this.Remote.LastDisconnectUtc = DateTime.UtcNow;
+                }
                 // Dispose the timer (Change(Infinite, Infinite) only stops further
                 // callbacks; the underlying TimerQueueTimer is only released by Dispose).
                 try { beat.Dispose(); } catch { }

@@ -108,7 +108,6 @@ namespace EEBUS
 			this.subState = ESubState.None;
 
             //Start the Ship Message Exchange (SME) by sending the InitMessage to the remote device. Once the SME is finished, the connection state will be set to Connected and the heartbeat timer will be started.
-			Logger?.LogDebug("Client.RunInternalAsync: Sending InitMessage from " + this.Local.Name + " to remote device " + this.Remote?.Name);
             InitMessage initMessage = new InitMessage();
 			await initMessage.Send(this.ws, Logger).ConfigureAwait(false);
 
@@ -164,29 +163,17 @@ namespace EEBUS
 			{
 				Logger?.LogWarning(ex.Message);
 				await OnReceiveTimeoutAsync().ConfigureAwait(false);
-				if (this.Remote != null)
-				{
-					this.Remote.LastDisconnectUtc = DateTime.UtcNow;
-				}
 			}
 			catch (OperationCanceledException) when (this.state == EState.Stopped || cancellationToken.IsCancellationRequested)
 			{
 				//Regular end of the connection: the peer sent a WebSocket close frame or we are shutting down
 				Logger?.LogDebug("Client connection closed.");
 				this.state = EState.Stopped;
-				if (this.Remote != null)
-				{
-					this.Remote.LastDisconnectUtc = DateTime.UtcNow;
-				}
 			}
 			catch (Exception ex)
 			{
 			  Logger?.LogError(ex, "Client connection closed with error.");
 				this.state = EState.ErrorOrTimeout;
-				if (this.Remote != null)
-				{
-					this.Remote.LastDisconnectUtc = DateTime.UtcNow;
-				}
 			}
 			finally
 			{
@@ -195,10 +182,13 @@ namespace EEBUS
 				try { beat.Dispose(); } catch { }
 
 				if (null != this.Remote)
-					this.Remote.SetClientState(EState.Stopped);
+				{
+					this.Remote.SetClientState(this.state);
+                    this.Remote.LastDisconnectUtc = DateTime.UtcNow;
+                }
 
-				// Make sure the socket is released even if no one calls CloseAsync.
-				try
+                // Make sure the socket is released even if no one calls CloseAsync.
+                try
 				{
 					await CloseAsync().ConfigureAwait(false);
 				}

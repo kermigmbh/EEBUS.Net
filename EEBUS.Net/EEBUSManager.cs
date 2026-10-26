@@ -390,7 +390,7 @@ namespace EEBUS.Net
 
             LocalDevice localDevice = _devices.GetOrCreateLocal(hash, settings.Device, fingerprint);
 
-            
+
             _devices.RemoteDeviceFound += OnRemoteDeviceFound;
             _devices.ServerStateChanged += OnServerStateChanged;
             _devices.ClientStateChanged += OnClientStateChanged;
@@ -503,12 +503,12 @@ namespace EEBUS.Net
         /// Like <see cref="TryConnectAsync(string)"/>, but with <paramref name="allowDoubleConnection"/> set a new connection is opened even if a live
         /// connection to the device exists already. Used by tests to simulate two nodes connecting to each other simultaneously (SHIP 12.2.3).
         /// </summary>
-        internal async Task<bool> TryConnectAsync(string ski, bool allowDoubleConnection)
+        public async Task<bool> TryConnectAsync(string ski)
         {
             SKI Ski = new SKI(ski);
 
             RemoteDevice? device = _devices.GetRemotes().FirstOrDefault(rd => rd.SKI == Ski);
-            if (device == null) 
+            if (device == null)
                 return false;
 
             Uri uri = new Uri("wss://" + device.Url);
@@ -516,22 +516,8 @@ namespace EEBUS.Net
             ClientWebSocket? wsClient = null;
             try
             {
-                if (_connections.TryGetValue(ski, out Connection? existingConnection) && existingConnection != null)
-                {
-                    if (existingConnection.WebSocket?.State == WebSocketState.Open)
-                    {
-                        if (!allowDoubleConnection)
-                            return false;   //We are already connected
-                    }
-                    else
-                    {
-                        // Stale connection - if the peer kept an older connection, promote it; otherwise tear the stale one down before opening a new one.
-                        if (await TryPromoteDuplicateAsync(ski).ConfigureAwait(false))
-                            return false;
-
-                        await DisconnectAsync(ski).ConfigureAwait(false);
-                    }
-                }
+                if (_connections.TryGetValue(ski, out Connection? existingConnection) && IsConnectionAlive(existingConnection))
+                    return false;   //We are already connected
 
                 wsClient = new ClientWebSocket();
                 wsClient.Options.AddSubProtocol("ship");
@@ -548,7 +534,7 @@ namespace EEBUS.Net
                     if (_settings.UseStrictShipPairing)
                     {
                         bool isUntrusted = _devices.GetPairedDevices().FirstOrDefault(p => p.TrustId == device.Id && p.TrustType == EEBUS.Models.ShipTrustType.None) != null;
-                        if (isUntrusted) 
+                        if (isUntrusted)
                             return false;
                     }
 
@@ -686,9 +672,6 @@ namespace EEBUS.Net
 
                 if (!_connections.TryGetValue(remoteSki, out Connection? existing) || existing == null)
                     continue;   //connection was already removed in the meantime, return to the loop and try to add the new connection again
-
-                if (ReferenceEquals(existing, newConnection))
-                    return true;    //the same connection is already registered, nothing to do
 
                 if (!IsConnectionAlive(existing) || _devices.Local.SKI > newConnection.Remote.SKI)
                 {
@@ -841,21 +824,6 @@ namespace EEBUS.Net
                 && connection.State != Connection.EState.Stopped
                 && connection.State != Connection.EState.ErrorOrTimeout;
         }
-        private async Task OnDeviceConnectionRequestAsync(DeviceConnectionRequestEventArgs e)
-        {
-            string ski = e.Ski.ToString();
-            _logger?.LogDebug("Received connection request from device with SKI " + ski);
-            if (_connections.TryGetValue(ski, out Connection? existingConnection) && existingConnection != null && !IsConnectionAlive(existingConnection))
-            {
-                //A stale connection exists. If the peer kept an older connection, promote it; otherwise close the stale one before accepting the new one.
-                //Live connections are handled in RegisterConnectionAsync according to SHIP 12.2.3
-                if (await TryPromoteDuplicateAsync(ski).ConfigureAwait(false))
-                    return;
-
-                _logger?.LogDebug("Closing stale connection with remote device " + existingConnection.Remote?.Name);
-                await DisconnectAsync(ski).ConfigureAwait(false);
-            }
-        }
         private async Task OnDeviceConnectionChangedAsync(DeviceConnectionChangedEventArgs e)
         {
             if (e.Connection.Remote == null) return;
@@ -888,7 +856,6 @@ namespace EEBUS.Net
                 }
             }
         }
-
         public void Dispose()
         {
             // Cancel first so background loops (ReconnectLoopAsync, mDNS) start unwinding
@@ -1119,7 +1086,7 @@ namespace EEBUS.Net
                 Ski = rd.SKI.ToString(),
             });
         }
-        
+
         /// <summary>
         /// Writes the provided <paramref name="deviceData"/> to the local device of the connection with device with <paramref name="remoteSki"/>.
         /// </summary>
@@ -1208,16 +1175,7 @@ namespace EEBUS.Net
                 }
             }
         }
-        
-        /// <summary>
-        /// Attempts to connect to the remote device with ski <paramref name="ski"/>. Returns true if the connection attempt was successful, false otherwise.
-        /// </summary>
-        /// <param name="ski"></param>
-        /// <returns></returns>
-        public async Task<bool> TryConnectAsync(string ski)
-        {
-            return await TryConnectAsync(ski, allowDoubleConnection: false).ConfigureAwait(false);
-        }
+
         /// <summary>
         /// Closes all connections to the device with the given SKI.
         /// </summary>
@@ -1244,7 +1202,7 @@ namespace EEBUS.Net
                 _logger?.LogInformation("No connection found for ski {Ski}.", ski);
             }
         }
-        
+
         public void Start()
         {
             var localDevice = _devices.Local;
@@ -1294,7 +1252,6 @@ namespace EEBUS.Net
                 return isValid;
             };
             _shipListener.OnDeviceConnectionChanged = OnDeviceConnectionChangedAsync;
-            _shipListener.OnDeviceConnectionRequest = OnDeviceConnectionRequestAsync;
             _shipListener.StartAsync(_settings.Device.Port);
         }
         public async Task StopAsync()

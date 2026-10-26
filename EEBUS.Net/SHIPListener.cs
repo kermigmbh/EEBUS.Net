@@ -36,7 +36,6 @@ namespace EEBUS
         private ILogger? _logger;
 
         public Func<DeviceConnectionChangedEventArgs, Task>? OnDeviceConnectionChanged;
-        public Func<DeviceConnectionRequestEventArgs, Task>? OnDeviceConnectionRequest;
 
         private Settings _settings;
 
@@ -225,26 +224,7 @@ namespace EEBUS
                     var cert = httpContext.Connection.ClientCertificate;
                     byte[] hash = SHA1.HashData(cert?.GetPublicKey() ?? []);
                     var ski = new SKI(hash);
-
-                    // If a Server is already registered for this SKI, notify the
-                    // manager that the old connection is going away before we
-                    // create the replacement. The new Server's constructor will
-                    // close the previous instance in the background, but the
-                    // manager owns the Connected/Disconnected bookkeeping and
-                    // must be told explicitly - otherwise the old entry leaks
-                    // in _connections (different RemoteHost) and no
-                    // OnDeviceConnectionStatusChanged(Unknown) is fired.
-
-                    //var previous = Server.Get(ski.ToString());
-                    //if (previous != null && OnDeviceConnectionChanged != null)
-                    //{
-                    //    await OnDeviceConnectionChanged(new DeviceConnectionChangedEventArgs() { Connection = previous, ChangeType = DeviceConnectionChangeType.Disconnected });
-                    //}
-
-                    if (OnDeviceConnectionRequest != null)
-                    {
-                        await OnDeviceConnectionRequest(new DeviceConnectionRequestEventArgs(ski));
-                    }
+                    _logger?.LogDebug("Received connection request from device with SKI {ski}", ski.ToString());
 
                     var socket = await httpContext.WebSockets.AcceptWebSocketAsync(new WebSocketAcceptContext
                     {
