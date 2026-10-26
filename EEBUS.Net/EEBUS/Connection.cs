@@ -154,6 +154,23 @@ namespace EEBUS
 
         public abstract Task CloseAsync();
 
+        internal Func<Connection, Task>? Closed { get; set;}
+
+        protected async Task OnConnectionClosed()
+        {
+            try
+            {
+                if (Closed != null)
+                {
+                    await Closed(this).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogError(ex, "Connection.Closed callback failed.");
+            }
+        }
+
         protected internal RemoteDevice? GetRemote(string id)
         {
             if (null == id)

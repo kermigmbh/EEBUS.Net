@@ -35,7 +35,8 @@ namespace EEBUS
         private X509Certificate2? _serverCertificate;
         private ILogger? _logger;
 
-        public Func<DeviceConnectionChangedEventArgs, Task>? OnDeviceConnectionChanged;
+        /// <summary>Invoked for every accepted SHIP websocket before its state machine is started. The connection reports its own end via <see cref="Connection.Closed"/>.</summary>
+        public Func<Server, Task>? OnConnectionIncoming;
 
         private Settings _settings;
 
@@ -199,8 +200,6 @@ namespace EEBUS
             //app.Map("/{*path}", async httpContext =>
             app.Run(async httpContext =>
             {
-                Server? server = null;
-                bool connectedFired = false;
                 try
                 {
                     if (!httpContext.WebSockets.IsWebSocketRequest)
@@ -238,14 +237,12 @@ namespace EEBUS
                         return;
                     }
 
-                    server = new Server(ski.ToString(), httpContext.Request.Host, socket, this.devices, _logger);
-                    if (OnDeviceConnectionChanged != null)
+                    Server server = new Server(ski.ToString(), httpContext.Request.Host, socket, this.devices, _logger);
+                    if (OnConnectionIncoming != null)
                     {
-                        connectedFired = true;
-                        await OnDeviceConnectionChanged(new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Connected });
+                        await OnConnectionIncoming(server).ConfigureAwait(false);
                     }
                     await server.Do(_cts.Token).ConfigureAwait(false);
-
                 }
                 catch (Exception ex)
                 {
@@ -253,19 +250,6 @@ namespace EEBUS
 
                     httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
                     await httpContext.Response.WriteAsync("Error while processing websocket: " + ex.Message).ConfigureAwait(false);
-                }
-                finally
-                {
-                    // Only fire Disconnected for connections we actually fired
-                    // Connected for. Without this guard the old code would emit
-                    // a spurious Disconnected event for the previous Server we
-                    // briefly held a reference to on the replace-existing path,
-                    // and for early returns that never produced a live server.
-                    if (server != null && connectedFired && OnDeviceConnectionChanged != null)
-                    {
-                        await OnDeviceConnectionChanged(new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Disconnected });
-                    }
-
                 }
             });
 

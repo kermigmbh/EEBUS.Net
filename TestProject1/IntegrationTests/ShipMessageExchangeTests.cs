@@ -41,7 +41,7 @@ namespace TestProject1.IntegrationTests
 
             await StartManagersAsync(manager1, manager2);
 
-            await stateChangedWaiter.Match(args => args.State == Connection.EState.Stopped, 60_000);
+            await stateChangedWaiter.Match(args => args.State == Connection.EState.ErrorOrTimeout, 60_000);
             Log("Client Timed out and closed connection as expected.");
         }
     }

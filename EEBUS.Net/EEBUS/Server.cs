@@ -108,6 +108,7 @@ namespace EEBUS
             }
 
             await CloseAsync().ConfigureAwait(false);
+            await OnConnectionClosed().ConfigureAwait(false);
         }
 
         public override async Task CloseAsync()

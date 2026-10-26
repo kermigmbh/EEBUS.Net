@@ -665,6 +665,9 @@ namespace EEBUS.Net
         {
             if (newConnection.Remote == null) return false;
 
+            //The connection reports its own end (client and server alike), which removes it from the bookkeeping again
+            newConnection.Closed = OnConnectionClosedAsync;
+
             string remoteSki = newConnection.Remote?.SKI.ToString();
             while (!_connections.TryAdd(remoteSki, newConnection))
             {
@@ -824,36 +827,40 @@ namespace EEBUS.Net
                 && connection.State != Connection.EState.Stopped
                 && connection.State != Connection.EState.ErrorOrTimeout;
         }
-        private async Task OnDeviceConnectionChangedAsync(DeviceConnectionChangedEventArgs e)
-        {
-            if (e.Connection.Remote == null) return;
 
-            string ski = e.Connection.Remote.SKI.ToString();
-            if (e.ChangeType == DeviceConnectionChangeType.Connected)
+        private async Task OnConnectionIncomingAsync(Server server)
+        {
+            if (server.Remote == null) return;
+
+            if (await RegisterConnectionAsync(server).ConfigureAwait(false))
             {
-                if (await RegisterConnectionAsync(e.Connection).ConfigureAwait(false))
+                _logger?.LogDebug("Added connection with ski " + server.Remote.SKI + " to connections.");
+            }
+        }
+        /// <summary>
+        /// Called by every registered connection (client or server) once its receive loop has ended. Removes it from the bookkeeping,
+        /// resolves a pending double connection (SHIP 12.2.3) and reports the device as disconnected.
+        /// </summary>
+        private async Task OnConnectionClosedAsync(Connection connection)
+        {
+            if (connection.Remote == null) return;
+
+            string ski = connection.Remote.SKI.ToString();
+            //Only remove the entry if it still refers to this connection; it may have been replaced by another connection in the meantime
+            if (_connections.TryRemove(new KeyValuePair<string, Connection>(ski, connection)))
+            {
+                //If the peer (bigger SKI) closed the newer connection and kept the older one, promote the older one
+                if (await TryPromoteDuplicateAsync(ski).ConfigureAwait(false))
+                    return;
+
+                if (OnDeviceConnectionStatusChanged != null)
                 {
-                    _logger?.LogDebug("Added connection with ski " + ski + " to connections.");
+                    await OnDeviceConnectionStatusChanged(connection.Remote, DeviceConnectionStatus.Unknown);
                 }
             }
             else
             {
-                //Only remove the entry if it still refers to this connection; it may have been replaced by another connection in the meantime
-                if (_connections.TryRemove(new KeyValuePair<string, Connection>(ski, e.Connection)))
-                {
-                    //If the peer (bigger SKI) closed the newer connection and kept the older one, promote the older one
-                    if (await TryPromoteDuplicateAsync(ski).ConfigureAwait(false))
-                        return;
-
-                    if (OnDeviceConnectionStatusChanged != null)
-                    {
-                        await OnDeviceConnectionStatusChanged(e.Connection.Remote, DeviceConnectionStatus.Unknown);
-                    }
-                }
-                else
-                {
-                    _duplicateConnections.TryRemove(new KeyValuePair<string, Connection>(ski, e.Connection));
-                }
+                _duplicateConnections.TryRemove(new KeyValuePair<string, Connection>(ski, connection));
             }
         }
         public void Dispose()
@@ -1251,7 +1258,7 @@ namespace EEBUS.Net
                 }
                 return isValid;
             };
-            _shipListener.OnDeviceConnectionChanged = OnDeviceConnectionChangedAsync;
+            _shipListener.OnConnectionIncoming = OnConnectionIncomingAsync;
             _shipListener.StartAsync(_settings.Device.Port);
         }
         public async Task StopAsync()
@@ -1300,12 +1307,10 @@ namespace EEBUS.Net
         }
         private void OnServerStateChanged(Connection.EState state, RemoteDevice device)
         {
-            _logger?.LogDebug("Server state changed for device {deviceName} ({deviceSki}): {state}", device.Name, device.SKI.ToString(), state.ToString());
             this.ServerStateChanged?.Invoke(this, new StateChangedEventArgs(state, device));
         }
         private void OnClientStateChanged(Connection.EState state, RemoteDevice device)
         {
-            _logger?.LogDebug("Client state changed for device {deviceName} ({deviceSki}): {state}", device.Name, device.SKI.ToString(), state.ToString());
             this.ClientStateChanged?.Invoke(this, new StateChangedEventArgs(state, device));
         }
         #endregion

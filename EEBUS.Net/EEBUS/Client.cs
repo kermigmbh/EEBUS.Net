@@ -188,14 +188,16 @@ namespace EEBUS
                 }
 
                 // Make sure the socket is released even if no one calls CloseAsync.
-                try
+				try
 				{
 					await CloseAsync().ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
-                    Logger?.LogError(ex, "Client.RunInternalAsync: CloseAsync in finally failed.");
+					Logger?.LogError(ex, "Client.RunInternalAsync: CloseAsync in finally failed.");
 				}
+
+				await OnConnectionClosed().ConfigureAwait(false);
 			}
 		}
 	}
