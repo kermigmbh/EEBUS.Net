@@ -370,6 +370,9 @@ namespace EEBUS.Net
                     foreach (var device in _devices.GetRemotes())
                     {
                         string ski = device.SKI.ToString();
+                        bool cancellationRequested = cancellationToken.IsCancellationRequested;
+                        bool isTrusted = IsTrusted(ski);
+                        bool isAlive = IsConnectionAlive(GetConnection(ski));
                         if (cancellationToken.IsCancellationRequested || !IsTrusted(ski) || IsConnectionAlive(GetConnection(ski)))
                             continue;
 
@@ -630,7 +633,8 @@ namespace EEBUS.Net
             try
             {
                 await Task.Delay(DoubleConnectionTimeoutMs, cancellationToken).ConfigureAwait(false);
-                await WaitForPingResultAsync(ski, cancellationToken).ConfigureAwait(false);
+                //TODO: do we really need this?
+                //await WaitForPingResultAsync(ski, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -665,29 +669,29 @@ namespace EEBUS.Net
                 _logger?.LogError(ex, "Error resolving double connection for ski {Ski}.", ski);
             }
         }
-        /// <summary>
-        /// SHIP 12.2.3 requires a WebSocket ping after the double connection timeout. The managed WebSocket cannot send pings on demand, so the sockets
-        /// are configured with keep-alive pings (<see cref="SHIPMessageTimeout.WS_KEEP_ALIVE_INTERVAL"/>/<see cref="SHIPMessageTimeout.WS_KEEP_ALIVE_TIMEOUT"/>)
-        /// and this method waits long enough for at least one full ping/pong round on both connections. A socket that misses its pong is aborted by the
-        /// WebSocket implementation and therefore no longer reported alive. Returns early as soon as one of the connections is no longer alive or the
-        /// double connection has been resolved by someone else.
-        /// </summary>
-        private async Task WaitForPingResultAsync(string ski, CancellationToken cancellationToken)
-        {
-            const int pollIntervalMs = 250;
-            int remainingMs = SHIPMessageTimeout.WS_KEEP_ALIVE_INTERVAL + SHIPMessageTimeout.WS_KEEP_ALIVE_TIMEOUT;
+        ///// <summary>
+        ///// SHIP 12.2.3 requires a WebSocket ping after the double connection timeout. The managed WebSocket cannot send pings on demand, so the sockets
+        ///// are configured with keep-alive pings (<see cref="SHIPMessageTimeout.WS_KEEP_ALIVE_INTERVAL"/>/<see cref="SHIPMessageTimeout.WS_KEEP_ALIVE_TIMEOUT"/>)
+        ///// and this method waits long enough for at least one full ping/pong round on both connections. A socket that misses its pong is aborted by the
+        ///// WebSocket implementation and therefore no longer reported alive. Returns early as soon as one of the connections is no longer alive or the
+        ///// double connection has been resolved by someone else.
+        ///// </summary>
+        //private async Task WaitForPingResultAsync(string ski, CancellationToken cancellationToken)
+        //{
+        //    const int pollIntervalMs = 250;
+        //    int remainingMs = SHIPMessageTimeout.WS_KEEP_ALIVE_INTERVAL + SHIPMessageTimeout.WS_KEEP_ALIVE_TIMEOUT;
 
-            while (remainingMs > 0)
-            {
-                if (!_duplicateConnections.TryGetValue(ski, out Connection? older) || !IsConnectionAlive(older))
-                    return;
-                if (!IsConnectionAlive(GetConnection(ski)))
-                    return;
+        //    while (remainingMs > 0)
+        //    {
+        //        if (!_duplicateConnections.TryGetValue(ski, out Connection? older) || !IsConnectionAlive(older))
+        //            return;
+        //        if (!IsConnectionAlive(GetConnection(ski)))
+        //            return;
 
-                await Task.Delay(pollIntervalMs, cancellationToken).ConfigureAwait(false);
-                remainingMs -= pollIntervalMs;
-            }
-        }
+        //        await Task.Delay(pollIntervalMs, cancellationToken).ConfigureAwait(false);
+        //        remainingMs -= pollIntervalMs;
+        //    }
+        //}
         /// <summary>
         /// If a live connection is parked in the duplicate side table for <paramref name="ski"/>, promotes it to the active connection
         /// (replacing a dead active connection, if any). Returns true if a connection was promoted. A dead duplicate is closed and discarded.
