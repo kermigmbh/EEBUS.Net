@@ -41,14 +41,8 @@ namespace EEBUS.Net
         #region Handlers
         private class MessageEventHandler(EEBUSManager EEBusManager) : MessageEvents
         {
-            public async Task<bool> BeforeMessageSentAsync(ShipMessageBase message, Connection connection)
-            {
-                if (EEBusManager.BeforeMessageSent != null)
-                {
-                    return await EEBusManager.BeforeMessageSent(message, connection);
-                }
-                return true;
-            }
+            public Task<bool> BeforeMessageSentAsync(ShipMessageBase message, Connection connection)
+                => EEBusManager.BeforeMessageSent?.Invoke(message, connection) ?? Task.FromResult(true);
         }
 
         private class NotifyEventHandler(EEBUSManager EEBusManager) : NotifyEvents
@@ -60,9 +54,9 @@ namespace EEBUS.Net
             /// <param name="localFeatureAddress"></param>
             /// <returns></returns>
             /// <exception cref="Exception"></exception>
-            public async Task NotifyAsync(JsonNode? payload, AddressType localFeatureAddress)
+            public Task NotifyAsync(JsonNode? payload, AddressType localFeatureAddress)
             {
-                if (payload == null) return;
+                if (payload == null) return Task.CompletedTask;
                 AddressType serverAddress = localFeatureAddress;
 
                 var connections = EEBusManager._connections.Values.ToList();
@@ -86,6 +80,7 @@ namespace EEBUS.Net
                         connection.PushDataMessage(dataMessage);
                     }
                 }
+                return Task.CompletedTask;
             }
         }
 
@@ -121,10 +116,7 @@ namespace EEBUS.Net
                     connection.SendUseCaseDiscoveryRead();  //We only send the use case discovery read after the node discovery is completed, as we need the node information first (entities, features)
                 }
 
-                if (EEBusManager.OnDeviceConnectionStatusChanged != null && connection.Remote != null)
-                {
-                    await EEBusManager.OnDeviceConnectionStatusChanged(connection.Remote, connection.ConnectionStatus);
-                }
+                await EEBusManager.RaiseDeviceConnectionStatusChangedAsync(connection.Remote, connection.ConnectionStatus);
             }
         }
 
@@ -135,38 +127,26 @@ namespace EEBUS.Net
         {
             public async Task DataUpdateMeasurementsAsync(List<MeasurementData.MeasurementData> measurementData, string ski)
             {
-                MeasurementsData measurements = measurementData.CollectData();
-
-                if (eebusManager.OnDeviceDataChanged != null)
+                await eebusManager.RaiseDeviceDataChangedAsync(new DeviceData
                 {
-                    await eebusManager.OnDeviceDataChanged(new DeviceData
-                    {
-                        SKI = ski,
-                        Measurements = measurements
-                    });
-                }
+                    SKI = ski,
+                    Measurements = measurementData.CollectData()
+                });
             }
 
             public async Task DeviceConfigurationChangedAsync(Device device)
             {
-                MgcpData? mgcpData = null;
                 KeyValue? pvCurtailmentLimitFactor = device.KeyValues.FirstOrDefault(kv => kv.KeyName == "pvCurtailmentLimitFactor");
-                if (pvCurtailmentLimitFactor != null)
+                MgcpData? mgcpData = pvCurtailmentLimitFactor == null ? null : new MgcpData
                 {
-                    mgcpData = new MgcpData
-                    {
-                        PvCurtailmentLimitFactor = pvCurtailmentLimitFactor.Data.value.scaledNumber?.ToLong()
-                    };
-                }
+                    PvCurtailmentLimitFactor = pvCurtailmentLimitFactor.Data.value.scaledNumber?.ToLong()
+                };
 
-                if (eebusManager.OnDeviceDataChanged != null)
+                await eebusManager.RaiseDeviceDataChangedAsync(new DeviceData
                 {
-                    await eebusManager.OnDeviceDataChanged(new DeviceData
-                    {
-                        SKI = device.SKI.ToString(),
-                        Mgcp = mgcpData
-                    });
-                }
+                    SKI = device.SKI.ToString(),
+                    Mgcp = mgcpData
+                });
             }
         }
 
@@ -193,66 +173,39 @@ namespace EEBUS.Net
             public async Task OnStateChanged(LimitState oldState, LimitState newState, string reason)
             {
                 EEBusManager._logger?.LogDebug($"OnStateChanged {oldState} -> {newState} ({reason})");
-                var changedCallback = EEBusManager.OnDeviceDataChanged;
-                if (changedCallback != null)
-                {
-                    var deviceData = new DeviceData
-                    {
-                        Lpc = new LpcLppData
-                        {
-                            LimitState = newState
-                        }
-                    };
-                    await changedCallback(deviceData);
-                }
+                await EEBusManager.RaiseDeviceDataChangedAsync(new DeviceData { Lpc = new LpcLppData { LimitState = newState } });
             }
 
-            public async Task OnFailsafeEntered(string reason)
+            public Task OnFailsafeEntered(string reason)
             {
-                EEBusManager._logger?.LogDebug($"Entered Failsafe");
+                EEBusManager._logger?.LogDebug("Entered Failsafe");
+                return Task.CompletedTask;
             }
 
-            public async Task OnFailsafeExited(string reason)
+            public Task OnFailsafeExited(string reason)
             {
-                EEBusManager._logger?.LogDebug($"Left Failsafe");
+                EEBusManager._logger?.LogDebug("Left Failsafe");
+                return Task.CompletedTask;
             }
 
             public async Task OnFailsafeLimitChanged(long oldLimit, long newLimit)
             {
                 EEBusManager._logger?.LogDebug($"LPC Failsafe Limit changed {oldLimit} -> {newLimit}");
-
-                var changedCallback = EEBusManager.OnDeviceDataChanged;
-                if (changedCallback != null)
-                {
-                    var deviceData = new DeviceData
-                    {
-                        Lpc = new LpcLppData
-                        {
-                            FailSafeLimit = newLimit
-                        }
-                    };
-                    await changedCallback(deviceData);
-                }
+                await EEBusManager.RaiseDeviceDataChangedAsync(new DeviceData { Lpc = new LpcLppData { FailSafeLimit = newLimit } });
             }
 
             public async Task OnEffectiveLimitChanged(EffectiveLimit limit)
             {
                 EEBusManager._logger?.LogDebug("UpdateLimit");
-
-                var changedCallback = EEBusManager.OnDeviceDataChanged;
-                if (changedCallback != null)
+                await EEBusManager.RaiseDeviceDataChangedAsync(new DeviceData
                 {
-                    var deviceData = new DeviceData
+                    Lpc = new LpcLppData
                     {
-                        Lpc = new LpcLppData
-                        {
-                            LimitActive = limit.IsLimited,
-                            Limit = limit.Value,
-                            LimitDuration = (int?)((limit.ExpiresAt?.Subtract(DateTimeOffset.Now))?.Duration().TotalSeconds)
-                        }
-                    };
-                    await changedCallback(deviceData);
-                }
+                        LimitActive = limit.IsLimited,
+                        Limit = limit.Value,
+                        LimitDuration = (int?)limit.ExpiresAt?.Subtract(DateTimeOffset.Now).Duration().TotalSeconds
+                    }
+                });
             }
         }
 
@@ -276,44 +229,16 @@ namespace EEBUS.Net
                 return Task.FromResult(WriteApprovalResult.Accept());
             }
 
-            public async Task OnEffectiveLimitChanged(EffectiveLimit limit)
-            {
-                //using var _ = Push(new LimitDataChanged(false, active, limit, duration));
-            }
+            public Task OnEffectiveLimitChanged(EffectiveLimit limit) => Task.CompletedTask;
 
             public async Task OnFailsafeLimitChanged(long oldLimit, long newLimit)
             {
                 EEBusManager._logger?.LogDebug($"LPP Failsafe Limit changed {oldLimit} -> {newLimit}");
-
-                var changedCallback = EEBusManager.OnDeviceDataChanged;
-                if (changedCallback != null)
-                {
-                    var deviceData = new DeviceData
-                    {
-                        Lpp = new LpcLppData
-                        {
-                            FailSafeLimit = newLimit
-                        }
-                    };
-                    await changedCallback(deviceData);
-                }
+                await EEBusManager.RaiseDeviceDataChangedAsync(new DeviceData { Lpp = new LpcLppData { FailSafeLimit = newLimit } });
             }
 
-            public async Task OnStateChanged(LimitState oldState, LimitState newState, string reason)
-            {
-                var changedCallback = EEBusManager.OnDeviceDataChanged;
-                if (changedCallback != null)
-                {
-                    var deviceData = new DeviceData
-                    {
-                        Lpp = new LpcLppData
-                        {
-                            LimitState = newState
-                        }
-                    };
-                    await changedCallback(deviceData);
-                }
-            }
+            public Task OnStateChanged(LimitState oldState, LimitState newState, string reason)
+                => EEBusManager.RaiseDeviceDataChangedAsync(new DeviceData { Lpp = new LpcLppData { LimitState = newState } });
         }
 
         private LpcLimitStateMachine lpcStateMachine;
@@ -330,6 +255,12 @@ namespace EEBUS.Net
         public Func<DeviceData, Task>? OnDeviceDataChanged { get; set; }
         public Func<RemoteDevice, DeviceConnectionStatus, Task>? OnDeviceConnectionStatusChanged { get; set; }
         #endregion
+
+        private Task RaiseDeviceDataChangedAsync(DeviceData deviceData)
+            => OnDeviceDataChanged?.Invoke(deviceData) ?? Task.CompletedTask;
+
+        private Task RaiseDeviceConnectionStatusChangedAsync(RemoteDevice? remote, DeviceConnectionStatus status)
+            => remote == null ? Task.CompletedTask : OnDeviceConnectionStatusChanged?.Invoke(remote, status) ?? Task.CompletedTask;
 
         #region Testing events
         internal Func<ShipMessageBase, Connection, Task<bool>>? BeforeMessageSent { get; set; }
@@ -428,7 +359,6 @@ namespace EEBUS.Net
         /// <returns></returns>
         private async Task ReconnectLoopAsync(CancellationToken cancellationToken)
         {
-            Thread.CurrentThread.IsBackground = true;
             Debug.WriteLine("[EEBUS] Starting Reconnect Loop");
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -439,25 +369,13 @@ namespace EEBUS.Net
                     _logger?.LogDebug("[EEBUS] Running Reconnect Loop. Current connections: " + _connections.Count);
                     foreach (var device in _devices.GetRemotes())
                     {
-                        lock (_lock)
-                        {
-                            if (!_trustedSkis.Contains(device.SKI.ToString())) continue;
-                        }
+                        string ski = device.SKI.ToString();
+                        if (cancellationToken.IsCancellationRequested || !IsTrusted(ski) || IsConnectionAlive(GetConnection(ski)))
+                            continue;
 
-                        _connections.TryGetValue(device.SKI.ToString(), out Connection? connection);
-
-                        if (!IsConnectionAlive(connection) && !cancellationToken.IsCancellationRequested)
-                        {
-                            _logger?.LogDebug("Device {deviceName} does not have an active connection anymore, reconnecting...", device.Name);
-                            try
-                            {
-                                await TryConnectAsync(device.SKI.ToString());
-                            }
-                            catch (Exception)
-                            {
-                                _logger?.LogError("Unable to connect to device {deviceName}", device.Name);
-                            }
-                        }
+                        //TryConnectAsync handles and logs all errors itself
+                        _logger?.LogDebug("Device {deviceName} does not have an active connection anymore, reconnecting...", device.Name);
+                        await TryConnectAsync(ski);
                     }
                 }
                 catch (Exception ex)
@@ -477,12 +395,7 @@ namespace EEBUS.Net
             var remote = _devices.GetRemote(pairedAddCu.TrustId);   //the remote device corresponding to the paired device
             if (remote == null) return false;
 
-            bool isConnected = _connections.TryGetValue(remote.SKI.ToString(), out Connection? connection)
-                            && connection.WebSocket.State == WebSocketState.Open
-                            && connection.State != Connection.EState.Disconnected
-                            && connection.State != Connection.EState.Stopped
-                            && connection.State != Connection.EState.ErrorOrTimeout;
-            if (isConnected) return false;  //do not process pairing requests when we are still connected to an addCu device
+            if (IsConnectionAlive(GetConnection(remote.SKI.ToString()))) return false;
             if (remote.LastDisconnectUtc == null) return false;
 
             TimeSpan diff = DateTime.UtcNow - remote.LastDisconnectUtc.Value;
@@ -500,59 +413,75 @@ namespace EEBUS.Net
             OnDeviceFound?.Invoke(this, device);
         }
         /// <summary>
-        /// Like <see cref="TryConnectAsync(string)"/>, but with <paramref name="allowDoubleConnection"/> set a new connection is opened even if a live
-        /// connection to the device exists already. Used by tests to simulate two nodes connecting to each other simultaneously (SHIP 12.2.3).
+        /// Opens a client connection to the remote device with the given <paramref name="ski"/> unless a live connection exists already.
+        /// Returns true once the connection has been registered and its receive loop has ended.
         /// </summary>
         public async Task<bool> TryConnectAsync(string ski)
         {
-            SKI Ski = new SKI(ski);
-
-            RemoteDevice? device = _devices.GetRemotes().FirstOrDefault(rd => rd.SKI == Ski);
-            if (device == null)
+            SKI remoteSki = new SKI(ski);
+            RemoteDevice? device = _devices.GetRemotes().FirstOrDefault(rd => rd.SKI == remoteSki);
+            if (device == null || IsConnectionAlive(GetConnection(ski)))
                 return false;
 
             Uri uri = new Uri("wss://" + device.Url);
-
             ClientWebSocket? wsClient = null;
             try
             {
-                if (_connections.TryGetValue(ski, out Connection? existingConnection) && IsConnectionAlive(existingConnection))
-                    return false;   //We are already connected
-
                 wsClient = new ClientWebSocket();
                 wsClient.Options.AddSubProtocol("ship");
                 wsClient.Options.KeepAliveInterval = TimeSpan.FromMilliseconds(SHIPMessageTimeout.WS_KEEP_ALIVE_INTERVAL);
                 wsClient.Options.KeepAliveTimeout = TimeSpan.FromMilliseconds(SHIPMessageTimeout.WS_KEEP_ALIVE_TIMEOUT);
-                wsClient.Options.RemoteCertificateValidationCallback = (object sender, X509Certificate? cert, X509Chain? chain, SslPolicyErrors sslPolicyErrors) =>
-                {
-                    if (cert == null)
-                    {
-                        return false;
-                    }
+                wsClient.Options.RemoteCertificateValidationCallback = (_, cert, _, _) => ValidateServerCertificate(device, cert);
+                wsClient.Options.ClientCertificates.Add(_cert);
 
-                    //strict mode (only ship paired devices can communicate):
-                    if (_settings.UseStrictShipPairing)
-                    {
-                        bool isUntrusted = _devices.GetPairedDevices().FirstOrDefault(p => p.TrustId == device.Id && p.TrustType == EEBUS.Models.ShipTrustType.None) != null;
-                        if (isUntrusted)
-                            return false;
-                    }
+                //ConnectAsync either completes with the socket in the Open state or throws; failures are handled in the catch blocks below.
+                await wsClient.ConnectAsync(uri, _cts.Token).ConfigureAwait(false);
 
-                    var paired = _devices.GetPairedDevices().FirstOrDefault(p => p.TrustId == device.Id && p.TrustType == EEBUS.Models.ShipTrustType.AddCu);
-                    if (paired == null) //device was never paired via ship pairing -> ski verification
-                    {
-                        byte[] hash = SHA1.HashData(cert.GetPublicKey() ?? []);
-                        var certSki = new SKI(hash);
-                        var skiString = certSki.ToString();
+                Client client = new Client(new HostString(uri.Host, uri.Port), wsClient, _devices, device, _logger);
+                wsClient = null;    //Ownership of the websocket is transferred to the Client/Connection
+                if (!await RegisterConnectionAsync(client).ConfigureAwait(false))
+                    return false;
 
-                        if (device.SKI.ToString() != skiString)
-                        {
-                            _logger?.LogError($"Certificate SKI {skiString} does not match device SKI {device.SKI.ToString()}");
-                            return false;
-                        }
-                    }
-                    else
-                    {
+                _logger?.LogDebug("Added client with ski " + ski + " to connections.");
+                await client.Run(_cts.Token).ConfigureAwait(false);
+                return true;
+            }
+            catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+            {
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Connect error for SKI {Ski}.", ski);
+                return false;
+            }
+            finally
+            {
+                wsClient?.Dispose();
+            }
+        }
+        /// <summary>
+        /// Validates the certificate presented by a remote device we connect to as a client.
+        /// </summary>
+        private bool ValidateServerCertificate(RemoteDevice device, X509Certificate? cert)
+        {
+            if (cert == null)
+                return false;
+
+            var pairedDevices = _devices.GetPairedDevices();
+
+            //strict mode (only ship paired devices can communicate):
+            if (_settings.UseStrictShipPairing && pairedDevices.Any(p => p.TrustId == device.Id && p.TrustType == EEBUS.Models.ShipTrustType.None))
+                return false;
+
+            var paired = pairedDevices.FirstOrDefault(p => p.TrustId == device.Id && p.TrustType == EEBUS.Models.ShipTrustType.AddCu);
+            if (paired == null) //device was never paired via ship pairing -> ski verification
+            {
+                if (!CertificateMatchesSki(device, cert))
+                    return false;
+            }
+            else
+            {
                         /*
                         TODO: we imagine the following scenario:
                         1. devZ pairs via ship pairing
@@ -562,50 +491,35 @@ namespace EEBUS.Net
                         Normally, this would not be possible because according to spec, devZ is not trusted anymore. However, with our system, if the device is still teached in, its also still trusted. We would need
                         to automatically delete/disable/set offline the device. Also for the pairing, according to spec, after the device is paired its considered trusted, which would mean we would need to automatically teach it in
                          */
-
-                        byte[] fpHash = SHA256.HashData(cert.GetRawCertData());
-                        string fingerprint = Convert.ToHexString(fpHash);
-                        if (fingerprint != paired.TrustPar)
-                        {
-                            _logger?.LogError($"Certificate fingerprint for id {device.Id} does not match persisted trustPar");
-                            return false;
-                        }
-                    }
-
-                    bool isValid = false;
-                    lock (_lock)
-                    {
-                        isValid = _trustedSkis.Contains(device.SKI.ToString());
-                    }
-                    return isValid;
-                };
-                wsClient.Options.ClientCertificates.Add(_cert);
-
-                //ConnectAsync either completes with the socket in the Open state or throws; failures are handled in the catch blocks below.
-                await wsClient.ConnectAsync(uri, _cts.Token).ConfigureAwait(false);
-
-                HostString hostString = new HostString(uri.Host, uri.Port);
-                Client client = new Client(hostString, wsClient, _devices, device, _logger);
-                // Ownership of wsClient is transferred to the Client/Connection.
-                wsClient = null;
-                if (!await RegisterConnectionAsync(client).ConfigureAwait(false))
-                {
+                if (!CertificateMatchesFingerprint(device, cert, paired.TrustPar))
                     return false;
-                }
-                _logger?.LogDebug("Added client with ski " + ski + " to connections.");
-                await client.Run(_cts.Token).ConfigureAwait(false);
+            }
+
+            return IsTrusted(device.SKI.ToString());
+        }
+        private bool CertificateMatchesSki(RemoteDevice device, X509Certificate cert)
+        {
+            string certSki = new SKI(SHA1.HashData(cert.GetPublicKey() ?? [])).ToString();
+            string deviceSki = device.SKI.ToString();
+            if (certSki == deviceSki)
                 return true;
-            }
-            catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+
+            _logger?.LogError("Certificate SKI {certSki} does not match device SKI {deviceSki}", certSki, deviceSki);
+            return false;
+        }
+        private bool CertificateMatchesFingerprint(RemoteDevice device, X509Certificate cert, string? trustPar)
+        {
+            if (Convert.ToHexString(SHA256.HashData(cert.GetRawCertData())) == trustPar)
+                return true;
+
+            _logger?.LogError("Certificate fingerprint for id {deviceId} does not match persisted trustPar", device.Id);
+            return false;
+        }
+        private bool IsTrusted(string ski)
+        {
+            lock (_lock)
             {
-                wsClient?.Dispose();
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Connect error for SKI {Ski}.", ski);
-                wsClient?.Dispose();
-                return false;
+                return _trustedSkis.Contains(ski);
             }
         }
         /// <summary>
@@ -641,9 +555,9 @@ namespace EEBUS.Net
             {
                 //We need to dispose the websocket in any case, e.g. it can be that we send a close message, but we do not receive one from the remote partner. In this case, we must close the connection
                 await connection.CloseAsync();
-                if (notifyConnectionStatus && OnDeviceConnectionStatusChanged != null && connection.Remote != null)
+                if (notifyConnectionStatus)
                 {
-                    await OnDeviceConnectionStatusChanged(connection.Remote, DeviceConnectionStatus.Unknown);
+                    await RaiseDeviceConnectionStatusChangedAsync(connection.Remote, DeviceConnectionStatus.Unknown);
                 }
 
                 try
@@ -668,13 +582,13 @@ namespace EEBUS.Net
             //The connection reports its own end (client and server alike), which removes it from the bookkeeping again
             newConnection.Closed = OnConnectionClosedAsync;
 
-            string remoteSki = newConnection.Remote?.SKI.ToString();
+            string remoteSki = newConnection.Remote.SKI.ToString();
             while (!_connections.TryAdd(remoteSki, newConnection))
             {
                 //Connection exists already, so we need to decide what to do with it
 
-                if (!_connections.TryGetValue(remoteSki, out Connection? existing) || existing == null)
-                    continue;   //connection was already removed in the meantime, return to the loop and try to add the new connection again
+                if (GetConnection(remoteSki) is not Connection existing)
+                    continue;
 
                 if (!IsConnectionAlive(existing) || _devices.Local.SKI > newConnection.Remote.SKI)
                 {
@@ -683,7 +597,7 @@ namespace EEBUS.Net
                         continue;   //connection was already removed in the meantime, return to the loop and try to add the new connection again
 
                     string reason = IsConnectionAlive(existing) ? "local SKI is bigger" : "existing connection is stale";
-                    _logger?.LogDebug("Double connection with remote device " + newConnection.Remote?.Name + " detected, closing connection with ski " + remoteSki + " (" + reason + ")");
+                    _logger?.LogDebug("Double connection with remote device " + newConnection.Remote.Name + " detected, closing connection with ski " + remoteSki + " (" + reason + ")");
                     await CloseConnectionAsync(existing, notifyConnectionStatus: false).ConfigureAwait(false);
                     continue;
                 }
@@ -700,9 +614,9 @@ namespace EEBUS.Net
                 }
                 _duplicateConnections[remoteSki] = existing;
 
-                _logger?.LogDebug("Double connection with remote device " + newConnection.Remote?.Name + " detected, waiting for peer to close one of them (remote SKI is bigger)");
+                _logger?.LogDebug("Double connection with remote device " + newConnection.Remote.Name + " detected, waiting for peer to close one of them (remote SKI is bigger)");
                 _ = Task.Run(() => ResolveDoubleConnectionAfterTimeoutAsync(remoteSki, _cts.Token));
-                return true;
+                break;
             }
 
             return true;
@@ -735,8 +649,7 @@ namespace EEBUS.Net
                     return;
                 }
 
-                _connections.TryGetValue(ski, out Connection? current);
-                if (!IsConnectionAlive(current))
+                if (!IsConnectionAlive(GetConnection(ski)))
                 {
                     //The peer kept the older connection instead (or the newer one is not pingable anymore); make the older one the active one again
                     await PromoteDuplicateAsync(ski, older).ConfigureAwait(false);
@@ -768,7 +681,7 @@ namespace EEBUS.Net
             {
                 if (!_duplicateConnections.TryGetValue(ski, out Connection? older) || !IsConnectionAlive(older))
                     return;
-                if (!_connections.TryGetValue(ski, out Connection? current) || !IsConnectionAlive(current))
+                if (!IsConnectionAlive(GetConnection(ski)))
                     return;
 
                 await Task.Delay(pollIntervalMs, cancellationToken).ConfigureAwait(false);
@@ -800,7 +713,7 @@ namespace EEBUS.Net
         /// </summary>
         private async Task<bool> PromoteDuplicateAsync(string ski, Connection older)
         {
-            if (_connections.TryGetValue(ski, out Connection? current) && current != null && !IsConnectionAlive(current)
+            if (GetConnection(ski) is Connection current && !IsConnectionAlive(current)
                 && _connections.TryRemove(new KeyValuePair<string, Connection>(ski, current)))
             {
                 await CloseConnectionAsync(current, notifyConnectionStatus: false).ConfigureAwait(false);
@@ -813,10 +726,7 @@ namespace EEBUS.Net
             }
 
             _logger?.LogDebug("Peer kept the older connection to ski {ski}, promoting it", ski);
-            if (OnDeviceConnectionStatusChanged != null && older.Remote != null)
-            {
-                await OnDeviceConnectionStatusChanged(older.Remote, older.ConnectionStatus);
-            }
+            await RaiseDeviceConnectionStatusChangedAsync(older.Remote, older.ConnectionStatus);
             return true;
         }
         private static bool IsConnectionAlive(Connection? connection)
@@ -853,10 +763,7 @@ namespace EEBUS.Net
                 if (await TryPromoteDuplicateAsync(ski).ConfigureAwait(false))
                     return;
 
-                if (OnDeviceConnectionStatusChanged != null)
-                {
-                    await OnDeviceConnectionStatusChanged(connection.Remote, DeviceConnectionStatus.Unknown);
-                }
+                await RaiseDeviceConnectionStatusChangedAsync(connection.Remote, DeviceConnectionStatus.Unknown);
             }
             else
             {
@@ -921,26 +828,16 @@ namespace EEBUS.Net
 
         public DeviceConnectionStatus GetConnectionStatus(string ski)
         {
-            _connections.TryGetValue(ski, out Connection? connection);
-            if (connection != null)
-            {
-                return connection.ConnectionStatus;
-            }
-
-            return DeviceConnectionStatus.Unknown;
+            return GetConnection(ski)?.ConnectionStatus ?? DeviceConnectionStatus.Unknown;
         }
         public string GetConnectionInfo(string ski)
         {
-            _connections.TryGetValue(ski, out Connection? connection);
+            Connection? connection = GetConnection(ski);
             if (connection == null) return "No active connection for ski " + ski;
 
             string connectionType = connection is Client ? "Client" : "Server";
             string wsState = connection.WebSocket.State.ToString();
-            bool isTrusted = false;
-            lock (_lock)
-            {
-                isTrusted = _trustedSkis.Contains(ski);
-            }
+            bool isTrusted = IsTrusted(ski);
             string connectionState = connection.State.ToString() + " - " + connection.SubState.ToString();
 
             StringBuilder sb = new StringBuilder();
@@ -1228,35 +1125,11 @@ namespace EEBUS.Net
 
                 var paired = _devices.GetPairedDevices().FirstOrDefault(p => p.TrustId == device.Id);
 
-                if (paired != null) //device was added via ship pairing
-                {
-                    byte[] fpHash = SHA256.HashData(args.Certificate.GetRawCertData());
-                    string fingerprint = Convert.ToHexString(fpHash);
-                    if (fingerprint != paired.TrustPar)
-                    {
-                        _logger?.LogError($"Certificate fingerprint for id {device.Id} does not match persisted trustPar");
-                        return false;
-                    }
-                }
-                else
-                {
-                    byte[] hash = SHA1.HashData(args.Certificate.GetPublicKey() ?? []);
-                    var ski = new SKI(hash);
-                    var skiString = ski.ToString();
+                bool certificateValid = paired != null //device was added via ship pairing
+                    ? CertificateMatchesFingerprint(device, args.Certificate, paired.TrustPar)
+                    : CertificateMatchesSki(device, args.Certificate);
 
-                    if (device.SKI.ToString() != skiString)
-                    {
-                        _logger?.LogError($"Certificate SKI {skiString} does not match device SKI {device.SKI.ToString()}");
-                        return false;
-                    }
-                }
-
-                bool isValid = false;
-                lock (_lock)
-                {
-                    isValid = _trustedSkis.Contains(args.Ski);
-                }
-                return isValid;
+                return certificateValid && IsTrusted(args.Ski);
             };
             _shipListener.OnConnectionIncoming = OnConnectionIncomingAsync;
             _shipListener.StartAsync(_settings.Device.Port);
