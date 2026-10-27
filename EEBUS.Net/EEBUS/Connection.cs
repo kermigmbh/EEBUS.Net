@@ -4,6 +4,7 @@ using EEBUS.Models;
 using EEBUS.Net;
 using EEBUS.SHIP.Messages;
 using EEBUS.SPINE.Commands;
+using EEBUS.UseCases.ControllableSystem;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -35,7 +36,11 @@ namespace EEBUS
 
         public enum EState
         {
+            /// <summary>Connection object exists (websocket is open), but the SHIP state machine has not been started yet.</summary>
+            Created,
+            /// <summary>Terminal state: the SHIP connection has been closed.</summary>
             Disconnected,
+            WaitingForInit,
             WaitingForConnectionHello,
             WaitingForProtocolHandshake,
             SendProtocolHandshakeError,
@@ -124,7 +129,7 @@ namespace EEBUS
             this.devices = devices;
             Logger = logger;
 
-            this.WaitingMessages = new(this, logger);
+            this.WaitingMessages = new(this, Logger);
             this.BindingAndSubscriptionManager = new BindingAndSubscriptionManager(this);
         }
 
@@ -149,6 +154,23 @@ namespace EEBUS
 
         public abstract Task CloseAsync();
 
+        internal Func<Connection, Task>? Closed { get; set;}
+
+        protected async Task OnConnectionClosed()
+        {
+            try
+            {
+                if (Closed != null)
+                {
+                    await Closed(this).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogError(ex, "Connection.Closed callback failed.");
+            }
+        }
+
         protected internal RemoteDevice? GetRemote(string id)
         {
             if (null == id)
@@ -162,6 +184,30 @@ namespace EEBUS
             var remote = this.devices.GetRemote(id);
             return remote != null;
         }
+
+        public async Task SendMessageAsync(ShipMessageBase message)
+        {
+            bool sendPermitted = true;
+            var events = this.Local.GetUseCaseEvents<MessageEvents>();
+            foreach (var ev in events)
+            {
+                try
+                {
+                    sendPermitted = sendPermitted && await ev.BeforeMessageSentAsync(message, this).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogError(ex, "SendMessageAsync: BeforeMessageSentAsync threw an exception.");
+                    sendPermitted = true;
+                }
+            }
+
+            if (sendPermitted)
+            {
+                await message.Send(WebSocket, Logger).ConfigureAwait(false);
+            }
+        }
+
         public async Task<DataMessage> PushDataMessageAsync(DataMessage message) 
         {
             uint timeout = 5000;
@@ -196,7 +242,7 @@ namespace EEBUS
         /// <returns>The answer to <paramref name="closeMessage"/>, or null if no answer was sent within the specified maxTime</returns>
         public async Task<CloseMessage?> PushCloseMessageAsync(CloseMessage closeMessage)
         {
-            uint timeout = closeMessage.connectionClose.maxTime;
+            uint timeout = closeMessage.connectionClose.maxTime ?? CloseMessage.DefaultMaxTimeMs;
             string messageId = closeMessage.GetId();
 
             TaskCompletionSource<ShipMessageBase?> tcs = new TaskCompletionSource<ShipMessageBase?>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -206,8 +252,8 @@ namespace EEBUS
             try
             {
                 //TODO: rework DataMessageQueue to be able to handle every kind of message, so we can also send the close message over the queue. Could include an option enum, e.g. insert at the start/end, delete queue before insert, etc.
-                await closeMessage.Send(WebSocket, Logger).ConfigureAwait(false);
                 this.state = EState.WaitingForCloseConfirm;
+                await SendMessageAsync(closeMessage).ConfigureAwait(false);
 
                 try
                 {
@@ -237,6 +283,15 @@ namespace EEBUS
             string? referencedId = message.GetReferencedId();
             if (string.IsNullOrEmpty(referencedId)) return;
 
+            CompletePendingRequest(referencedId, message);
+        }
+
+        /// <summary>
+        /// Completes the pending request with the given id, if any. Used by <see cref="ResolvePendingRequest"/> and for cases where a
+        /// request-type message must be treated as the answer (e.g. a SHIP close announce received while we are waiting for a close confirm).
+        /// </summary>
+        internal void CompletePendingRequest(string referencedId, ShipMessageBase message)
+        {
             if (_pendingRequests.TryGetValue(referencedId, out TaskCompletionSource<ShipMessageBase?>? tcs))
             {
                 tcs?.TrySetResult(message);
@@ -268,7 +323,9 @@ namespace EEBUS
                 case EState.WaitingForProtocolHandshakeConfirm:
                 case EState.SendProtocolHandshakeConfirm:
                     return SHIPMessageTimeout.HANDSHAKE_TIMEOUT;  //according to spec
+                case EState.Created:
                 case EState.Disconnected:
+                case EState.WaitingForInit:
                 case EState.WaitingForPinCheck:
                 case EState.WaitingForAccessMethodsRequest:
                 case EState.WaitingForAccessMethods:
@@ -315,6 +372,7 @@ namespace EEBUS
         internal void StopWaitForReadyTimer()
         {
             _helloDeadlineTicks = null;
+            Logger?.LogDebug("Wait-For-Ready-Timer stopped");
         }
 
         /// <summary>

@@ -1,4 +1,5 @@
-﻿using EEBUS.Models;
+﻿using EEBUS.Enums;
+using EEBUS.Models;
 using EEBUS.Net.Events;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Connections;
@@ -34,8 +35,8 @@ namespace EEBUS
         private X509Certificate2? _serverCertificate;
         private ILogger? _logger;
 
-        public Func<DeviceConnectionChangedEventArgs, Task>? OnDeviceConnectionChanged;
-        public Func<DeviceConnectionRequestEventArgs, Task>? OnDeviceConnectionRequest;
+        /// <summary>Invoked for every accepted SHIP websocket before its state machine is started. The connection reports its own end via <see cref="Connection.Closed"/>.</summary>
+        public Func<Server, Task>? OnConnectionIncoming;
 
         private Settings _settings;
 
@@ -199,8 +200,6 @@ namespace EEBUS
             //app.Map("/{*path}", async httpContext =>
             app.Run(async httpContext =>
             {
-                Server? server = null;
-                bool connectedFired = false;
                 try
                 {
                     if (!httpContext.WebSockets.IsWebSocketRequest)
@@ -224,42 +223,26 @@ namespace EEBUS
                     var cert = httpContext.Connection.ClientCertificate;
                     byte[] hash = SHA1.HashData(cert?.GetPublicKey() ?? []);
                     var ski = new SKI(hash);
+                    _logger?.LogDebug("Received connection request from device with SKI {ski}", ski.ToString());
 
-                    // If a Server is already registered for this SKI, notify the
-                    // manager that the old connection is going away before we
-                    // create the replacement. The new Server's constructor will
-                    // close the previous instance in the background, but the
-                    // manager owns the Connected/Disconnected bookkeeping and
-                    // must be told explicitly - otherwise the old entry leaks
-                    // in _connections (different RemoteHost) and no
-                    // OnDeviceConnectionStatusChanged(Unknown) is fired.
-
-                    //var previous = Server.Get(ski.ToString());
-                    //if (previous != null && OnDeviceConnectionChanged != null)
-                    //{
-                    //    await OnDeviceConnectionChanged(new DeviceConnectionChangedEventArgs() { Connection = previous, ChangeType = DeviceConnectionChangeType.Disconnected });
-                    //}
-
-                    if (OnDeviceConnectionRequest != null)
+                    var socket = await httpContext.WebSockets.AcceptWebSocketAsync(new WebSocketAcceptContext
                     {
-                        await OnDeviceConnectionRequest(new DeviceConnectionRequestEventArgs(ski));
-                    }
-
-                    var socket = await httpContext.WebSockets.AcceptWebSocketAsync("ship").ConfigureAwait(false);
+                        SubProtocol = "ship",
+                        KeepAliveInterval = TimeSpan.FromMilliseconds(SHIPMessageTimeout.WS_KEEP_ALIVE_INTERVAL),
+                        KeepAliveTimeout = TimeSpan.FromMilliseconds(SHIPMessageTimeout.WS_KEEP_ALIVE_TIMEOUT)
+                    }).ConfigureAwait(false);
                     if (socket == null || socket.State != WebSocketState.Open)
                     {
                         _logger?.LogError("Failed to accept socket from " + httpContext.Request.Host.ToUriComponent());
                         return;
                     }
 
-                    server = new Server(ski.ToString(), httpContext.Request.Host, socket, this.devices, _logger);
-                    if (OnDeviceConnectionChanged != null)
+                    Server server = new Server(ski.ToString(), httpContext.Request.Host, socket, this.devices, _logger);
+                    if (OnConnectionIncoming != null)
                     {
-                        connectedFired = true;
-                        await OnDeviceConnectionChanged(new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Connected });
+                        await OnConnectionIncoming(server).ConfigureAwait(false);
                     }
                     await server.Do(_cts.Token).ConfigureAwait(false);
-
                 }
                 catch (Exception ex)
                 {
@@ -267,19 +250,6 @@ namespace EEBUS
 
                     httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
                     await httpContext.Response.WriteAsync("Error while processing websocket: " + ex.Message).ConfigureAwait(false);
-                }
-                finally
-                {
-                    // Only fire Disconnected for connections we actually fired
-                    // Connected for. Without this guard the old code would emit
-                    // a spurious Disconnected event for the previous Server we
-                    // briefly held a reference to on the replace-existing path,
-                    // and for early returns that never produced a live server.
-                    if (server != null && connectedFired && OnDeviceConnectionChanged != null)
-                    {
-                        await OnDeviceConnectionChanged(new DeviceConnectionChangedEventArgs() { Connection = server, ChangeType = DeviceConnectionChangeType.Disconnected });
-                    }
-
                 }
             });
 

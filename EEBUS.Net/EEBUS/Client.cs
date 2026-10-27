@@ -104,7 +104,7 @@ namespace EEBUS
 
 		private async Task RunInternalAsync(CancellationToken cancellationToken)
 		{
-			this.state = EState.Disconnected;
+			this.state = EState.WaitingForInit;
 			this.subState = ESubState.None;
 
             //Start the Ship Message Exchange (SME) by sending the InitMessage to the remote device. Once the SME is finished, the connection state will be set to Connected and the heartbeat timer will be started.
@@ -124,16 +124,16 @@ namespace EEBUS
             try
 			{
 				//Main receive loop. When the peer sends a message to us, it gets processed here.
-				while (this.state != EState.Stopped && !cancellationToken.IsCancellationRequested)
+				while (this.ws.State == WebSocketState.Open && this.state != EState.Stopped && !cancellationToken.IsCancellationRequested)
 				{
 					var message = await ReceiveWithTimeoutAsync(cancellationToken).ConfigureAwait(false);
 
 					(this.state, this.subState, string error) = await message.ClientTestAsync(this.state, this, Logger);
 
-					if (this.state == EState.Stopped && !string.IsNullOrEmpty(error))
-						throw new Exception(error);
 					if (!string.IsNullOrEmpty(error))
-						Logger?.LogError(error);
+						Logger?.LogWarning("Client message test failed: {error}", error);
+					if (this.state == EState.Stopped)
+						break;
 
 					EState oldState = this.state;
 					(this.state, this.subState) = await message.NextClientStateAsync(this, Logger).ConfigureAwait(false);
@@ -149,24 +149,31 @@ namespace EEBUS
 
 					ResolvePendingRequest(message);
 				}
+
+				if (this.state == EState.Stopped)
+				{
+					Logger?.LogDebug("Client connection stopped.");
+					if (this.Remote != null)
+					{
+						this.Remote.LastDisconnectUtc = DateTime.UtcNow;
+					}
+				}
 			}
 			catch (TimeoutException ex)
 			{
 				Logger?.LogWarning(ex.Message);
 				await OnReceiveTimeoutAsync().ConfigureAwait(false);
-				if (this.Remote != null)
-				{
-					this.Remote.LastDisconnectUtc = DateTime.UtcNow;
-				}
+			}
+			catch (OperationCanceledException) when (this.state == EState.Stopped || cancellationToken.IsCancellationRequested)
+			{
+				//Regular end of the connection: the peer sent a WebSocket close frame or we are shutting down
+				Logger?.LogDebug("Client connection closed.");
+				this.state = EState.Stopped;
 			}
 			catch (Exception ex)
 			{
 			  Logger?.LogError(ex, "Client connection closed with error.");
 				this.state = EState.ErrorOrTimeout;
-				if (this.Remote != null)
-				{
-					this.Remote.LastDisconnectUtc = DateTime.UtcNow;
-				}
 			}
 			finally
 			{
@@ -175,17 +182,22 @@ namespace EEBUS
 				try { beat.Dispose(); } catch { }
 
 				if (null != this.Remote)
-					this.Remote.SetClientState(EState.Stopped);
+				{
+					this.Remote.SetClientState(this.state);
+                    this.Remote.LastDisconnectUtc = DateTime.UtcNow;
+                }
 
-				// Make sure the socket is released even if no one calls CloseAsync.
+                // Make sure the socket is released even if no one calls CloseAsync.
 				try
 				{
 					await CloseAsync().ConfigureAwait(false);
 				}
 				catch (Exception ex)
 				{
-                    Logger?.LogError(ex, "Client.RunInternalAsync: CloseAsync in finally failed.");
+					Logger?.LogError(ex, "Client.RunInternalAsync: CloseAsync in finally failed.");
 				}
+
+				await OnConnectionClosed().ConfigureAwait(false);
 			}
 		}
 	}

@@ -45,7 +45,7 @@ namespace TestProject1.Ship
         {
             var fakeWs = new FakeWebSocket();
             var client = CreateTestClient(fakeWs);
-            client.SetState(Connection.EState.Disconnected);
+            client.SetState(Connection.EState.WaitingForInit);
 
             var initMsg = new InitMessage();
             var (newState, newSubState) = await initMsg.NextServerStateAsync(client);
@@ -96,7 +96,7 @@ namespace TestProject1.Ship
         {
             var fakeWs = new FakeWebSocket();
             var client = CreateTestClient(fakeWs);
-            client.SetState(Connection.EState.Disconnected);
+            client.SetState(Connection.EState.WaitingForInit);
 
             var initMsg = new InitMessage();
             var (newState, newSubState) = await initMsg.NextClientStateAsync(client);

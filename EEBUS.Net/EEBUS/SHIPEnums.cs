@@ -17,6 +17,14 @@
         public const int T_HELLO_PROLONG_WAITING_GAP = 15 * 1000;   // maximum allowed are 15 seconds, according to spec
         public const int T_HELLO_PROLONG_MIN         = 1000;        // maximum allowed is 1 second, according to spec
         public const int HANDSHAKE_TIMEOUT = 10_000; //according to spec
+
+        /// <summary>
+        /// Interval between WebSocket ping frames. SHIP 12.2.3 requires WebSocket pings to detect connections that are no longer pingable,
+        /// and the "connection data exchange" state has no SHIP receive timeout, so this is also the only way a silently dead peer is detected.
+        /// </summary>
+        public const int WS_KEEP_ALIVE_INTERVAL = 5 * 1000;
+        /// <summary>Time to wait for a pong before the WebSocket is considered dead and aborted.</summary>
+        public const int WS_KEEP_ALIVE_TIMEOUT = 3 * 1000;
     }
 
     public class SHIPMessageValue

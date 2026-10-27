@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EEBUS Log Viewer</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --panel: #fff; --border: #d9dde3; --text: #1f2328; --muted: #6b7280;
+    --out: #1d4ed8; --out-bg: #e8efff; --in: #047857; --in-bg: #e3f6ee;
+    --sel-bg: #fff3b0; --sel-detail: #fffbe6; --link-bg: #d6ecff; --link-detail: #eef6ff;
+    --accent: #2563eb; --warn: #b45309; --err: #b91c1c; --ok: #15803d;
+    --mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 13px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); background: var(--bg); }
+  header { display: flex; align-items: center; gap: 14px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0 12px 0 0; }
+  header .stats { color: var(--muted); margin-left: auto; }
+  button, select, input[type=text] { font: inherit; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; background: #fff; }
+  button { cursor: pointer; } button:hover { background: #f0f2f5; }
+  main { padding: 12px 16px 60px; }
+  #dropzone { border: 2px dashed var(--border); border-radius: 8px; padding: 30px; text-align: center; color: var(--muted); background: var(--panel); margin-bottom: 12px; }
+  #dropzone.over { border-color: var(--accent); background: #eef3ff; }
+  #pasteArea { width: 100%; height: 160px; font-family: var(--mono); font-size: 12px; margin-bottom: 12px; }
+  .devices { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .device { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; min-width: 0; }
+  .device.local { border-top: 4px solid var(--out); } .device.remote { border-top: 4px solid var(--in); }
+  .device h2 { margin: 0 0 6px; font-size: 14px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .device h2 .side { text-transform: uppercase; font-size: 11px; letter-spacing: .5px; color: var(--muted); }
+  .device h3 { margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+  .device details.entity { margin: 4px 0; border: 1px solid var(--border); border-radius: 6px; }
+  .device details.entity > summary { padding: 5px 8px; cursor: pointer; background: #f8f9fb; border-radius: 6px; font-weight: 600; }
+  .device details.entity[open] > summary { border-bottom: 1px solid var(--border); border-radius: 6px 6px 0 0; }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.grid th, table.grid td { text-align: left; padding: 3px 6px; border-bottom: 1px solid #eef0f3; vertical-align: top; }
+  table.grid th { color: var(--muted); font-weight: 600; background: #fafbfc; }
+  .tag { display: inline-block; padding: 0 6px; border-radius: 10px; font-size: 11px; background: #eef0f3; color: #374151; white-space: nowrap; }
+  .tag.server { background: #fde8d3; color: #92400e; } .tag.client { background: #dbeafe; color: #1e40af; } .tag.special { background: #ede9fe; color: #5b21b6; }
+  .fn { font-family: var(--mono); font-size: 11.5px; }
+  .ops { color: var(--muted); }
+  .empty { color: var(--muted); font-style: italic; }
+  .filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--border); border-radius: 8px 8px 0 0; padding: 8px 10px; }
+  .filters label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .filters input[type=text] { min-width: 240px; }
+  table.msgs { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--border); border-top: 0; font-size: 12px; table-layout: fixed; }
+  table.msgs th { position: sticky; top: 46px; background: #fafbfc; z-index: 5; text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); color: var(--muted); font-weight: 600; }
+  table.msgs td { padding: 4px 8px; border-bottom: 1px solid #eef0f3; vertical-align: top; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  table.msgs tr.msg { cursor: pointer; } table.msgs tr.msg:hover td { filter: brightness(0.96); }
+  table.msgs tr.msg.out td { background: var(--out-bg); } table.msgs tr.msg.in td { background: var(--in-bg); }
+  table.msgs tr.msg.out td.dir { color: var(--out); } table.msgs tr.msg.in td.dir { color: var(--in); }
+  table.msgs tr.msg.out { box-shadow: inset 3px 0 0 var(--out); } table.msgs tr.msg.in { box-shadow: inset 3px 0 0 var(--in); }
+  table.msgs tr.info td { color: var(--muted); font-style: italic; background: #fafafa; white-space: normal; }
+  table.msgs tr.selected td { background: var(--sel-bg) !important; }
+  table.msgs tr.selected + tr.detail td { background: var(--sel-detail); }
+  table.msgs tr.linked td { background: var(--link-bg) !important; }
+  table.msgs tr.linked + tr.detail td { background: var(--link-detail); }
+  table.msgs tr.detail td { white-space: normal; background: #fbfcfe; padding: 8px 12px 10px 26px; }
+  td.time, td.cnt { font-family: var(--mono); font-size: 11.5px; }
+  td.dir { font-weight: 700; font-family: var(--mono); }
+  .badge { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
+  .badge.read { background: #e5e7eb; color: #374151; } .badge.reply { background: #dbeafe; color: #1e40af; } .badge.notify { background: #ede9fe; color: #5b21b6; }
+  .badge.write { background: #ffedd5; color: #9a3412; } .badge.call { background: #ccfbf1; color: #115e59; } .badge.result { background: #dcfce7; color: #166534; }
+  .badge.result.error { background: #fee2e2; color: #991b1b; } .badge.ship { background: #f3f4f6; color: #6b7280; } .badge.ack { background: #fef9c3; color: #854d0e; }
+  .ref { color: var(--accent); cursor: pointer; text-decoration: underline dotted; }
+  .addr { font-family: var(--mono); font-size: 11.5px; } .addr .hint { color: var(--muted); font-family: system-ui, sans-serif; font-size: 11px; }
+  .summary-text { color: #374151; }
+  .err { color: var(--err); } .ok { color: var(--ok); }
+  .detail-head { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; color: var(--muted); }
+  .detail-head b { color: var(--text); }
+  .tree { font-family: var(--mono); font-size: 11.5px; }
+  .tree details { margin-left: 0; } .tree details > summary { cursor: pointer; list-style: none; }
+  .tree details > summary::before { content: "▸ "; color: var(--muted); } .tree details[open] > summary::before { content: "▾ "; }
+  .tree .children { margin-left: 16px; border-left: 1px dotted var(--border); padding-left: 8px; }
+  .tree .k { color: #7c2d12; } .tree .v.string { color: #065f46; } .tree .v.number { color: #1d4ed8; } .tree .v.boolean { color: #7e22ce; } .tree .meta { color: var(--muted); }
+  .tree .kv { white-space: normal; }
+  pre.raw { font-family: var(--mono); font-size: 11px; background: #f3f4f6; padding: 8px; border-radius: 4px; overflow: auto; max-height: 400px; white-space: pre-wrap; word-break: break-all; margin: 6px 0 0; }
+  .toggles { margin: 6px 0; display: flex; gap: 6px; }
+  .toggles button { padding: 2px 8px; font-size: 11px; }
+  .toggles button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .nowrap { white-space: nowrap; }
+  .chip { display: inline-block; padding: 0 7px; border-radius: 10px; font-family: var(--mono); font-size: 11px; line-height: 17px; border: 1px solid rgba(0,0,0,.12); color: #1f2328; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+  dialog#settings h3 { margin: 12px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+  dialog#settings .scroll { max-height: 40vh; overflow: auto; border: 1px solid var(--border); border-radius: 4px; }
+  dialog#settings { border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; min-width: 360px; font: inherit; color: var(--text); }
+  dialog#settings::backdrop { background: rgba(0,0,0,.25); }
+  dialog#settings h2 { margin: 0 0 10px; font-size: 15px; }
+  dialog#settings table { border-collapse: collapse; width: 100%; }
+  dialog#settings td { padding: 4px 6px; } dialog#settings td:first-child { color: var(--muted); }
+  dialog#settings input[type=color] { width: 44px; height: 26px; padding: 0; border: 1px solid var(--border); border-radius: 4px; background: #fff; cursor: pointer; vertical-align: middle; }
+  dialog#settings .swatch { display: inline-block; width: 60px; height: 18px; border: 1px solid var(--border); border-radius: 3px; vertical-align: middle; margin-left: 6px; }
+  dialog#settings .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>EEBUS Log Viewer</h1>
+  <input type="file" id="fileInput" accept=".log,.txt,*">
+  <button id="pasteBtn">Paste log…</button>
+  <button id="clearBtn">Clear</button>
+  <button id="settingsBtn" title="Color settings">⚙ Colors</button>
+  <span class="stats" id="stats"></span>
+</header>
+<main>
+  <div id="dropzone">Drop a log file here, choose one above, or press Ctrl+V anywhere to paste log text.</div>
+  <textarea id="pasteArea" hidden placeholder="Paste log text here, then click 'Load pasted text'"></textarea>
+  <div id="pasteActions" hidden style="margin-bottom:12px"><button id="loadPasteBtn">Load pasted text</button></div>
+
+  <section id="devices" class="devices"></section>
+
+  <section id="messagesSection" hidden>
+    <div class="filters">
+      <input type="text" id="search" placeholder="Search (function, device, json…)">
+      <select id="dirFilter"><option value="">Both directions</option><option value="out">Sent (→)</option><option value="in">Received (←)</option></select>
+      <select id="clsFilter"><option value="">All classifiers</option><option>read</option><option>reply</option><option>notify</option><option>write</option><option>call</option><option>result</option></select>
+      <select id="fnFilter"><option value="">All functions</option></select>
+      <label><input type="checkbox" id="hideShip"> Hide SHIP handshake</label>
+      <label><input type="checkbox" id="hideHeartbeat"> Hide heartbeats</label>
+      <label><input type="checkbox" id="hideInfo"> Hide info lines</label>
+      <label><input type="checkbox" id="showChips" checked> Function chips</label>
+      <button id="expandAll">Expand all</button>
+      <button id="collapseAll">Collapse all</button>
+      <span id="count" style="margin-left:auto;color:var(--muted)"></span>
+    </div>
+    <table class="msgs">
+      <col style="width:90px"><col style="width:36px"><col style="width:110px">
+      <thead><tr><th>Time</th><th></th><th>Counter</th><th>Classifier</th><th>Source</th><th>Destination</th><th>Function</th><th>Summary</th></tr></thead>
+      <tbody id="msgBody"></tbody>
+    </table>
+  </section>
+</main>
+
+<dialog id="settings">
+  <h2>Color settings</h2>
+  <table><tbody id="settingsRows"></tbody></table>
+  <h3>Function chip colors</h3>
+  <div class="scroll"><table><tbody id="fnColorRows"></tbody></table></div>
+  <div class="actions">
+    <button id="settingsReset">Reset to defaults</button>
+    <button id="settingsClose">Close</button>
+  </div>
+</dialog>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- Parsing ----------
+  const LINE_RE = /^(?:.*?)(\d{2}:\d{2}:\d{2}(?:[.,]\d{1,6})?)\s+(--->|<---)\s+(\{.*\}|\[.*\])\s*$/;
+
+  function parseLog(text) {
+    const entries = [];
+    const lines = text.split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.trim()) continue;
+      const m = LINE_RE.exec(line);
+      if (m) {
+        let json = null, err = null;
+        try { json = JSON.parse(m[3]); } catch (e) { err = e.message; }
+        entries.push({ index: entries.length, line: i + 1, time: m[1], ms: timeToMs(m[1]), dir: m[2] === '--->' ? 'out' : 'in', raw: m[3], json, err, replies: [] });
+      } else {
+        entries.push({ index: entries.length, line: i + 1, info: line.trim() });
+      }
+    }
+    return entries;
+  }
+
+  function timeToMs(t) {
+    const m = /^(\d{2}):(\d{2}):(\d{2})(?:[.,](\d+))?$/.exec(t);
+    if (!m) return null;
+    const frac = m[4] ? Number(('' + m[4]).padEnd(3, '0').slice(0, 3)) : 0;
+    return ((+m[1] * 60 + +m[2]) * 60 + +m[3]) * 1000 + frac;
+  }
+
+  // Converts the EEBUS JSON-UTF8 "array of single-key objects" encoding into plain objects.
+  function normalize(v) {
+    if (Array.isArray(v)) {
+      if (v.length && v.every(e => e && typeof e === 'object' && !Array.isArray(e) && Object.keys(e).length === 1)) {
+        const keys = v.map(e => Object.keys(e)[0]);
+        if (new Set(keys).size === keys.length) {
+          const o = {};
+          for (const e of v) { const k = keys.shift(); o[k] = normalize(e[k]); }
+          return o;
+        }
+      }
+      return v.map(normalize);
+    }
+    if (v && typeof v === 'object') {
+      const o = {};
+      for (const k of Object.keys(v)) o[k] = normalize(v[k]);
+      return o;
+    }
+    return v;
+  }
+
+  const asList = x => x === undefined || x === null ? [] : (Array.isArray(x) ? x : [x]);
+  const isObj = x => x && typeof x === 'object' && !Array.isArray(x);
+  const entKey = e => e === undefined || e === null ? '' : (Array.isArray(e) ? e.join('.') : String(e));
+
+  function analyze(entry) {
+    if (!entry.json) return;
+    const n = normalize(entry.json);
+    entry.norm = n;
+    entry.ship = isObj(n) ? Object.keys(n)[0] : '?';
+    if (entry.ship !== 'data') return;
+    const dg = n.data && n.data.payload && n.data.payload.datagram;
+    if (!dg) return;
+    const h = dg.header || {};
+    const sp = entry.spine = {
+      src: h.addressSource || {}, dst: h.addressDestination || {},
+      counter: h.msgCounter, ref: h.msgCounterReference, classifier: h.cmdClassifier, ack: h.ackRequest, cmds: []
+    };
+    const cmds = dg.payload ? dg.payload.cmd : undefined;
+    for (const c of asList(cmds)) {
+      if (!isObj(c)) continue;
+      for (const [fn, body] of Object.entries(c)) {
+        if (fn === 'function' || fn === 'filter') continue;
+        sp.cmds.push({ fn, body, fnMeta: c.function, filter: c.filter });
+      }
+    }
+  }
+
+  // ---------- Device model ----------
+  function buildModel(entries) {
+    const devices = new Map();
+    const dev = (name, side) => {
+      if (!name) return null;
+      let d = devices.get(name);
+      if (!d) { d = { name, side, type: null, entities: new Map(), useCases: [], subscriptions: [], bindings: [] }; devices.set(name, d); }
+      return d;
+    };
+    const ent = (d, key) => {
+      let e = d.entities.get(key);
+      if (!e) { e = { key, type: null, description: null, features: new Map() }; d.entities.set(key, e); }
+      return e;
+    };
+
+    // correlate requests/replies
+    const byCounter = { out: new Map(), in: new Map() };
+    for (const e of entries) if (e.spine && e.spine.counter !== undefined) byCounter[e.dir].set(e.spine.counter, e);
+    for (const e of entries) {
+      if (!e.spine || e.spine.ref === undefined) continue;
+      const req = byCounter[e.dir === 'out' ? 'in' : 'out'].get(e.spine.ref);
+      if (req) { e.replyTo = req; req.replies.push(e); }
+    }
+
+    let local = null, remote = null;
+    for (const e of entries) {
+      if (!e.spine) continue;
+      const sp = e.spine;
+      if (sp.src.device) { const d = dev(sp.src.device, e.dir === 'out' ? 'local' : 'remote'); if (e.dir === 'out') local = local || d.name; else remote = remote || d.name; }
+      if (sp.dst.device) { const d = dev(sp.dst.device, e.dir === 'out' ? 'remote' : 'local'); if (e.dir === 'out') remote = remote || d.name; else local = local || d.name; }
+
+      for (const c of sp.cmds) {
+        const body = c.body;
+        if (c.fn === 'nodeManagementDetailedDiscoveryData' && isObj(body)) {
+          const info = body.deviceInformation && body.deviceInformation.description;
+          const name = (info && info.deviceAddress && info.deviceAddress.device) || sp.src.device;
+          const d = dev(name, e.dir === 'out' ? 'local' : 'remote');
+          if (!d) continue;
+          if (info && info.deviceType) d.type = info.deviceType;
+          for (const ei of asList(body.entityInformation)) {
+            const desc = ei.description || {};
+            const en = ent(d, entKey(desc.entityAddress && desc.entityAddress.entity));
+            if (desc.entityType) en.type = desc.entityType;
+            if (desc.description) en.description = desc.description;
+          }
+          for (const fi of asList(body.featureInformation)) {
+            const desc = fi.description || {};
+            const addr = desc.featureAddress || {};
+            const en = ent(d, entKey(addr.entity));
+            en.features.set(String(addr.feature), {
+              id: addr.feature, type: desc.featureType, role: desc.role, description: desc.description,
+              functions: asList(desc.supportedFunction).map(sf => ({
+                name: sf.function,
+                ops: Object.entries(isObj(sf.possibleOperations) ? sf.possibleOperations : {}).map(([op, v]) => op + (isObj(v) && 'partial' in v ? ' (partial)' : ''))
+              }))
+            });
+          }
+        }
+        if (c.fn === 'nodeManagementUseCaseData' && isObj(body)) {
+          for (const uci of asList(body.useCaseInformation)) {
+            const addr = uci.address || {};
+            const d = dev(addr.device || sp.src.device, e.dir === 'out' ? 'local' : 'remote');
+            if (!d) continue;
+            const key = entKey(addr.entity) + '|' + uci.actor;
+            d.useCases = d.useCases.filter(u => u.key !== key);
+            d.useCases.push({
+              key, entity: entKey(addr.entity), actor: uci.actor,
+              support: asList(uci.useCaseSupport).map(s => ({
+                name: s.useCaseName, version: s.useCaseVersion, available: s.useCaseAvailable,
+                scenarios: asList(s.scenarioSupport), subRevision: s.useCaseDocumentSubRevision
+              }))
+            });
+          }
+        }
+        if ((c.fn === 'nodeManagementSubscriptionRequestCall' || c.fn === 'nodeManagementBindingRequestCall') && isObj(body)) {
+          const req = body.subscriptionRequest || body.bindingRequest || {};
+          const client = req.clientAddress || {}, server = req.serverAddress || {};
+          const d = dev(client.device || sp.src.device, e.dir === 'out' ? 'local' : 'remote');
+          if (!d) continue;
+          let status = 'pending';
+          const r = e.replies.find(x => x.spine && x.spine.classifier === 'result');
+          if (r) { const rd = r.spine.cmds.find(x => x.fn === 'resultData'); const num = rd && isObj(rd.body) ? rd.body.errorNumber : undefined; status = num === 0 || num === undefined ? 'accepted' : 'rejected (' + num + (rd.body.description ? ': ' + rd.body.description : '') + ')'; }
+          (c.fn === 'nodeManagementSubscriptionRequestCall' ? d.subscriptions : d.bindings).push({ client, server, type: req.serverFeatureType, status, entry: e });
+        }
+      }
+    }
+    return { devices, local, remote };
+  }
+
+  // ---------- Formatting ----------
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  function fmtAddr(a, fallbackDevice) {
+    if (!a || (a.device === undefined && a.entity === undefined && a.feature === undefined)) return '<span class="empty">—</span>';
+    const devName = a.device || fallbackDevice;
+    const ek = entKey(a.entity);
+    let s = '';
+    if (a.device) s += esc(a.device) + ' ';
+    s += 'e[' + esc(ek) + ']';
+    if (a.feature !== undefined) s += ':f' + esc(a.feature);
+    const d = model && model.devices.get(devName);
+    const en = d && d.entities.get(ek);
+    let hint = '';
+    if (en) {
+      const f = a.feature !== undefined ? en.features.get(String(a.feature)) : null;
+      hint = f ? (f.type || '') + (f.role ? ' ' + f.role : '') : (en.type || '');
+    }
+    return '<span class="addr" title="' + esc(JSON.stringify(a)) + '">' + s + (hint ? ' <span class="hint">' + esc(hint) + '</span>' : '') + '</span>';
+  }
+
+  function summarizeBody(body) {
+    if (body === undefined || body === null) return '';
+    if (Array.isArray(body)) return body.length ? '[' + body.length + ' items]' : '';
+    if (!isObj(body)) return esc(JSON.stringify(body));
+    const parts = [];
+    for (const [k, v] of Object.entries(body)) {
+      if (Array.isArray(v)) parts.push(esc(k) + '[' + v.length + ']');
+      else if (isObj(v)) parts.push(esc(k) + '{' + Object.keys(v).length + '}');
+      else parts.push(esc(k) + '=' + esc(JSON.stringify(v)));
+    }
+    return parts.join(' · ');
+  }
+
+  function summarize(e) {
+    if (e.err) return '<span class="err">JSON parse error: ' + esc(e.err) + '</span>';
+    const n = e.norm;
+    if (!e.spine) {
+      const v = n[e.ship];
+      switch (e.ship) {
+        case 'bytes': return 'SHIP init (' + esc(v.bytes || v) + ')';
+        case 'connectionHello': return 'phase=' + esc(v.phase) + (v.waiting !== undefined ? ' waiting=' + esc(v.waiting) + 'ms' : '') + (v.prolongationRequest ? ' prolongationRequest' : '');
+        case 'messageProtocolHandshake': return esc(v.handshakeType) + ' v' + esc((v.version || {}).major) + '.' + esc((v.version || {}).minor) + ' ' + esc(JSON.stringify(asList(v.formats && v.formats.format).flat()));
+        case 'messageProtocolHandshakeError': return '<span class="err">error=' + esc(v.error) + '</span>';
+        case 'connectionPinState': return 'pinState=' + esc(v.pinState);
+        case 'accessMethodsRequest': return 'request access methods';
+        case 'accessMethods': return 'id=' + esc(v.id);
+        case 'connectionClose': return 'phase=' + esc(v.phase) + (v.reason ? ' reason=' + esc(v.reason) : '');
+        default: return summarizeBody(v);
+      }
+    }
+    const sp = e.spine;
+    const out = [];
+    for (const c of sp.cmds) {
+      if (c.fn === 'resultData' && isObj(c.body)) {
+        const ok = c.body.errorNumber === 0 || c.body.errorNumber === undefined;
+        out.push('<span class="' + (ok ? 'ok' : 'err') + '">errorNumber=' + esc(c.body.errorNumber) + (ok ? ' (OK)' : '') + (c.body.description ? ' – ' + esc(c.body.description) : '') + '</span>');
+        continue;
+      }
+      let s = summarizeBody(c.body);
+      if (c.fnMeta) s = '<span class="tag">' + esc(JSON.stringify(c.fnMeta)) + '</span> ' + s;
+      if (c.filter) s += ' <span class="tag">filter</span>';
+      out.push(s || (sp.classifier === 'read' ? '<span class="empty">read request</span>' : '<span class="empty">empty</span>'));
+    }
+    return out.join('; ');
+  }
+
+  function classifierBadge(e) {
+    if (!e.spine) return '<span class="badge ship">SHIP</span>';
+    const sp = e.spine;
+    let cls = sp.classifier || '?';
+    let extraCls = '';
+    if (cls === 'result') {
+      const rd = sp.cmds.find(c => c.fn === 'resultData');
+      if (rd && isObj(rd.body) && rd.body.errorNumber) extraCls = ' error';
+    }
+    return '<span class="badge ' + esc(cls) + extraCls + '">' + esc(cls) + '</span>' + (sp.ack ? ' <span class="badge ack" title="ackRequest">ack</span>' : '');
+  }
+
+  function isHeartbeat(e) { return !!(e.spine && e.spine.cmds.some(c => c.fn === 'deviceDiagnosisHeartbeatData')); }
+
+  // ---------- JSON tree ----------
+  function renderTree(v, name, depth) {
+    const label = '<span class="k">' + esc(name) + '</span>';
+    if (v === null || typeof v !== 'object') return '<div class="kv">' + label + ': <span class="v ' + typeof v + '">' + esc(JSON.stringify(v)) + '</span></div>';
+    const isArr = Array.isArray(v);
+    const items = isArr ? v.map((x, i) => [i, x]) : Object.entries(v);
+    if (!items.length) return '<div class="kv">' + label + ': <span class="v empty">' + (isArr ? '[]' : '{}') + '</span></div>';
+    if (isArr && v.every(x => x === null || typeof x !== 'object')) return '<div class="kv">' + label + ': <span class="v">' + esc(JSON.stringify(v)) + '</span></div>';
+    return '<details' + (depth < 6 ? ' open' : '') + '><summary>' + label + ' <span class="meta">' + (isArr ? '[' + v.length + ']' : '{' + items.length + '}') + '</span></summary><div class="children">' +
+      items.map(([k, x]) => renderTree(x, k, depth + 1)).join('') + '</div></details>';
+  }
+
+  // ---------- Rendering ----------
+  let entries = [], model = null;
+  const sel = { primary: null, linked: null };
+  const $ = id => document.getElementById(id);
+
+  function renderDevices() {
+    const host = $('devices');
+    if (!model || !model.devices.size) { host.innerHTML = ''; return; }
+    const order = [...model.devices.values()].sort((a, b) => (a.side === 'local' ? 0 : 1) - (b.side === 'local' ? 0 : 1));
+    host.innerHTML = order.map(d => {
+      const ents = [...d.entities.values()].sort((a, b) => a.key.localeCompare(b.key, undefined, { numeric: true }));
+      const entHtml = ents.length ? ents.map(en => {
+        const feats = [...en.features.values()].sort((a, b) => a.id - b.id);
+        return '<details class="entity" open><summary>Entity [' + esc(en.key) + '] ' + esc(en.type || '?') + (en.description ? ' <span class="tag">' + esc(en.description) + '</span>' : '') + ' <span class="ops">· ' + feats.length + ' feature(s)</span></summary>' +
+          (feats.length ? '<table class="grid"><thead><tr><th>#</th><th>Feature</th><th>Role</th><th>Supported functions</th></tr></thead><tbody>' +
+            feats.map(f => '<tr><td>' + esc(f.id) + '</td><td>' + esc(f.type || '?') + (f.description ? '<br><span class="ops">' + esc(f.description) + '</span>' : '') + '</td><td><span class="tag ' + esc(f.role || '') + '">' + esc(f.role || '?') + '</span></td><td>' +
+              (f.functions.length ? f.functions.map(fn => '<div class="fn">' + esc(fn.name) + (fn.ops.length ? ' <span class="ops">[' + esc(fn.ops.join(', ')) + ']</span>' : '') + '</div>').join('') : '<span class="empty">none</span>') +
+              '</td></tr>').join('') + '</tbody></table>' : '<div class="empty" style="padding:6px 8px">no features</div>') + '</details>';
+      }).join('') : '<div class="empty">No detailed discovery data seen for this device.</div>';
+
+      const ucRows = d.useCases.flatMap(u => u.support.map(s => '<tr><td>[' + esc(u.entity) + ']</td><td>' + esc(u.actor) + '</td><td class="fn">' + esc(s.name) + '</td><td>' + esc(s.version || '') + (s.subRevision ? ' <span class="ops">' + esc(s.subRevision) + '</span>' : '') + '</td><td>' + esc(s.scenarios.join(', ')) + '</td><td>' + (s.available === false ? '<span class="err">no</span>' : s.available === true ? '<span class="ok">yes</span>' : '') + '</td></tr>'));
+      const ucHtml = ucRows.length ? '<table class="grid"><thead><tr><th>Entity</th><th>Actor</th><th>Use case</th><th>Version</th><th>Scenarios</th><th>Avail.</th></tr></thead><tbody>' + ucRows.join('') + '</tbody></table>' : '<div class="empty">No use case data seen for this device.</div>';
+
+      const linkRows = kind => list => list.map(x => '<tr><td>' + kind + '</td><td>' + fmtAddr(x.client, d.name) + '</td><td>' + fmtAddr(x.server) + '</td><td>' + esc(x.type || '') + '</td><td class="' + (x.status === 'accepted' ? 'ok' : x.status === 'pending' ? '' : 'err') + '">' + esc(x.status) + ' <span class="ref" data-goto="' + x.entry.index + '">#' + esc(x.entry.spine.counter) + '</span></td></tr>');
+      const links = [...linkRows('Subscription')(d.subscriptions), ...linkRows('Binding')(d.bindings)];
+      const linkHtml = links.length ? '<table class="grid"><thead><tr><th>Kind</th><th>Client</th><th>Server</th><th>Feature type</th><th>Status</th></tr></thead><tbody>' + links.join('') + '</tbody></table>' : '<div class="empty">None requested by this device.</div>';
+
+      return '<div class="device ' + d.side + '"><h2><span class="side">' + d.side + '</span> ' + esc(d.name) + (d.type ? ' <span class="tag">' + esc(d.type) + '</span>' : '') + '</h2>' +
+        '<h3>Entities &amp; Features</h3>' + entHtml +
+        '<h3>Use Cases</h3>' + ucHtml +
+        '<h3>Subscriptions &amp; Bindings (as client)</h3>' + linkHtml + '</div>';
+    }).join('');
+  }
+
+  function getFilters() {
+    return {
+      q: $('search').value.trim().toLowerCase(), dir: $('dirFilter').value, cls: $('clsFilter').value, fn: $('fnFilter').value,
+      hideShip: $('hideShip').checked, hideHeartbeat: $('hideHeartbeat').checked, hideInfo: $('hideInfo').checked
+    };
+  }
+
+  function visible(e, f) {
+    if (e.info) return !f.hideInfo && !f.dir && !f.cls && !f.fn && (!f.q || e.info.toLowerCase().includes(f.q));
+    if (f.dir && e.dir !== f.dir) return false;
+    if (f.hideShip && !e.spine) return false;
+    if (f.hideHeartbeat && isHeartbeat(e)) return false;
+    if (f.cls && (!e.spine || e.spine.classifier !== f.cls)) return false;
+    if (f.fn && (!e.spine || !e.spine.cmds.some(c => c.fn === f.fn))) return false;
+    if (f.q) {
+      const hay = (e.raw + ' ' + (e.spine ? e.spine.cmds.map(c => c.fn).join(' ') : e.ship)).toLowerCase();
+      if (!hay.includes(f.q)) return false;
+    }
+    return true;
+  }
+
+  function renderMessages() {
+    const f = getFilters();
+    const rows = [];
+    let shown = 0;
+    for (const e of entries) {
+      if (!visible(e, f)) continue;
+      shown++;
+      if (e.info) { rows.push('<tr class="info" data-idx="' + e.index + '"><td colspan="8">' + esc(e.info) + '</td></tr>'); continue; }
+      const sp = e.spine;
+      const fallbackSrc = e.dir === 'out' ? model.local : model.remote;
+      const fallbackDst = e.dir === 'out' ? model.remote : model.local;
+      const counter = sp ? '#' + esc(sp.counter)
+        + (sp.ref !== undefined ? ' <span class="ref" data-goto-counter="' + esc(sp.ref) + '" data-goto-dir="' + (e.dir === 'out' ? 'in' : 'out') + '" title="reply to #' + esc(sp.ref) + '">↩#' + esc(sp.ref) + '</span>' : '')
+        + e.replies.map(r => ' <span class="ref" data-goto="' + r.index + '" title="answered by #' + esc(r.spine.counter) + (r.ms != null && e.ms != null ? ' after ' + (r.ms - e.ms) + ' ms' : '') + '">↪#' + esc(r.spine.counter) + '</span>').join('')
+        : '';
+      const fn = sp ? sp.cmds.map(c => fnChip(c.fn)).join(' ') : fnChip(e.ship);
+      rows.push('<tr class="msg ' + e.dir + (sel.primary === e.index ? ' selected' : sel.linked === e.index ? ' linked' : '') + '" data-idx="' + e.index + '" id="msg-' + e.index + '" title="line ' + e.line + '">' +
+        '<td class="time">' + esc(e.time) + '</td><td class="dir">' + (e.dir === 'out' ? '→' : '←') + '</td>' +
+        '<td class="cnt">' + counter + '</td><td>' + classifierBadge(e) + '</td>' +
+        '<td>' + (sp ? fmtAddr(sp.src, fallbackSrc) : '') + '</td><td>' + (sp ? fmtAddr(sp.dst, fallbackDst) : '') + '</td>' +
+        '<td>' + fn + '</td><td class="summary-text">' + summarize(e) + '</td></tr>');
+    }
+    $('msgBody').innerHTML = rows.join('');
+    $('count').textContent = shown + ' of ' + entries.length + ' lines';
+  }
+
+  function renderDetail(e) {
+    const sp = e.spine;
+    let head = '<div class="detail-head"><span>Line <b>' + e.line + '</b></span><span>Direction <b>' + (e.dir === 'out' ? 'sent → remote' : 'received ← remote') + '</b></span>';
+    if (sp) {
+      head += '<span>msgCounter <b>' + esc(sp.counter) + '</b></span>';
+      if (sp.ref !== undefined) head += '<span>msgCounterReference <b>' + esc(sp.ref) + '</b>' + (e.replyTo ? ' <span class="ref" data-goto="' + e.replyTo.index + '">(go to request)</span>' : '') + '</span>';
+      if (e.replyTo && e.ms != null && e.replyTo.ms != null) head += '<span>latency <b>' + (e.ms - e.replyTo.ms) + ' ms</b></span>';
+      if (sp.classifier) head += '<span>cmdClassifier <b>' + esc(sp.classifier) + '</b></span>';
+      if (sp.ack !== undefined) head += '<span>ackRequest <b>' + sp.ack + '</b></span>';
+    }
+    head += '</div>';
+    const payload = sp ? (sp.cmds.length === 1 ? renderTree(sp.cmds[0].body, sp.cmds[0].fn, 0) + (sp.cmds[0].filter ? renderTree(sp.cmds[0].filter, 'filter', 0) : '') : renderTree(e.norm.data.payload.datagram.payload, 'payload', 0)) : renderTree(e.norm, 'message', 0);
+    return head +
+      '<div class="toggles"><button class="active" data-view="tree">Payload</button><button data-view="full">Full message</button><button data-view="raw">Raw JSON</button></div>' +
+      '<div class="tree view-tree">' + payload + '</div>' +
+      '<div class="tree view-full" hidden>' + renderTree(e.norm, 'message', 0) + '</div>' +
+      '<pre class="raw view-raw" hidden>' + esc(JSON.stringify(e.json, null, 2)) + '</pre>';
+  }
+
+  function toggleDetail(tr, force) {
+    const next = tr.nextElementSibling;
+    const isOpen = next && next.classList.contains('detail');
+    if (isOpen && force !== true) { next.remove(); return; }
+    if (isOpen) return;
+    if (force === false) return;
+    const e = entries[+tr.dataset.idx];
+    const d = document.createElement('tr');
+    d.className = 'detail';
+    d.innerHTML = '<td colspan="8">' + renderDetail(e) + '</td>';
+    tr.after(d);
+  }
+
+  function applySelection() {
+    document.querySelectorAll('tr.msg.selected, tr.msg.linked').forEach(tr => {
+      const idx = +tr.dataset.idx;
+      if (idx !== sel.primary && idx !== sel.linked) toggleDetail(tr, false);
+      tr.classList.remove('selected', 'linked');
+    });
+    if (sel.primary !== null) { const tr = $('msg-' + sel.primary); if (tr) tr.classList.add('selected'); }
+    if (sel.linked !== null) { const tr = $('msg-' + sel.linked); if (tr) tr.classList.add('linked'); }
+  }
+
+  function selectPrimary(tr) {
+    sel.primary = tr ? +tr.dataset.idx : null;
+    sel.linked = null;
+    applySelection();
+  }
+
+  function gotoRow(tr) {
+    if (!tr) return;
+    sel.linked = +tr.dataset.idx;
+    applySelection();
+    tr.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    toggleDetail(tr, true);
+  }
+
+  function populateFnFilter() {
+    const fns = new Set();
+    for (const e of entries) if (e.spine) e.spine.cmds.forEach(c => fns.add(c.fn));
+    $('fnFilter').innerHTML = '<option value="">All functions</option>' + [...fns].sort().map(f => '<option>' + esc(f) + '</option>').join('');
+  }
+
+  function load(text) {
+    entries = parseLog(text);
+    entries.forEach(analyze);
+    model = buildModel(entries);
+    const msgs = entries.filter(e => !e.info).length;
+    $('stats').textContent = msgs + ' messages, ' + entries.filter(e => e.spine).length + ' SPINE datagrams, ' + (entries.length - msgs) + ' info lines';
+    $('dropzone').hidden = true; $('pasteArea').hidden = true; $('pasteActions').hidden = true;
+    $('messagesSection').hidden = false;
+    populateFnFilter();
+    renderDevices();
+    renderMessages();
+  }
+
+  function clear() {
+    entries = []; model = null; sel.primary = null; sel.linked = null;
+    $('devices').innerHTML = ''; $('msgBody').innerHTML = ''; $('stats').textContent = ''; $('count').textContent = '';
+    $('messagesSection').hidden = true; $('dropzone').hidden = false;
+  }
+
+  // ---------- Events ----------
+  $('fileInput').addEventListener('change', ev => { const f = ev.target.files[0]; if (f) f.text().then(load); });
+  $('pasteBtn').addEventListener('click', () => { $('pasteArea').hidden = false; $('pasteActions').hidden = false; $('pasteArea').focus(); });
+  $('loadPasteBtn').addEventListener('click', () => { if ($('pasteArea').value.trim()) load($('pasteArea').value); });
+  $('clearBtn').addEventListener('click', clear);
+  document.addEventListener('paste', ev => {
+    if (ev.target === $('pasteArea') || ev.target.tagName === 'INPUT') return;
+    const t = ev.clipboardData.getData('text'); if (t && t.trim()) { ev.preventDefault(); load(t); }
+  });
+  const dz = $('dropzone');
+  document.addEventListener('dragover', ev => { ev.preventDefault(); dz.classList.add('over'); });
+  document.addEventListener('dragleave', () => dz.classList.remove('over'));
+  document.addEventListener('drop', ev => { ev.preventDefault(); dz.classList.remove('over'); const f = ev.dataTransfer.files[0]; if (f) f.text().then(load); });
+
+  ['search', 'dirFilter', 'clsFilter', 'fnFilter', 'hideShip', 'hideHeartbeat', 'hideInfo'].forEach(id => $(id).addEventListener('input', renderMessages));
+  $('showChips').checked = localStorage.getItem('eebusLogViewer.showChips') !== 'false';
+  $('showChips').addEventListener('input', () => { try { localStorage.setItem('eebusLogViewer.showChips', $('showChips').checked); } catch (e) { /* ignore */ } renderMessages(); });
+  $('expandAll').addEventListener('click', () => document.querySelectorAll('tr.msg').forEach(tr => toggleDetail(tr, true)));
+  $('collapseAll').addEventListener('click', () => document.querySelectorAll('tr.detail').forEach(tr => tr.remove()));
+
+  // ---------- Color settings ----------
+  const COLOR_SETTINGS = [
+    { v: '--out-bg', label: 'Outgoing message background', def: '#e8efff' },
+    { v: '--out', label: 'Outgoing accent (bar / arrow)', def: '#1d4ed8' },
+    { v: '--in-bg', label: 'Incoming message background', def: '#e3f6ee' },
+    { v: '--in', label: 'Incoming accent (bar / arrow)', def: '#047857' },
+    { v: '--sel-bg', label: 'Selected message', def: '#fff3b0' },
+    { v: '--sel-detail', label: 'Selected message detail', def: '#fffbe6' },
+    { v: '--link-bg', label: 'Linked message', def: '#d6ecff' },
+    { v: '--link-detail', label: 'Linked message detail', def: '#eef6ff' }
+  ];
+  const COLOR_KEY = 'eebusLogViewer.colors';
+
+  function loadColors() {
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem(COLOR_KEY) || '{}'); } catch (e) { saved = {}; }
+    const colors = {};
+    for (const c of COLOR_SETTINGS) colors[c.v] = /^#[0-9a-f]{6}$/i.test(saved[c.v] || '') ? saved[c.v] : c.def;
+    return colors;
+  }
+
+  function applyColors(colors) {
+    for (const c of COLOR_SETTINGS) document.documentElement.style.setProperty(c.v, colors[c.v]);
+  }
+
+  function saveColors(colors) {
+    try { localStorage.setItem(COLOR_KEY, JSON.stringify(colors)); } catch (e) { /* ignore */ }
+  }
+
+  function renderSettings() {
+    const colors = loadColors();
+    $('settingsRows').innerHTML = COLOR_SETTINGS.map(c =>
+      '<tr><td>' + esc(c.label) + '</td><td><input type="color" data-var="' + c.v + '" value="' + colors[c.v] + '"><span class="swatch" style="background:' + colors[c.v] + '"></span></td></tr>').join('');
+    const fns = allFunctionNames();
+    $('fnColorRows').innerHTML = fns.length ? fns.map(f =>
+      '<tr><td>' + fnChip(f, true) + '</td><td><input type="color" data-fn="' + esc(f) + '" value="' + fnColor(f) + '"><span class="swatch" style="background:' + fnColor(f) + '"></span></td></tr>').join('')
+      : '<tr><td class="empty">Load a log to see its functions.</td></tr>';
+  }
+
+  // ---------- Function chip colors ----------
+  const FN_COLOR_KEY = 'eebusLogViewer.fnColors';
+  let fnColorOverrides = {};
+  try { fnColorOverrides = JSON.parse(localStorage.getItem(FN_COLOR_KEY) || '{}') || {}; } catch (e) { fnColorOverrides = {}; }
+
+  function hslToHex(h, s, l) {
+    s /= 100; l /= 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))));
+    return '#' + [f(0), f(8), f(4)].map(x => x.toString(16).padStart(2, '0')).join('');
+  }
+
+  function defaultFnColor(name) {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return hslToHex(h % 360, 65, 84);
+  }
+
+  function fnColor(name) {
+    const o = fnColorOverrides[name];
+    return /^#[0-9a-f]{6}$/i.test(o || '') ? o : defaultFnColor(name);
+  }
+
+  function fnChip(name, force) {
+    if (!force && !$('showChips').checked) return '<span class="fn">' + esc(name) + '</span>';
+    return '<span class="chip" style="background:' + fnColor(name) + '" title="' + esc(name) + '">' + esc(name) + '</span>';
+  }
+
+  function allFunctionNames() {
+    const fns = new Set();
+    for (const e of entries) { if (e.spine) e.spine.cmds.forEach(c => fns.add(c.fn)); else if (e.ship) fns.add(e.ship); }
+    return [...fns].sort();
+  }
+
+  applyColors(loadColors());
+  $('settingsBtn').addEventListener('click', () => { renderSettings(); $('settings').showModal(); });
+  $('settingsClose').addEventListener('click', () => $('settings').close());
+  $('settingsReset').addEventListener('click', () => {
+    localStorage.removeItem(COLOR_KEY); localStorage.removeItem(FN_COLOR_KEY); fnColorOverrides = {};
+    applyColors(loadColors()); renderSettings(); renderMessages();
+  });
+  $('fnColorRows').addEventListener('input', ev => {
+    const input = ev.target.closest('input[type=color]');
+    if (!input) return;
+    fnColorOverrides[input.dataset.fn] = input.value;
+    try { localStorage.setItem(FN_COLOR_KEY, JSON.stringify(fnColorOverrides)); } catch (e) { /* ignore */ }
+    input.nextElementSibling.style.background = input.value;
+    input.closest('tr').querySelector('.chip').style.background = input.value;
+    renderMessages();
+  });
+  $('settingsRows').addEventListener('input', ev => {
+    const input = ev.target.closest('input[type=color]');
+    if (!input) return;
+    const colors = loadColors();
+    colors[input.dataset.var] = input.value;
+    input.nextElementSibling.style.background = input.value;
+    applyColors(colors);
+    saveColors(colors);
+  });
+
+  document.addEventListener('click', ev => {
+    const ref = ev.target.closest('[data-goto],[data-goto-counter]');
+    if (ref) {
+      ev.stopPropagation();
+      const originRow = ref.closest('tr.msg') || (ref.closest('tr.detail') && ref.closest('tr.detail').previousElementSibling);
+      const fromMessage = !!(originRow && originRow.classList.contains('msg'));
+      if (fromMessage) { selectPrimary(originRow); toggleDetail(originRow, true); }
+      else selectPrimary(null);
+      const go = tr => { if (!tr) return; if (fromMessage) gotoRow(tr); else { sel.primary = +tr.dataset.idx; applySelection(); tr.scrollIntoView({ block: 'center', behavior: 'smooth' }); toggleDetail(tr, true); } };
+      if (ref.dataset.goto !== undefined) {
+        let tr = $('msg-' + ref.dataset.goto);
+        if (!tr) { ['search', 'dirFilter', 'clsFilter', 'fnFilter'].forEach(id => $(id).value = ''); ['hideShip', 'hideHeartbeat'].forEach(id => $(id).checked = false); renderMessages(); tr = $('msg-' + ref.dataset.goto); }
+        go(tr);
+      } else {
+        const target = entries.find(e => e.spine && e.dir === ref.dataset.gotoDir && String(e.spine.counter) === ref.dataset.gotoCounter);
+        if (target) { let tr = $('msg-' + target.index); if (!tr) { ['search', 'dirFilter', 'clsFilter', 'fnFilter'].forEach(id => $(id).value = ''); renderMessages(); tr = $('msg-' + target.index); } go(tr); }
+      }
+      return;
+    }
+    const viewBtn = ev.target.closest('.toggles button');
+    if (viewBtn) {
+      const cell = viewBtn.closest('td');
+      cell.querySelectorAll('.toggles button').forEach(b => b.classList.toggle('active', b === viewBtn));
+      ['tree', 'full', 'raw'].forEach(v => cell.querySelector('.view-' + v).hidden = v !== viewBtn.dataset.view);
+      return;
+    }
+    if (ev.target.closest('tr.detail')) return;
+    const tr = ev.target.closest('tr.msg');
+    if (tr) {
+      const on = !tr.classList.contains('selected');
+      selectPrimary(on ? tr : null);
+      toggleDetail(tr, on);
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -54,14 +54,16 @@ namespace EEBUS.SHIP.Messages
         //A peer has sent us its init message, we reply with our init message and enter the SME state "Hello" by sending a hello message. The next step of the SME is processed in ConnectionHelloMessage.cs.
         public override async Task<(Connection.EState, Connection.ESubState)> NextServerStateAsync(Connection connection, ILogger? logger = null)
         {
-            if (connection.State == Connection.EState.Disconnected || connection.State == Connection.EState.Connected)
+            if (connection.State == Connection.EState.WaitingForInit)
             {
                 //Send an init answer back to the peer
-                await new InitMessage().Send(connection.WebSocket, logger).ConfigureAwait(false);
+                //await new InitMessage().Send(connection.WebSocket, logger).ConfigureAwait(false);
+                await connection.SendMessageAsync(new InitMessage()).ConfigureAwait(false);
 
                 //We initalize our WaitForReadyTimer; if we do not receive a hello answer in time, we will abort the connection.
                 connection.StartWaitForReadyTimer();
-                await new ConnectionHelloMessage(ConnectionHelloPhaseType.ready, connection.WaitForReadyTimerValue).Send(connection.WebSocket, logger).ConfigureAwait(false);
+                //await new ConnectionHelloMessage(ConnectionHelloPhaseType.ready, connection.WaitForReadyTimerValue).Send(connection.WebSocket, logger).ConfigureAwait(false);
+                await connection.SendMessageAsync(new ConnectionHelloMessage(ConnectionHelloPhaseType.ready, connection.WaitForReadyTimerValue)).ConfigureAwait(false);
                 return (Connection.EState.WaitingForConnectionHello, Connection.ESubState.None);
             }
 
@@ -85,12 +87,13 @@ namespace EEBUS.SHIP.Messages
         //We receive an answer to the init message we sent in Client.cs, so we can enter the SME state "Hello" by sending a hello message. The next step of the SME is processed in ConnectionHelloMessage.cs.
         public override async Task<(Connection.EState, Connection.ESubState)> NextClientStateAsync(Connection connection, ILogger? logger = null)
         {
-            if (connection.State == Connection.EState.Disconnected || connection.State == Connection.EState.Connected)
+            if (connection.State == Connection.EState.WaitingForInit)
             {
                 //We initalize our WaitForReadyTimer; if we do not receive a hello answer in time, we will abort the connection.
                 connection.StartWaitForReadyTimer();
                 ConnectionHelloMessage message = new ConnectionHelloMessage(ConnectionHelloPhaseType.ready, SHIPMessageTimeout.T_HELLO_INIT);
-                await message.Send(connection.WebSocket, logger).ConfigureAwait(false);
+                //await message.Send(connection.WebSocket, logger).ConfigureAwait(false);
+                await connection.SendMessageAsync(message).ConfigureAwait(false);
 
                 return (Connection.EState.WaitingForConnectionHello, Connection.ESubState.None);
             }

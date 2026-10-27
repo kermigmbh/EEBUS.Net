@@ -43,14 +43,8 @@ namespace ConsoleDemo
 
             _manager.Start();
 
-            JsonObject localDevice = _manager.GetLocal();
-            Console.WriteLine("[EEBUS Demo]");
-            localDevice.TryGetPropertyValue("ski", out JsonNode? jsonNode);
-            string ski = string.Empty;
-            if (jsonNode != null)
-            {
-                ski = Regex.Replace(jsonNode.ToString(), @"\s+", "");   //remove whitespaces
-            }
+            var localDevice = _manager.GetLocalData();
+            string ski = localDevice.SKI.ToString();
             Console.WriteLine("Local SKI: " + ski + "\n");
             Console.WriteLine("Supported Commands:");
             Console.WriteLine("- remotes: prints all remote devices that were found through mdns");
@@ -125,7 +119,7 @@ namespace ConsoleDemo
 
         private void Read()
         {
-            var local = _manager?.GetLocal();
+            var local = _manager?.GetLocalData();
             if (local == null)
             {
                 Console.WriteLine("No local device found");
@@ -137,7 +131,7 @@ namespace ConsoleDemo
 
         private void PrintRemotes()
         {
-            JsonArray? remotes = _manager?.GetRemotes();
+            var remotes = _manager?.GetDiscoveredDevices();
             if (remotes != null)
             {
                 foreach (var remote in remotes)

@@ -21,6 +21,7 @@ namespace TestProject1.IntegrationTests
             }
 
             var message = formatter(state, exception);
+
             Console.WriteLine($"[{categoryName}] {logLevel}: {message}");
 
             if (exception is not null)

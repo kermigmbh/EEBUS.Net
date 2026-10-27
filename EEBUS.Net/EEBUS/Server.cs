@@ -30,6 +30,8 @@ namespace EEBUS
             //further processing takes place in the class InitMessage.cs
 			Logger?.LogDebug("Starting Server for ski {serverSki}", _ski);
 
+            this.state = EState.WaitingForInit;
+
             //Initialize the heartbeat timer to send a heartbeat message every 4 seconds. The heartbeat message will be sent to the remote device to keep the connection alive and to check if the remote device is still responsive.
             //Currently, this is only relevant for the use cases LPC and LPP
             var heart = new HeartBeatTask();
@@ -47,10 +49,10 @@ namespace EEBUS
 
                     (this.state, this.subState, string error) = await message.ServerTestAsync(this.state, this).ConfigureAwait(false);
 
-                    if (this.state == EState.Stopped && !string.IsNullOrEmpty(error))
-                        throw new Exception(error);
                     if (!string.IsNullOrEmpty(error))
-                        Logger?.LogError(error);
+                        Logger?.LogWarning("Server message test failed: {error}", error);
+                    if (this.state == EState.Stopped)
+                        break;
 
                     EState oldState = this.state;
                     (this.state, this.subState) = await message.NextServerStateAsync(this, Logger).ConfigureAwait(false);
@@ -66,44 +68,57 @@ namespace EEBUS
                     ResolvePendingRequest(message);
 
                     if (this.state == EState.Stopped)
-                        throw new Exception("Communication stopped!");
+                        break;
+                }
+
+                if (this.state == EState.Stopped)
+                {
+                    Logger?.LogDebug("Server connection stopped.");
+                    if (null != this.Remote)
+                    {
+                        this.Remote.SetServerState(EState.Stopped);
+                        this.Remote.LastDisconnectUtc = DateTime.UtcNow;
+                    }
                 }
             }
             catch (TimeoutException ex)
             {
                 Logger?.LogWarning(ex.Message);
                 await OnReceiveTimeoutAsync().ConfigureAwait(false);
-                if (null != this.Remote)
-                {
-                    this.Remote.SetServerState(EState.Stopped);
-                    this.Remote.LastDisconnectUtc = DateTime.UtcNow;
-                }
+            }
+            catch (OperationCanceledException) when (this.state == EState.Stopped || cancellationToken.IsCancellationRequested)
+            {
+                //Regular end of the connection: the peer sent a WebSocket close frame or we are shutting down
+                Logger?.LogDebug("Server connection closed.");
             }
             catch (Exception ex)
             {
-                if (null != this.Remote)
-                {
-                    this.Remote.SetServerState(EState.Stopped);
-                    this.Remote.LastDisconnectUtc = DateTime.UtcNow;
-                }
-
                 Logger?.LogError(ex, "Error during Server.Do");
             }
             finally
             {
+                if (null != this.Remote)
+                {
+                    this.Remote.SetServerState(EState.Stopped);
+                    this.Remote.LastDisconnectUtc = DateTime.UtcNow;
+                }
                 // Dispose the timer (Change(Infinite, Infinite) only stops further
                 // callbacks; the underlying TimerQueueTimer is only released by Dispose).
                 try { beat.Dispose(); } catch { }
             }
 
             await CloseAsync().ConfigureAwait(false);
+            await OnConnectionClosed().ConfigureAwait(false);
         }
 
         public override async Task CloseAsync()
         {
             try
             {
-                await this.ws.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Closing!", CancellationToken.None).ConfigureAwait(false);
+                if (this.ws.State == WebSocketState.Open || this.ws.State == WebSocketState.CloseReceived)
+                {
+                    await this.ws.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Closing!", CancellationToken.None).ConfigureAwait(false);
+                }
             }
             catch (Exception ex)
             {
