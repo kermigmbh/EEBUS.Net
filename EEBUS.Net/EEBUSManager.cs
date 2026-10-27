@@ -948,14 +948,21 @@ namespace EEBUS.Net
         }
         public DeviceData? GetRemoteData(string ski)
         {
-            RemoteDevice? remote = _devices.GetRemotes().FirstOrDefault(r => r.SKI.ToString() == ski);
-            if (remote == null) return null;
+
+            /* The remote devices get garbage collected after some time. After we connected to a device/a device connected to us, it can be that it does not announce itself to us via mdns anymore.
+             * After 1 hour, the remote devices get garbage collected and we cannot find the remote in the devices list anymore. Thus, we check for the connection and get the remote from there.
+                RemoteDevice? remote = _devices.GetRemotes().FirstOrDefault(r => r.SKI.ToString() == ski);
+                if (remote == null) return null;
+            */
 
             if (!_connections.TryGetValue(ski, out Connection? connection))
             {
                 return null;
             }
-            if (connection.WebSocket.State != WebSocketState.Open) return null;    //remote does not have an active connection anymore
+            if (!IsConnectionAlive(connection)) return null;    //remote does not have an active connection anymore
+
+            RemoteDevice? remote = connection.Remote;
+            if (remote == null) return null;
 
             MeasurementsData? measurements = null;
             AddressType? address = remote.GetFeatureAddress("Measurement", true);
