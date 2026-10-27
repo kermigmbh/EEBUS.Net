@@ -362,10 +362,10 @@ namespace EEBUS.Net
             Debug.WriteLine("[EEBUS] Starting Reconnect Loop");
             while (!cancellationToken.IsCancellationRequested)
             {
-                await Task.Delay(ReconnectLoopIntervalMs, cancellationToken);
-
                 try
                 {
+                    await Task.Delay(ReconnectLoopIntervalMs, cancellationToken);
+
                     _logger?.LogDebug("[EEBUS] Running Reconnect Loop. Current connections: " + _connections.Count);
                     foreach (var device in _devices.GetRemotes())
                     {
@@ -794,6 +794,7 @@ namespace EEBUS.Net
             _devices.Local.RemoveUseCaseEvents(this.notifyEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.monitoringUseCasesEventHandler);
             _devices.Local.RemoveUseCaseEvents(this.deviceConnectionStatusEventHandler);
+            _devices.Local.RemoveUseCaseEvents(_messageEventHandler);
 
             lpcStateMachine.Dispose();
             lppStateMachine.Dispose();
