@@ -116,7 +116,7 @@ namespace EEBUS.Net
                     connection.SendUseCaseDiscoveryRead();  //We only send the use case discovery read after the node discovery is completed, as we need the node information first (entities, features)
                 }
 
-                await EEBusManager.RaiseDeviceConnectionStatusChangedAsync(connection.Remote, connection.ConnectionStatus);
+                await EEBusManager.PublishStatusChangesAsync().ConfigureAwait(false);
             }
         }
 
@@ -286,6 +286,10 @@ namespace EEBUS.Net
         private X509Certificate2 _cert;
         public Devices Devices => _devices;
         private ILogger? _logger;
+        private const int StatusLoopIntervalMs = 2000;
+
+        //Only touched by the status loop. Contains only SKIs whose last published status was not Unknown
+        private readonly ConcurrentDictionary<string, (DeviceConnectionStatus Status, RemoteDevice? Remote)> _lastPublished = new();
 
         public EEBUSManager(Settings settings, ServiceDiscovery? serviceDiscovery = null, ILogger? logger = null)
         {
@@ -350,6 +354,7 @@ namespace EEBUS.Net
             {
                 _ = Task.Run(() => ReconnectLoopAsync(_cts.Token));
             }
+            _ = Task.Run(() => DeviceConnectionStatusLoop(_cts.Token));
         }
 
         /// <summary>
@@ -370,9 +375,6 @@ namespace EEBUS.Net
                     foreach (var device in _devices.GetRemotes())
                     {
                         string ski = device.SKI.ToString();
-                        bool cancellationRequested = cancellationToken.IsCancellationRequested;
-                        bool isTrusted = IsTrusted(ski);
-                        bool isAlive = IsConnectionAlive(GetConnection(ski));
                         if (cancellationToken.IsCancellationRequested || !IsTrusted(ski) || IsConnectionAlive(GetConnection(ski)))
                             continue;
 
@@ -387,6 +389,62 @@ namespace EEBUS.Net
                 }
             }
         }
+
+        private async Task DeviceConnectionStatusLoop(CancellationToken cancellationToken)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    await Task.Delay(StatusLoopIntervalMs, cancellationToken).ConfigureAwait(false);
+                    await PublishStatusChangesAsync().ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Error in status loop");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Raises OnDeviceConnectionStatusChanged for every SKI whose status changed since the last run.
+        /// Single caller, so events are serialized and always reflect the current state.
+        /// </summary>
+        private async Task PublishStatusChangesAsync()
+        {
+            //_connections: currently connected devices; _lastPublished: devices last reported as online (may have disconnected since)
+            List<string> connections = _connections.Keys.Union(_lastPublished.Keys).ToList();
+            foreach (string ski in connections)
+            {
+                DeviceConnectionStatus status = GetConnectionStatus(ski);
+                bool wasPublished = _lastPublished.TryGetValue(ski, out var last);
+                DeviceConnectionStatus lastStatus = wasPublished ? last.Status : DeviceConnectionStatus.Unknown;
+
+                if (status == lastStatus)   //No status change since last run -> nothing to do
+                    continue;
+
+                RemoteDevice? remote;
+                if (status == DeviceConnectionStatus.Unknown)
+                {
+                    //Connection is gone, use the remote stored when it was last online
+                    remote = last.Remote;
+                    _lastPublished.TryRemove(ski, out _);
+                }
+                else
+                {
+                    remote = GetConnection(ski)?.Remote ?? last.Remote;
+                    _lastPublished[ski] = (status, remote);
+                }
+
+                await RaiseDeviceConnectionStatusChangedAsync(remote, status).ConfigureAwait(false);
+            }
+        }
+
+
         private bool CanEvaluateShipPairingRequests()
         {
             // Snapshot Paired/Remote under the Devices mutex to avoid racing
@@ -529,7 +587,7 @@ namespace EEBUS.Net
         /// Sends a SHIP close message (if the connection is in the connected state), closes and disposes the websocket and
         /// optionally raises <see cref="OnDeviceConnectionStatusChanged"/>. The connection must already have been removed from the bookkeeping.
         /// </summary>
-        private async Task CloseConnectionAsync(Connection connection, bool notifyConnectionStatus, ConnectionCloseReasonType reason = ConnectionCloseReasonType.unspecific)
+        private async Task CloseConnectionAsync(Connection connection, ConnectionCloseReasonType reason = ConnectionCloseReasonType.unspecific)
         {
             string ski = connection.Remote?.SKI.ToString() ?? string.Empty;
             WebSocket? ws = connection.WebSocket;
@@ -558,10 +616,6 @@ namespace EEBUS.Net
             {
                 //We need to dispose the websocket in any case, e.g. it can be that we send a close message, but we do not receive one from the remote partner. In this case, we must close the connection
                 await connection.CloseAsync();
-                if (notifyConnectionStatus)
-                {
-                    await RaiseDeviceConnectionStatusChangedAsync(connection.Remote, DeviceConnectionStatus.Unknown);
-                }
 
                 try
                 {
@@ -601,7 +655,7 @@ namespace EEBUS.Net
 
                     string reason = IsConnectionAlive(existing) ? "local SKI is bigger" : "existing connection is stale";
                     _logger?.LogDebug("Double connection with remote device " + newConnection.Remote.Name + " detected, closing connection with ski " + remoteSki + " (" + reason + ")");
-                    await CloseConnectionAsync(existing, notifyConnectionStatus: false).ConfigureAwait(false);
+                    await CloseConnectionAsync(existing).ConfigureAwait(false);
                     continue;
                 }
 
@@ -613,7 +667,7 @@ namespace EEBUS.Net
                 if (_duplicateConnections.TryRemove(remoteSki, out Connection? previousDuplicate) && previousDuplicate != null)
                 {
                     //more than two connections to the same node - close the oldest one, the peer should have dealt with it already
-                    await CloseConnectionAsync(previousDuplicate, notifyConnectionStatus: false).ConfigureAwait(false);
+                    await CloseConnectionAsync(previousDuplicate).ConfigureAwait(false);
                 }
                 _duplicateConnections[remoteSki] = existing;
 
@@ -649,20 +703,20 @@ namespace EEBUS.Net
                 if (!IsConnectionAlive(older))
                 {
                     //The peer closed the older connection as expected, or it is not pingable anymore
-                    await CloseConnectionAsync(older, notifyConnectionStatus: false).ConfigureAwait(false);
+                    await CloseConnectionAsync(older).ConfigureAwait(false);
                     return;
                 }
 
                 if (!IsConnectionAlive(GetConnection(ski)))
                 {
                     //The peer kept the older connection instead (or the newer one is not pingable anymore); make the older one the active one again
-                    await PromoteDuplicateAsync(ski, older).ConfigureAwait(false);
+                    await TryPromoteDuplicateAsync(ski).ConfigureAwait(false);
                     return;
                 }
 
                 //Both connections are still pingable: the peer did not resolve the double connection within the timeout -> close the older one
                 _logger?.LogDebug("Peer did not resolve double connection to ski {ski} within {timeout} ms, closing older connection", ski, DoubleConnectionTimeoutMs);
-                await CloseConnectionAsync(older, notifyConnectionStatus: false).ConfigureAwait(false);
+                await CloseConnectionAsync(older).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -703,36 +757,52 @@ namespace EEBUS.Net
 
             if (!IsConnectionAlive(older))
             {
-                await CloseConnectionAsync(older, notifyConnectionStatus: false).ConfigureAwait(false);
+                await CloseConnectionAsync(older).ConfigureAwait(false);
                 return false;
             }
 
-            return await PromoteDuplicateAsync(ski, older).ConfigureAwait(false);
-        }
-        /// <summary>
-        /// Makes <paramref name="older"/> (already removed from the duplicate side table and alive) the active connection for <paramref name="ski"/>.
-        /// A dead active connection is removed and closed first. If a live connection is registered in the meantime, <paramref name="older"/> is closed instead.
-        /// After promotion the last known status of the promoted connection is re-announced, since a concurrently handled disconnect of the
-        /// replaced connection may already have reported <see cref="DeviceConnectionStatus.Unknown"/>.
-        /// </summary>
-        private async Task<bool> PromoteDuplicateAsync(string ski, Connection older)
-        {
             if (GetConnection(ski) is Connection current && !IsConnectionAlive(current)
                 && _connections.TryRemove(new KeyValuePair<string, Connection>(ski, current)))
             {
-                await CloseConnectionAsync(current, notifyConnectionStatus: false).ConfigureAwait(false);
+                await CloseConnectionAsync(current).ConfigureAwait(false);
             }
 
             if (!_connections.TryAdd(ski, older))
             {
-                await CloseConnectionAsync(older, notifyConnectionStatus: false).ConfigureAwait(false);
+                await CloseConnectionAsync(older).ConfigureAwait(false);
                 return false;
             }
 
             _logger?.LogDebug("Peer kept the older connection to ski {ski}, promoting it", ski);
-            await RaiseDeviceConnectionStatusChangedAsync(older.Remote, older.ConnectionStatus);
             return true;
         }
+
+
+
+        ///// <summary>
+        ///// Makes <paramref name="older"/> (already removed from the duplicate side table and alive) the active connection for <paramref name="ski"/>.
+        ///// A dead active connection is removed and closed first. If a live connection is registered in the meantime, <paramref name="older"/> is closed instead.
+        ///// After promotion the last known status of the promoted connection is re-announced, since a concurrently handled disconnect of the
+        ///// replaced connection may already have reported <see cref="DeviceConnectionStatus.Unknown"/>.
+        ///// </summary>
+        //private async Task<bool> PromoteDuplicateAsync(string ski, Connection older)
+        //{
+        //    if (GetConnection(ski) is Connection current && !IsConnectionAlive(current)
+        //        && _connections.TryRemove(new KeyValuePair<string, Connection>(ski, current)))
+        //    {
+        //        await CloseConnectionAsync(current).ConfigureAwait(false);
+        //    }
+
+        //    if (!_connections.TryAdd(ski, older))
+        //    {
+        //        await CloseConnectionAsync(older).ConfigureAwait(false);
+        //        return false;
+        //    }
+
+        //    _logger?.LogDebug("Peer kept the older connection to ski {ski}, promoting it", ski);
+        //    await RaiseDeviceConnectionStatusChangedAsync(older.Remote, older.ConnectionStatus);
+        //    return true;
+        //}
         private static bool IsConnectionAlive(Connection? connection)
         {
             return connection != null
@@ -764,10 +834,7 @@ namespace EEBUS.Net
             if (_connections.TryRemove(new KeyValuePair<string, Connection>(ski, connection)))
             {
                 //If the peer (bigger SKI) closed the newer connection and kept the older one, promote the older one
-                if (await TryPromoteDuplicateAsync(ski).ConfigureAwait(false))
-                    return;
-
-                await RaiseDeviceConnectionStatusChangedAsync(connection.Remote, DeviceConnectionStatus.Unknown);
+                await TryPromoteDuplicateAsync(ski).ConfigureAwait(false);
             }
             else
             {
@@ -833,8 +900,10 @@ namespace EEBUS.Net
 
         public DeviceConnectionStatus GetConnectionStatus(string ski)
         {
-            return GetConnection(ski)?.ConnectionStatus ?? DeviceConnectionStatus.Unknown;
+            Connection? connection = GetConnection(ski);
+            return IsConnectionAlive(connection) ? connection!.ConnectionStatus : DeviceConnectionStatus.Unknown;
         }
+
         public string GetConnectionInfo(string ski)
         {
             Connection? connection = GetConnection(ski);
@@ -872,7 +941,6 @@ namespace EEBUS.Net
             long lppContractualNominalMax = 0;
 
             TimeSpan failsafeDuration = new();
-
             foreach (LoadControlLimitDataStructure data in local.GetDataStructures<LoadControlLimitDataStructure>())
             {
                 if (data.LimitDirection == "consume")
@@ -1104,13 +1172,13 @@ namespace EEBUS.Net
             if (_duplicateConnections.TryRemove(ski, out Connection? duplicate) && duplicate != null)
             {
                 found = true;
-                await CloseConnectionAsync(duplicate, notifyConnectionStatus: false, reason).ConfigureAwait(false);
+                await CloseConnectionAsync(duplicate, reason).ConfigureAwait(false);
             }
 
             if (_connections.TryRemove(ski, out Connection? connection) && connection != null)
             {
                 found = true;
-                await CloseConnectionAsync(connection, notifyConnectionStatus: true, reason).ConfigureAwait(false);
+                await CloseConnectionAsync(connection, reason).ConfigureAwait(false);
             }
 
             if (!found)

@@ -99,7 +99,7 @@ namespace EEBUS.SHIP.Messages
                 if (this.connectionHello.prolongationRequest == true)
                 {
                     //We have already granted 2 prolongation requests, so we abort the connection at this point
-                    await UpdateConnectionStatusAsync(connection, DeviceConnectionStatus.Aborted).ConfigureAwait(false);
+                    //await UpdateConnectionStatusAsync(connection, DeviceConnectionStatus.Aborted).ConfigureAwait(false);
                     await new ConnectionHelloMessage(ConnectionHelloPhaseType.aborted).Send(connection.WebSocket, logger).ConfigureAwait(false);
                     return (Connection.EState.Stopped, Connection.ESubState.None);
                 } else
@@ -110,7 +110,7 @@ namespace EEBUS.SHIP.Messages
 
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.aborted)
             {
-                await UpdateConnectionStatusAsync(connection, DeviceConnectionStatus.Aborted).ConfigureAwait(false);
+                //await UpdateConnectionStatusAsync(connection, DeviceConnectionStatus.Aborted).ConfigureAwait(false);
                 return (Connection.EState.Stopped, Connection.ESubState.None);
             }
 
@@ -182,7 +182,7 @@ namespace EEBUS.SHIP.Messages
                 if (this.connectionHello.prolongationRequest == true)
                 {
                     //We have already granted 2 prolongation requests, so we abort the connection at this point
-                    await UpdateConnectionStatusAsync(connection, DeviceConnectionStatus.Aborted).ConfigureAwait(false);
+                    //await UpdateConnectionStatusAsync(connection, DeviceConnectionStatus.Aborted).ConfigureAwait(false);
                     await new ConnectionHelloMessage(ConnectionHelloPhaseType.aborted).Send(connection.WebSocket, logger).ConfigureAwait(false);
                     return (Connection.EState.Stopped, Connection.ESubState.None);
                 }
@@ -194,7 +194,7 @@ namespace EEBUS.SHIP.Messages
 
             if (connection.State == Connection.EState.WaitingForConnectionHello && this.connectionHello.phase == ConnectionHelloPhaseType.aborted)
             {
-                await UpdateConnectionStatusAsync(connection, DeviceConnectionStatus.Aborted).ConfigureAwait(false);
+                //await UpdateConnectionStatusAsync(connection, DeviceConnectionStatus.Aborted).ConfigureAwait(false);
                 return (Connection.EState.Stopped, Connection.ESubState.None);
             }
 

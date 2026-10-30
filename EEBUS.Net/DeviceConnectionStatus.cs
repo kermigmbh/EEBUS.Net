@@ -12,6 +12,6 @@ namespace EEBUS.Net
         Unknown = 0,
         NodeDiscoveryCompleted = 1,
         UseCaseDiscoveryCompleted = 2,
-        Aborted = 3,
+       // Aborted = 3,
     }
 }
