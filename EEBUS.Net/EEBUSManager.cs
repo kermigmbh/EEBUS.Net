@@ -120,9 +120,6 @@ namespace EEBUS.Net
             }
         }
 
-
-
-
         private class MonitoringUseCasesEventHandler(EEBUSManager eebusManager) : MonitoringUseCaseEvents
         {
             public async Task DataUpdateMeasurementsAsync(List<MeasurementData.MeasurementData> measurementData, string ski)
@@ -948,18 +945,21 @@ namespace EEBUS.Net
             long lppContractualNominalMax = 0;
 
             TimeSpan failsafeDuration = new();
+
+            EffectiveLimit lpcEffectiveLimit = lpcStateMachine.GetEffectiveLimit();
+            EffectiveLimit lppEffectiveLimit = lppStateMachine.GetEffectiveLimit();
             foreach (LoadControlLimitDataStructure data in local.GetDataStructures<LoadControlLimitDataStructure>())
             {
                 if (data.LimitDirection == "consume")
                 {
                     lpcActive = data.LimitActive;
-                    lpcLimit = ScaledNumber.ToLong(data.Number, data.Scale);
+                    lpcLimit = lpcEffectiveLimit.Value; //use the effective limit here, not the limit from the data structure (if we are in failsafe mode, we want the failsafe limit to be reported here)
                     lpcDuration = data.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(data.EndTime);
                 }
                 else if (data.LimitDirection == "produce")
                 {
                     lppActive = data.LimitActive;
-                    lppLimit = ScaledNumber.ToLong(data.Number, data.Scale);
+                    lppLimit = lppEffectiveLimit.Value; //use the effective limit here, not the limit from the data structure (if we are in failsafe mode, we want the failsafe limit to be reported here)
                     lppDuration = data.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(data.EndTime);
                 }
             }
