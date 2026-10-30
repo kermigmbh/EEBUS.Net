@@ -91,7 +91,7 @@ namespace EEBUS.Net
             /// </summary>
             /// <param name="connection"></param>
             /// <returns></returns>
-            public async Task DeviceConnectionStatusUpdatedAsync(Connection connection)
+            public Task DeviceConnectionStatusUpdatedAsync(Connection connection)
             {
                 //Usually, we have this flow: Unknown -> NodeDiscoveryCompleted -> UseCaseDiscoveryCompleted. When the use case discovery is completed, we assume the device is fully connected
 
@@ -116,7 +116,7 @@ namespace EEBUS.Net
                     connection.SendUseCaseDiscoveryRead();  //We only send the use case discovery read after the node discovery is completed, as we need the node information first (entities, features)
                 }
 
-                await EEBusManager.PublishStatusChangesAsync().ConfigureAwait(false);
+                return Task.CompletedTask;
             }
         }
 
@@ -440,7 +440,14 @@ namespace EEBUS.Net
                     _lastPublished[ski] = (status, remote);
                 }
 
-                await RaiseDeviceConnectionStatusChangedAsync(remote, status).ConfigureAwait(false);
+                try
+                {
+                    await RaiseDeviceConnectionStatusChangedAsync(remote, status).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Error in OnDeviceConnectionStatusChanged handler for device {ski} ({status})", ski, status);
+                }
             }
         }
 
