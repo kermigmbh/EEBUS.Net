@@ -17,8 +17,8 @@ namespace EEBUS
 	/// </summary>
 	public class Client : Connection
 	{
-		public Client(HostString host, WebSocket ws, Devices devices, RemoteDevice remoteDevice, ILogger? logger = null)
-			: base(host, ws, devices, logger)
+		public Client(HostString host, WebSocket ws, Devices devices, RemoteDevice remoteDevice, TimeProvider timeProvider, ILogger? logger = null)
+			: base(host, ws, devices, timeProvider, logger)
 		{
 			this.Remote = remoteDevice;
 		}
@@ -108,11 +108,13 @@ namespace EEBUS
 			this.subState = ESubState.None;
 
             //Start the Ship Message Exchange (SME) by sending the InitMessage to the remote device. Once the SME is finished, the connection state will be set to Connected and the heartbeat timer will be started.
-            InitMessage initMessage = new InitMessage();
+			InitMessage initMessage = new InitMessage();
 			await initMessage.Send(this.ws, Logger).ConfigureAwait(false);
+            if (null != this.Remote)
+                this.Remote.SetClientState(this.state);
 
             //Initialize the heartbeat timer to send a heartbeat message every 4 seconds. The heartbeat message will be sent to the remote device to keep the connection alive and to check if the remote device is still responsive.
-			//Currently, this is only relevant for the use cases LPC and LPP
+            //Currently, this is only relevant for the use cases LPC and LPP
             var heart = new HeartBeatTask();
 			Timer beat = new System.Threading.Timer(arg => heart.Beat(arg), this, 4000, 4000);
 

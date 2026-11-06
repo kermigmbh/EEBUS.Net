@@ -122,11 +122,13 @@ namespace EEBUS
        
 
         protected ILogger? Logger { get; private set; }
-        public Connection(HostString host, WebSocket ws, Devices devices, ILogger? logger = null)
+        protected TimeProvider TimeProvider { get; }
+        public Connection(HostString host, WebSocket ws, Devices devices, TimeProvider timeProvider, ILogger? logger = null)
         {
             this.host = host;
             this.ws = ws;
             this.devices = devices;
+            TimeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
             Logger = logger;
 
             this.WaitingMessages = new(this, Logger);
@@ -140,6 +142,12 @@ namespace EEBUS
         public EState State { get { return this.state; } }
 
         public ESubState SubState { get { return this.subState; } }
+
+        /// <summary>
+        /// True if the websocket is open and the SHIP state machine has not reached a terminal state.
+        /// </summary>
+        public bool IsAlive => this.ws?.State == WebSocketState.Open
+            && this.state is not (EState.Disconnected or EState.Stopped or EState.ErrorOrTimeout);
 
 
         private Devices devices;
@@ -298,11 +306,12 @@ namespace EEBUS
             }
         }
 
-        // Absolute deadline of the hello phase (T_hello_init, extended by T_hello_inc on
-        // each granted prolongation). Null when not in the hello phase.
-        // Based on the monotonic Environment.TickCount64 (ms since boot) rather than
+        // Wait-For-Ready-Timer of the hello phase: start timestamp and total duration (T_hello_init,
+        // extended by T_hello_inc on each granted prolongation). Null when not in the hello phase.
+        // Based on the monotonic TimeProvider timestamp rather than
         // DateTime.UtcNow, so that system clock adjustments cannot shorten or extend the timer.
-        private long? _helloDeadlineTicks;
+        private long? _helloStartTimestamp;
+        private TimeSpan _helloDuration;
 
         /// <summary>
         /// Maximum time (ms) we wait for the next message in the given state, or null if
@@ -313,7 +322,7 @@ namespace EEBUS
             switch (state)
             {
                 case EState.WaitingForConnectionHello:
-                    if (_helloDeadlineTicks is null)
+                    if (_helloStartTimestamp is null)
                     {
                         Logger?.LogWarning("Wait-For-Ready-Timer not started in state {state}, falling back to T_hello_init", state);
                         return SHIPMessageTimeout.T_HELLO_INIT;
@@ -344,9 +353,10 @@ namespace EEBUS
         /// <param name="durationMs">Timer duration in ms, defaults to T_hello_init.</param>
         internal void StartWaitForReadyTimer(int durationMs = SHIPMessageTimeout.T_HELLO_INIT)
         {
-            if (_helloDeadlineTicks is null)
+            if (_helloStartTimestamp is null)
             {
-                _helloDeadlineTicks = Environment.TickCount64 + durationMs;
+                _helloStartTimestamp = TimeProvider.GetTimestamp();
+                _helloDuration = TimeSpan.FromMilliseconds(durationMs);
                 Logger?.LogDebug("Wait-For-Ready-Timer started, {duration} ms", durationMs);
             }
         }
@@ -359,10 +369,10 @@ namespace EEBUS
         {
             get
             {
-                if (_helloDeadlineTicks is null)
+                if (_helloStartTimestamp is null)
                     return null;
-                long remaining = _helloDeadlineTicks.Value - Environment.TickCount64;
-                return (uint)Math.Clamp(remaining, 0, uint.MaxValue);
+                TimeSpan remaining = _helloDuration - TimeProvider.GetElapsedTime(_helloStartTimestamp.Value);
+                return (uint)Math.Clamp((long)remaining.TotalMilliseconds, 0, uint.MaxValue);
             }
         }
 
@@ -371,7 +381,7 @@ namespace EEBUS
         /// </summary>
         internal void StopWaitForReadyTimer()
         {
-            _helloDeadlineTicks = null;
+            _helloStartTimestamp = null;
             Logger?.LogDebug("Wait-For-Ready-Timer stopped");
         }
 
@@ -382,9 +392,9 @@ namespace EEBUS
         /// <param name="incrementMs">Increment in ms, defaults to T_hello_inc.</param>
         internal void ProlongHelloDeadline(int incrementMs = SHIPMessageTimeout.T_HELLO_INC)
         {
-            if (_helloDeadlineTicks != null)
+            if (_helloStartTimestamp != null)
             {
-                _helloDeadlineTicks += incrementMs;
+                _helloDuration += TimeSpan.FromMilliseconds(incrementMs);
                 Logger?.LogDebug("Wait-For-Ready-Timer prolonged by {increment} ms, {remaining} ms remaining", incrementMs, WaitForReadyTimerValue);
             }
         }
@@ -399,7 +409,7 @@ namespace EEBUS
             if (timeout is null)
                 return await ReceiveAsync(cancellationToken).ConfigureAwait(false);
 
-            using CancellationTokenSource timeoutCts = new CancellationTokenSource(timeout.Value);
+            using CancellationTokenSource timeoutCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeout.Value), TimeProvider);
             using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
 
             try

@@ -4,6 +4,7 @@ using EEBUS.Net;
 using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.Net.Events;
 using System.Diagnostics;
+using System.IO.Abstractions;
 using System.Net.Security;
 using System.Runtime.ConstrainedExecution;
 using System.Security.Cryptography;
@@ -28,7 +29,7 @@ namespace ConsoleDemo
                 return true;
             };
 
-            _manager = new EEBUSManager(settings);
+            _manager = new EEBUSManager(settings, fileSystem: new FileSystem());
 
 
 
