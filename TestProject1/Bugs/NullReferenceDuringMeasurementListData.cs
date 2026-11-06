@@ -131,8 +131,8 @@ Client connection closed with error. | Exception: System.NullReferenceException:
         {
             ILogger manager1Logger = GetLogger("CEM", minLogLevel: LogLevel.Debug);
             //ILogger manager2Logger = GetLogger("Other");
-            using EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(), logger: manager1Logger);
-            using EEBUSManager manager2 = new EEBUSManager(Setup.GetSettingsFromDiscoveryData(NodeManagementDetailedDiscoveryData, NodeManagementUseCaseData)/*, logger: manager2Logger*/);
+            using EEBUSManager manager1 = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetCEMSettings(), logger: manager1Logger);
+            using EEBUSManager manager2 = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetSettingsFromDiscoveryData(NodeManagementDetailedDiscoveryData, NodeManagementUseCaseData)/*, logger: manager2Logger*/);
 
             await StartAndConnectManagersAsync(manager1, manager2);
             await Task.Delay(10_000);

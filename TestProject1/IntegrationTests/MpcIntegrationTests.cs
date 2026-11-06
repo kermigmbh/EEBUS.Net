@@ -36,8 +36,8 @@ namespace TestProject1.IntegrationTests
                 AcFrequency = 230
             };
 
-            using EEBUSManager eMeterMonitorManager = new EEBUSManager(Setup.GetEMeterMonitorSettings(), logger: eMeterMonitorLogger);
-            using EEBUSManager eMeterManager = new EEBUSManager(Setup.GetEMeterSettings(initMeasurements), logger: eMeterLogger);
+            using EEBUSManager eMeterMonitorManager = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetEMeterMonitorSettings(), logger: eMeterMonitorLogger);
+            using EEBUSManager eMeterManager = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetEMeterSettings(initMeasurements), logger: eMeterLogger);
             string emeterMonitorSki = eMeterMonitorManager.GetLocalData().SKI;
             string emeterSki = eMeterManager.GetLocalData().SKI;
 

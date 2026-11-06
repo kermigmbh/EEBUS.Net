@@ -12,6 +12,7 @@ namespace TestProject1.IntegrationTests
 {
     public static class Setup
     {
+
         //_nodeNumber ensures we do not create the same node multiple times, which could influence the test results
         private static int _nodeNumber = 0;
         private static object _lock = new object();

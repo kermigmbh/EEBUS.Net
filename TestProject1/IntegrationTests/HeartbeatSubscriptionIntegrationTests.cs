@@ -1,4 +1,4 @@
-using EEBUS;
+﻿using EEBUS;
 using EEBUS.Messages;
 using EEBUS.Net;
 using EEBUS.Net.EEBUS.Models.Data;
@@ -19,8 +19,8 @@ namespace TestProject1.IntegrationTests
         {
             ILogger cemLogger = GetLogger("CEM");
             ILogger controlBoxLogger = GetLogger("ControlBox");
-            using EEBUSManager cemManager = new EEBUSManager(Setup.GetCEMSettings(), logger: cemLogger);
-            using EEBUSManager controlBoxManager = new EEBUSManager(Setup.GetControlBoxWithMultipleCEMEntitiesSettings(), logger: controlBoxLogger);
+            using EEBUSManager cemManager = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetCEMSettings(), logger: cemLogger);
+            using EEBUSManager controlBoxManager = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetControlBoxWithMultipleCEMEntitiesSettings(), logger: controlBoxLogger);
             string cemSki = cemManager.GetLocalData().SKI;
             string controlBoxSki = controlBoxManager.GetLocalData().SKI;
 

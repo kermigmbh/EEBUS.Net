@@ -91,7 +91,7 @@ namespace TestProject1
             var devices = new Devices();
             devices.GetOrCreateLocal(GetSkiBytes(localSki), GetDeviceSettings());
             var remoteDevice = devices.GetOrCreateRemote(remoteName, remoteSki, string.Empty, remoteName);
-            var client = new Client(default, default, devices, remoteDevice);
+            var client = new Client(default, default, devices, remoteDevice, TimeProvider.System);
             return client;
         }
 

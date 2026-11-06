@@ -17,8 +17,8 @@ namespace EEBUS
     {
         private readonly string _ski;
 
-        public Server(string ski, HostString host, WebSocket ws, Devices devices, ILogger? logger = null)
-            : base(host, ws, devices, logger)
+        public Server(string ski, HostString host, WebSocket ws, Devices devices, TimeProvider timeProvider, ILogger? logger = null)
+            : base(host, ws, devices, timeProvider, logger)
         {
             this._ski = ski ?? string.Empty;
             this.Remote = devices.GetRemotes().FirstOrDefault(r => r.SKI.ToString() == ski);

@@ -21,9 +21,9 @@ namespace TestProject1.IntegrationTests
         {
             ILogger eMeterMonitorLogger = GetLogger("E-MeterMonitor");
             ILogger gcpLogger = GetLogger("GridConnectionPoint");
-
-            using EEBUSManager eMeterMonitorManager = new EEBUSManager(Setup.GetEMeterMonitorSettings(), logger: eMeterMonitorLogger);
-            using EEBUSManager gcpManager = new EEBUSManager(Setup.GetGridConnectionPointSettings(pvCurtailmentLimitFactor: 100), logger: gcpLogger);
+            
+            using EEBUSManager eMeterMonitorManager = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetEMeterMonitorSettings(), logger: eMeterMonitorLogger);
+            using EEBUSManager gcpManager = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetGridConnectionPointSettings(pvCurtailmentLimitFactor: 100), logger: gcpLogger);
 
             await StartAndConnectManagersAsync(eMeterMonitorManager, gcpManager);
 
@@ -56,8 +56,8 @@ namespace TestProject1.IntegrationTests
                 AcFrequency = 230
             };
 
-            using EEBUSManager eMeterMonitorManager = new EEBUSManager(Setup.GetEMeterMonitorSettings(), logger: eMeterMonitorLogger);
-            using EEBUSManager gcpManager = new EEBUSManager(Setup.GetGridConnectionPointSettings(initMeasurements), logger: gcpLogger);
+            using EEBUSManager eMeterMonitorManager = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetEMeterMonitorSettings(), logger: eMeterMonitorLogger);
+            using EEBUSManager gcpManager = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetGridConnectionPointSettings(initMeasurements), logger: gcpLogger);
 
             await StartAndConnectManagersAsync(eMeterMonitorManager, gcpManager);
 

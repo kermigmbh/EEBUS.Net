@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.IO.Abstractions;
 using System.Net;
 using System.Net.Security;
 using System.Net.WebSockets;
@@ -39,13 +40,17 @@ namespace EEBUS
         public Func<Server, Task>? OnConnectionIncoming;
 
         private Settings _settings;
+        private readonly IFileSystem _fileSystem;
+        private readonly TimeProvider _timeProvider;
 
         public Func<NewConnectionValidationEventArgs, bool>? OnNewConnectionValidation { get; set; } = (NewConnectionValidationEventArgs args) => true;
 
-        public SHIPListener(Devices devices, Settings settings, ILogger? logger = null)
+        public SHIPListener(Devices devices, Settings settings, IFileSystem fileSystem, TimeProvider timeProvider, ILogger? logger = null)
         {
             this.devices = devices;
             _settings = settings;
+            _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
+            _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
             _logger = logger;
         }
 
@@ -142,7 +147,7 @@ namespace EEBUS
             // ConfigureHttpsDefaults and OnAuthenticate would call GenerateCert
             // per TLS handshake - hitting the disk, taking the generator's static
             // lock and leaking a fresh X509Certificate2 native handle every time.
-            _serverCertificate ??= CertificateGenerator.GenerateCert(_settings.BasePath, _settings.Certificate);
+            _serverCertificate ??= CertificateGenerator.GenerateCert(_fileSystem, _settings.BasePath, _settings.Certificate);
             var serverCertificate = _serverCertificate;
 
             var builder = WebApplication.CreateEmptyBuilder(new WebApplicationOptions());
@@ -237,7 +242,7 @@ namespace EEBUS
                         return;
                     }
 
-                    Server server = new Server(ski.ToString(), httpContext.Request.Host, socket, this.devices, _logger);
+                    Server server = new Server(ski.ToString(), httpContext.Request.Host, socket, this.devices, _timeProvider, _logger);
                     if (OnConnectionIncoming != null)
                     {
                         await OnConnectionIncoming(server).ConfigureAwait(false);

@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO.Abstractions.TestingHelpers;
 using System.Net.WebSockets;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -16,15 +17,24 @@ using Xunit.Abstractions;
 
 namespace TestProject1.IntegrationTests
 {
-    public class EebusIntegrationTests
+    public class EebusIntegrationTests : IDisposable
     {
         private readonly ITestOutputHelper _output;
         private readonly ILogger _defaultLogger;
+
+        /// <summary>In-memory filesystem owned by the current test instance, so parallel tests never share certificate files.</summary>
+        protected MockFileSystem FileSystem { get; } = new MockFileSystem();
 
         public EebusIntegrationTests(ITestOutputHelper output)
         {
             _output = output;
             _defaultLogger = GetLogger("Log");
+        }
+
+        public virtual void Dispose()
+        {
+            foreach (string file in FileSystem.AllFiles.ToList())
+                FileSystem.RemoveFile(file);
         }
 
         protected void Log(string message, [CallerMemberName] string testName = "")
