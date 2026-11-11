@@ -180,7 +180,7 @@ namespace TestProject1
                 Entities = [new EntitySettings { Type = "DeviceInformation" }]
             });
             var remoteDevice = devices.GetOrCreateRemote("TestRemote", DefaultRemoteSki, string.Empty, "TestRemote");
-            Connection connectionWithoutFeature = new Client(default, default, devices, remoteDevice);
+            Connection connectionWithoutFeature = new Client(default, default, devices, remoteDevice, TimeProvider.System);
 
             // Manually add a data structure without registering the ElectricalConnection server feature
             var dataStructure = new ElectricalConnectionCharacteristicDataStructure("contractualConsumptionNominalMax", 5000, 0);

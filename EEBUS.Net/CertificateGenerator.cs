@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.IO.Abstractions;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -9,43 +10,42 @@ namespace EEBUS
 	{
 		private static object Mutex = new();
 
-		public static X509Certificate2 GenerateCert(string basePath, string subject )
+		public static X509Certificate2 GenerateCert(IFileSystem fileSystem, string basePath, string subject )
 		{
+			ArgumentNullException.ThrowIfNull( fileSystem );
+
 			lock ( Mutex )
 			{
 				if (string.IsNullOrEmpty(basePath))
 				{
-					basePath = Directory.GetCurrentDirectory();
-                }
-				string path		= Path.Combine(basePath, subject + ".pfx" );
+					basePath = fileSystem.Directory.GetCurrentDirectory();
+				}
+				string path		= fileSystem.Path.Combine(basePath, subject + ".pfx" );
 				string password = "xcenter";
 
 				// check if we have a persisted cert already
-				if ( File.Exists( path ) )
+				if ( fileSystem.File.Exists( path ) )
 				{
 					// load and return
-					return new X509Certificate2( path,
-												 password,
-												 X509KeyStorageFlags.UserKeySet |
-												 X509KeyStorageFlags.PersistKeySet |
-												 X509KeyStorageFlags.Exportable );
+					return LoadCert( fileSystem.File.ReadAllBytes( path ), password );
 				}
 				else
 				{
 					try
 					{
-						string rootPath = Path.Combine(basePath, subject + ".pkcs12" );
+						string rootPath = fileSystem.Path.Combine(basePath, subject + ".pkcs12" );
 						X509Certificate2 rootCertificate;
-						if ( File.Exists( rootPath ) )
+						if ( fileSystem.File.Exists( rootPath ) )
 						{
-							rootCertificate = new X509Certificate2( rootPath, "xcenterRoot" );
+							rootCertificate = X509CertificateLoader.LoadPkcs12( fileSystem.File.ReadAllBytes( rootPath ), "xcenterRoot" );
 						}
 						else
 						{
 							rootCertificate = CreateRootCertificate();
-							File.WriteAllBytes( rootPath, rootCertificate.Export( X509ContentType.Pfx, "xcenterRoot" ) );
+							fileSystem.File.WriteAllBytes( rootPath, rootCertificate.Export( X509ContentType.Pfx, "xcenterRoot" ) );
 						}
 
+						using ( rootCertificate )
 						using ( ECDsa ecdsa = ECDsa.Create( ECCurve.NamedCurves.nistP256 ) )
 						{
 							// generate a new cert request with ECC and NIST curve P256 (TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256, EEBUS requirement)
@@ -83,14 +83,22 @@ namespace EEBUS
 								DateTimeOffset.UtcNow.AddYears( 9 ),
 								Guid.NewGuid().ToByteArray() );
 
-							cert = cert.CopyWithPrivateKey( ecdsa );
-							// persist the cert
-							File.WriteAllBytes( path, cert.Export( X509ContentType.Pfx, password ) );
+							byte[] pfx;
+							using ( cert )
+							using ( X509Certificate2 certWithKey = cert.CopyWithPrivateKey( ecdsa ) )
+							{
+								pfx = certWithKey.Export( X509ContentType.Pfx, password );
+								// persist the cert
+								fileSystem.File.WriteAllBytes( path, pfx );
 
-							ExtractCertFile( cert, basePath, subject );	// needed by the vue frontend
-							ExtractKeyFile( cert, basePath, subject );
+								ExtractCertFile( fileSystem, certWithKey, basePath, subject );	// needed by the vue frontend
+								ExtractKeyFile( fileSystem, certWithKey, basePath, subject );
+							}
 
-							return cert;
+							// Windows SChannel cannot use the ephemeral key from CopyWithPrivateKey for TLS (0x8009030D).
+							// Re-importing the PFX puts the key in a temporary container (no PersistKeySet = not kept in the user store).
+							// Not required on Linux (OpenSSL), but harmless.
+							return LoadCert( pfx, password );
 						}
 					}
 					catch ( Exception ex )
@@ -101,6 +109,10 @@ namespace EEBUS
 				}
 			}
 		}
+
+		// No PersistKeySet: the private key only lives in a temporary key container that is removed when the certificate is disposed.
+		private static X509Certificate2 LoadCert( byte[] pfx, string password )
+			=> X509CertificateLoader.LoadPkcs12( pfx, password, X509KeyStorageFlags.DefaultKeySet );
 
 		private static X509Certificate2 CreateRootCertificate()
 		{
@@ -128,20 +140,20 @@ namespace EEBUS
 			}
 		}
 
-		private static void ExtractCertFile( X509Certificate2 certificate, string dir, string subject )
+		private static void ExtractCertFile( IFileSystem fileSystem, X509Certificate2 certificate, string dir, string subject )
 		{
-			string pemPath = Path.Combine( dir, subject + ".pem" );
+			string pemPath = fileSystem.Path.Combine( dir, subject + ".pem" );
 
 			// Speichern des Zertifikats (Public Key)
 			var publicKeyPem = "-----BEGIN CERTIFICATE-----\n" +
 							   Convert.ToBase64String( certificate.RawData, Base64FormattingOptions.InsertLineBreaks ) +
 							   "\n-----END CERTIFICATE-----";
-				File.WriteAllText( pemPath, publicKeyPem );
+				fileSystem.File.WriteAllText( pemPath, publicKeyPem );
 		}
 
-		private static void ExtractKeyFile( X509Certificate2 certificate, string dir, string subject )
+		private static void ExtractKeyFile( IFileSystem fileSystem, X509Certificate2 certificate, string dir, string subject )
 		{
-			string keyPath = Path.Combine( dir, subject + ".key" );
+			string keyPath = fileSystem.Path.Combine( dir, subject + ".key" );
 
 			// Speichern des privaten Schlüssels
 			var ecdsa = certificate.GetECDsaPrivateKey();
@@ -151,7 +163,7 @@ namespace EEBUS
 				var privateKeyPem = "-----BEGIN PRIVATE KEY-----\n" +
 									Convert.ToBase64String( privateKeyBytes, Base64FormattingOptions.InsertLineBreaks ) +
 									"\n-----END PRIVATE KEY-----";
-				File.WriteAllText( keyPath, privateKeyPem );
+				fileSystem.File.WriteAllText( keyPath, privateKeyPem );
 			}
 		}
 	}

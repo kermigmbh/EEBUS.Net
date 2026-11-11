@@ -20,8 +20,8 @@ namespace TestProject1.IntegrationTests
         {
             ILogger cemLogger = GetLogger("CEM");
             ILogger controlBoxLogger = GetLogger("ControlBox");
-            using EEBUSManager cemManager = new EEBUSManager(Setup.GetCEMSettings(), logger: cemLogger);
-            using EEBUSManager controlBoxManager = new EEBUSManager(Setup.GetControlBoxSettings(), logger: controlBoxLogger);
+            using EEBUSManager cemManager = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetCEMSettings(), logger: cemLogger);
+            using EEBUSManager controlBoxManager = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetControlBoxSettings(), logger: controlBoxLogger);
 
             await StartAndConnectManagersAsync(cemManager, controlBoxManager);
 
@@ -64,8 +64,8 @@ namespace TestProject1.IntegrationTests
         //{
         //    ILogger cemLogger = GetLogger("CEM");
         //    //ILogger controlBoxLogger = GetLogger("ControlBox");
-        //    using EEBUSManager cemManager = new EEBUSManager(Setup.GetCEMSettings(), logger: cemLogger);
-        //    using EEBUSManager controlBoxManager = new EEBUSManager(Setup.GetControlBoxWithMultipleCEMEntitiesSettings()/*, logger: controlBoxLogger*/);
+        //    using EEBUSManager cemManager = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetCEMSettings(), logger: cemLogger);
+        //    using EEBUSManager controlBoxManager = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetControlBoxWithMultipleCEMEntitiesSettings()/*, logger: controlBoxLogger*/);
 
         //    await StartAndConnectManagersAsync(cemManager, controlBoxManager);
         //    await Task.Delay(-1);

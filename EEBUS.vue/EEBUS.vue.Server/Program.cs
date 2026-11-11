@@ -2,6 +2,7 @@ using EEBUS.Models;
 using EEBUS.Net;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
+using System.IO.Abstractions;
 using System.Net.Security;
 using System.Runtime.ConstrainedExecution;
 using System.Security.Authentication;
@@ -20,12 +21,15 @@ namespace EEBUS.vue.Server
 
             var services = builder.Services;
             var settings = builder.Configuration.GetSection("Settings");
+            IFileSystem fileSystem = new FileSystem();
+            var s = settings.Get<Settings>();
+            using var cert = CertificateGenerator.GenerateCert(fileSystem, s.BasePath, s.Certificate);
 
             services.Configure<KestrelServerOptions>(kestrelOptions =>
             {
                 kestrelOptions.ConfigureHttpsDefaults(httpOptions =>
                 {
-                    httpOptions.ServerCertificate = CertificateGenerator.GenerateCert(settings.Get<Settings>()?.BasePath ?? string.Empty, settings.Get<Settings>()?.Certificate);
+                    httpOptions.ServerCertificate = cert;
                     httpOptions.ClientCertificateMode = ClientCertificateMode.NoCertificate;
                     httpOptions.ClientCertificateValidation = ValidateClientCert;
                     httpOptions.SslProtocols = SslProtocols.Tls12;
@@ -64,12 +68,10 @@ namespace EEBUS.vue.Server
             //services.AddSingleton<MDNSClient>(mDNSClient);
             //services.AddSingleton<MDNSService>(mDNSService);
 
-            var s = settings.Get<Settings>();
-            var cert = CertificateGenerator.GenerateCert(s.BasePath, s.Certificate);
-
+            services.AddSingleton<IFileSystem>(fileSystem);
             services.AddSingleton<X509Certificate2>(cert);
 
-            var manager = new EEBUSManager(s);
+            using var manager = new EEBUSManager(s, fileSystem: fileSystem);
             services.AddSingleton<Devices>(manager.Devices);
 
             var app = builder.Build();

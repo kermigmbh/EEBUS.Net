@@ -161,7 +161,7 @@ public class DevicesController : ControllerBase, IDisposable
 			{
 				HostString hostString = new HostString( uri.Host, uri.Port );
 
-				Client client = new Client( hostString, wsClient, this.devices, device );
+				Client client = new Client( hostString, wsClient, this.devices, device, TimeProvider.System );
 
 				await client.Run().ConfigureAwait( false );
 			}

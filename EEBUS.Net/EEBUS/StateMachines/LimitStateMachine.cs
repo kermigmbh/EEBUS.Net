@@ -73,7 +73,11 @@ namespace EEBUS.StateMachines
         {
         }
 
-        protected LimitStateMachine(PowerDirection direction, LocalDevice localDevice, ILogger? logger = null) : this(direction, localDevice.GetFailsafeLimit(direction), localDevice.GetFailsafeDurationMinimum(), logger)
+        protected LimitStateMachine(PowerDirection direction, LocalDevice localDevice, ILogger? logger = null) : this(TimeProvider.System, direction, localDevice, logger)
+        {
+        }
+
+        protected LimitStateMachine(TimeProvider timeProvider, PowerDirection direction, LocalDevice localDevice, ILogger? logger = null) : this(timeProvider, direction, localDevice.GetFailsafeLimit(direction), localDevice.GetFailsafeDurationMinimum(), logger)
         {
         }
 

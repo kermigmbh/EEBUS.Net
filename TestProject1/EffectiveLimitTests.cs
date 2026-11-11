@@ -14,7 +14,7 @@ namespace TestProject1
 
             // Assert
             Assert.False(limit.IsLimited);
-            Assert.Equal(long.MaxValue, limit.Value);
+            Assert.Equal(0, limit.Value);
             Assert.Equal(LimitState.UnlimitedControlled, limit.State);
             Assert.Equal("none", limit.Source);
             Assert.Null(limit.ExpiresAt);

@@ -24,8 +24,8 @@ namespace TestProject1.IntegrationTests
         {
             ILogger manager1Logger = GetLogger("Manager1", minLogLevel: LogLevel.Debug);
             //ILogger manager2Logger = GetLogger("Manager2", minLogLevel: LogLevel.Debug);
-            using EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(), logger: manager1Logger);
-            using EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings()/*, logger: manager2Logger*/);
+            using EEBUSManager manager1 = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetCEMSettings(), logger: manager1Logger);
+            using EEBUSManager manager2 = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetControlBoxSettings()/*, logger: manager2Logger*/);
 
             await StartAndConnectManagersAsync(manager1, manager2);
 
@@ -55,8 +55,8 @@ namespace TestProject1.IntegrationTests
         {
             ILogger manager1Logger = GetLogger("Manager1");
             ILogger manager2Logger = GetLogger("Manager2");
-            using EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(), logger: manager1Logger);
-            using EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings(), logger: manager2Logger);
+            using EEBUSManager manager1 = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetCEMSettings(), logger: manager1Logger);
+            using EEBUSManager manager2 = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetControlBoxSettings(), logger: manager2Logger);
 
             await StartManagersAsync(manager1, manager2);
 
@@ -81,8 +81,8 @@ namespace TestProject1.IntegrationTests
                 AcEnergyConsumed = 225
             };
 
-            using EEBUSManager eMeterMonitorManager = new EEBUSManager(Setup.GetEMeterMonitorSettings(), logger: eMeterMonitorLogger);
-            using EEBUSManager eMeterManager = new EEBUSManager(Setup.GetEMeterSettings(initMeasurements), logger: eMeterLogger);
+            using EEBUSManager eMeterMonitorManager = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetEMeterMonitorSettings(), logger: eMeterMonitorLogger);
+            using EEBUSManager eMeterManager = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetEMeterSettings(initMeasurements), logger: eMeterLogger);
 
             await StartAndConnectManagersAsync(eMeterMonitorManager, eMeterManager);
 
@@ -113,8 +113,8 @@ namespace TestProject1.IntegrationTests
                 NominalMax = 3000
             };
 
-            using EEBUSManager cemManager = new EEBUSManager(Setup.GetCEMSettings(initLimits), logger: cemLogger);
-            using EEBUSManager controlBoxManager = new EEBUSManager(Setup.GetControlBoxSettings(), logger: controlBoxLogger);
+            using EEBUSManager cemManager = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetCEMSettings(initLimits), logger: cemLogger);
+            using EEBUSManager controlBoxManager = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetControlBoxSettings(), logger: controlBoxLogger);
             string cemSki = cemManager.GetLocalData().SKI;
             string controlBoxSki = controlBoxManager.GetLocalData().SKI;
 
@@ -137,8 +137,8 @@ namespace TestProject1.IntegrationTests
 
         //    ILogger manager1Logger = GetLogger("Manager1");
         //    ILogger manager2Logger = GetLogger("Manager2");
-        //    EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(), logger: manager1Logger);
-        //    EEBUSManager manager2 = new EEBUSManager(Setup.GetControlBoxSettings(), logger: manager2Logger);
+        //    EEBUSManager manager1 = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetCEMSettings(), logger: manager1Logger);
+        //    EEBUSManager manager2 = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetControlBoxSettings(), logger: manager2Logger);
 
         //    string manager2Ski = manager2.GetLocalData().SKI;
         //    string manager1Ski = manager1.GetLocalData().SKI;

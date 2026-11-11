@@ -19,7 +19,7 @@ namespace TestProject1.Ship
         internal sealed class TestClient : Client
         {
             public TestClient(FakeWebSocket ws, Devices devices, RemoteDevice remote)
-                : base(default, ws, devices, remote) { }
+                : base(default, ws, devices, remote, TimeProvider.System) { }
 
             public void SetState(
                 Connection.EState    s,
@@ -35,7 +35,7 @@ namespace TestProject1.Ship
         internal sealed class TestServer : Server
         {
             public TestServer(FakeWebSocket ws, Devices devices)
-                : base(string.Empty, default, ws, devices) { }
+                : base(string.Empty, default, ws, devices, TimeProvider.System) { }
 
             public void SetState(
                 Connection.EState    s,

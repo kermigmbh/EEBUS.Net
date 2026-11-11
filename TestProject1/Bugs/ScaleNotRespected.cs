@@ -37,9 +37,9 @@ namespace TestProject1.Bugs
         {
             ILogger manager1Logger = GetLogger("CEM", minLogLevel: LogLevel.Debug);
             ILogger manager2Logger = GetLogger("Controlbox");
-            using EEBUSManager manager1 = new EEBUSManager(Setup.GetCEMSettings(), logger: manager1Logger);
+            using EEBUSManager manager1 = new EEBUSManager(fileSystem: FileSystem, settings: Setup.GetCEMSettings(), logger: manager1Logger);
             var controlBoxSettings = Setup.GetControlBoxSettings();
-            using EEBUSManager manager2 = new EEBUSManager(controlBoxSettings, logger: manager2Logger);
+            using EEBUSManager manager2 = new EEBUSManager(fileSystem: FileSystem, settings: controlBoxSettings, logger: manager2Logger);
 
             await StartAndConnectManagersAsync(manager1, manager2);
             await Task.Delay(5_000);
