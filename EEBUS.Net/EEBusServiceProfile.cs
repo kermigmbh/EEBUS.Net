@@ -36,7 +36,7 @@ namespace EEBUS
 			} );
 			foreach ( IPAddress item in addresses ?? EEBusServiceDiscovery.GetLinkLocalAddresses() )
 			{
-				Resources.Add( AddressRecord.Create( HostName, item ) );
+				Resources.Add( Makaretu.Dns.AddressRecord.Create( HostName, item ) );
 			}
 		}
 	}

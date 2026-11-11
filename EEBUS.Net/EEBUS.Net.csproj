@@ -1,14 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
 
 	  
 	  <PackageId>EEBUS.Net</PackageId>
-	  <Version>1.0.41</Version>
+	  <Version>1.1.0</Version>
 	  <Authors>Alexander Kerschl</Authors>
 	  <Company>Kermi GmbH</Company>
 	  <Description>C# EEBUS .NET library</Description>
@@ -23,8 +23,7 @@
 
   <ItemGroup>
     <PackageReference Include="Makaretu.Dns.Multicast.New" Version="0.38.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.Certificate" Version="10.0.14" />
-    <PackageReference Include="System.IO.Abstractions" Version="22.3.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Certificate" Version="11.0.0" />
   </ItemGroup>
 
   <ItemGroup>

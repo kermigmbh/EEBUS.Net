@@ -48,7 +48,7 @@ sd.Mdns.NetworkInterfaceDiscovered += (_, e) =>
 sd.Mdns.AnswerReceived += (_, e) =>
 {
     IPEndPoint? from = e.RemoteEndPoint;
-    foreach (AddressRecord a in e.Message.Answers.OfType<AddressRecord>().Concat(e.Message.AdditionalRecords.OfType<AddressRecord>()))
+    foreach (Makaretu.Dns.AddressRecord a in e.Message.Answers.OfType<Makaretu.Dns.AddressRecord>().Concat(e.Message.AdditionalRecords.OfType<Makaretu.Dns.AddressRecord>()))
     {
         if (a.Address.AddressFamily == AddressFamily.InterNetwork)
             Console.WriteLine($"[answer] {a.Name} -> {a.Address}  (from {from})");
@@ -70,7 +70,7 @@ if (advertise)
     profile.AddProperty("path", "/ship/");
     profile.AddProperty("register", "true");
     sd.Advertise(profile);
-    Console.WriteLine($"Advertising {profile.FullyQualifiedName} on {string.Join(", ", profile.Resources.OfType<AddressRecord>().Select(r => r.Address))}");
+    Console.WriteLine($"Advertising {profile.FullyQualifiedName} on {string.Join(", ", profile.Resources.OfType<Makaretu.Dns.AddressRecord>().Select(r => r.Address))}");
 }
 
 using var cts = new CancellationTokenSource();
