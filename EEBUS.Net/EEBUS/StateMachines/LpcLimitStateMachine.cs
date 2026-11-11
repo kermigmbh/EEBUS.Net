@@ -16,6 +16,10 @@ namespace EEBUS.StateMachines
         {
         }
 
+        public LpcLimitStateMachine(TimeProvider timeProvider, LocalDevice localDevice, ILogger? logger = null) : base(timeProvider, PowerDirection.Consumption, localDevice, logger)
+        {
+        }
+
         public LpcLimitStateMachine(long limit, TimeSpan failsafeDurationMinimum) : base(PowerDirection.Consumption, limit, failsafeDurationMinimum)
         {
         }

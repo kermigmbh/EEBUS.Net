@@ -12,7 +12,7 @@ namespace EEBUS.StateMachines
         public bool IsLimited { get; } = isLimited;
 
         /// <summary>
-        /// The limit value in Watts. When IsLimited is false, this is long.MaxValue (no limit).
+        /// The limit value in Watts. When IsLimited is false, this is 0 (no limit).
         /// </summary>
         public long Value { get; } = value;
 
@@ -35,7 +35,7 @@ namespace EEBUS.StateMachines
         /// Creates an unlimited effective limit
         /// </summary>
         public static EffectiveLimit Unlimited(LimitState state) =>
-            new(false, long.MaxValue, state, "none");
+            new(false, 0, state, "none");
 
         /// <summary>
         /// Creates a failsafe effective limit

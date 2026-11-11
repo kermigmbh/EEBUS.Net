@@ -104,9 +104,9 @@ public class EEBUSManager : IDisposable
         _mDNSService = new MDNSService(settings.Device.Id, settings.Device.Port, _serviceDiscovery, settings.FilterLinkLocalAddresses);
 
         //Register event handlers. The events can be triggered by calling localDevice.GetUseCaseEvents()
-        _lpcStateMachine = new LpcLimitStateMachine(localDevice, logger);
+        _lpcStateMachine = new LpcLimitStateMachine(_timeProvider, localDevice, logger);
         _lpcStateMachine.RegisterEventHandler(new LpcEventHandler(this, logger));
-        _lppStateMachine = new LppLimitStateMachine(localDevice);
+        _lppStateMachine = new LppLimitStateMachine(_timeProvider, localDevice);
         _lppStateMachine.RegisterEventHandler(new LppEventHandler(this, logger));
         _localDeviceEvents =
         [

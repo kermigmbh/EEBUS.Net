@@ -121,7 +121,7 @@ internal static class DeviceDataExtensions
     private static void ApplyLimit(this LpcLppData target, LoadControlLimitDataStructure data, EffectiveLimit effectiveLimit)
     {
         TimeSpan duration = data.EndTime == null ? Timeout.InfiniteTimeSpan : XmlConvert.ToTimeSpan(data.EndTime);
-        target.LimitActive = data.LimitActive;
+        target.LimitActive = effectiveLimit.IsLimited;
         //use the effective limit, not the limit from the data structure (in failsafe mode the failsafe limit is reported)
         target.Limit = effectiveLimit.Value;
         target.LimitDuration = (int)duration.TotalSeconds;

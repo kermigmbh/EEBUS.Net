@@ -68,7 +68,7 @@ namespace TestProject1.LimitStateMachineTests
 
             // Assert
             Assert.False(limit.IsLimited);
-            Assert.Equal(long.MaxValue, limit.Value);
+            Assert.Equal(0, limit.Value);
             Assert.Equal("none", limit.Source);
         }
 
