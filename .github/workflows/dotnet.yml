@@ -16,6 +16,13 @@ jobs:
         working-directory: EEBUS.Net
 
     steps:
+
+      - name: NuGet login (OIDC → temp API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: AlexK111 # Recommended: use a secret like ${{ secrets.NUGET_USER }} for your nuget.org username (profile name), NOT your email address
+    
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -46,5 +53,5 @@ jobs:
       - name: Publish to NuGet (only on tag)
         #if: startsWith(github.ref, 'refs/tags/v')
         # PowerShell: keep it on one line
-        run: dotnet nuget push ".\nupkg\*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source "https://api.nuget.org/v3/index.json" --skip-duplicate
-
+        #run: dotnet nuget push ".\nupkg\*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source "https://api.nuget.org/v3/index.json" --skip-duplicate
+        run: dotnet nuget push ".\nupkg\*.nupkg" --api-key ${{steps.login.outputs.NUGET_API_KEY}} --source "https://api.nuget.org/v3/index.json" --skip-duplicate
