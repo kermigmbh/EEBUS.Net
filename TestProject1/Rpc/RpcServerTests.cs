@@ -9,7 +9,7 @@ namespace TestProject1.Rpc
     {
         private static async Task<RpcServer> StartServerAsync()
         {
-            RpcServer server = new();
+            RpcServer server = new(new FakeRpcHandler());
             await server.StartAsync(0);
             return server;
         }
@@ -123,7 +123,7 @@ namespace TestProject1.Rpc
         [Fact]
         public async Task StopAsync_WhenNotRunning_DoesNothing()
         {
-            await using RpcServer server = new();
+            await using RpcServer server = new(new FakeRpcHandler());
 
             await server.StopAsync();
 

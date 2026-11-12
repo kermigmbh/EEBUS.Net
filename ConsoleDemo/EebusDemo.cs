@@ -19,7 +19,7 @@ namespace ConsoleDemo
     public class EebusDemo
     {
         private EEBUSManager? _manager;
-        private readonly RpcServer _rpcServer = new(new RpcConsoleLogger());
+        private readonly RpcServer _rpcServer = new(new DemoRpcHandler(), new RpcConsoleLogger());
 
         public async Task RunAsync(Settings settings)
         {

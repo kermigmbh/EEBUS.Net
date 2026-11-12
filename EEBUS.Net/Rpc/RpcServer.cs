@@ -1,3 +1,4 @@
+using EEBUS.Net.Rpc.Models;
 using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.Sockets;
@@ -10,27 +11,32 @@ namespace EEBUS.Net.Rpc;
 /// <summary>
 /// TCP server speaking newline-delimited JSON-RPC 2.0 (one UTF-8 JSON object per line in both directions).
 /// Clients are served concurrently; each connection may send any number of requests.
+/// Methods are answered by the <see cref="IRpcHandler"/> implementation passed to the constructor; unknown and unsupported methods
+/// are answered with error -32601, a <see cref="TimeoutException"/> with error -32001 and any other exception with error -32000.
 /// The server listens on all interfaces and can be started, stopped and restarted any number of times until it is disposed.
 /// Calls to <see cref="StartAsync"/> and <see cref="StopAsync"/> must not overlap.
 /// The protocol is unencrypted and unauthenticated; expose it only on trusted networks.
 /// </summary>
 public sealed class RpcServer : IAsyncDisposable
 {
-    private const int MethodNotFound = -32601;
+    private const int InternalError = -32000;
+    private const int TimeoutError = -32001;
     private const int InvalidRequest = -32600;
     private const int ParseError = -32700;
 
     // No byte order mark: a leading EF BB BF would make the client's JSON parser reject the first response.
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
 
+    private readonly RpcDispatcher _dispatcher;
     private readonly ILogger? _logger;
     private TcpListener? _listener;
     private CancellationTokenSource? _cts;
     private Task? _acceptLoop;
     private bool _disposed;
 
-    public RpcServer(ILogger? logger = null)
+    public RpcServer(IRpcHandler handler, ILogger? logger = null)
     {
+        _dispatcher = new RpcDispatcher(handler);
         _logger = logger;
     }
 
@@ -157,7 +163,7 @@ public sealed class RpcServer : IAsyncDisposable
         }
     }
 
-    private Task<string> ProcessRequestAsync(string line, CancellationToken ct)
+    private async Task<string> ProcessRequestAsync(string line, CancellationToken ct)
     {
         JsonNode? request;
         try
@@ -166,18 +172,43 @@ public sealed class RpcServer : IAsyncDisposable
         }
         catch (JsonException)
         {
-            return Task.FromResult(CreateErrorResponse(null, ParseError, "Parse error"));
+            return CreateErrorResponse(null, ParseError, "Parse error");
         }
 
         if (request is not JsonObject obj || obj["method"]?.GetValueKind() != JsonValueKind.String)
-            return Task.FromResult(CreateErrorResponse(null, InvalidRequest, "Invalid Request"));
+            return CreateErrorResponse(null, InvalidRequest, "Invalid Request");
 
         JsonNode? requestId = obj["id"]?.DeepClone();
         string method = obj["method"]!.GetValue<string>();
 
-        // Method dispatch is not implemented yet; every method is reported as unknown.
-        return Task.FromResult(CreateErrorResponse(requestId, MethodNotFound, $"Method not found: {method}"));
+        try
+        {
+            JsonNode? result = await _dispatcher.InvokeAsync(method, obj["params"], ct).ConfigureAwait(false);
+            return CreateResultResponse(requestId, result);
+        }
+        catch (RpcException ex)
+        {
+            return CreateErrorResponse(requestId, ex.Code, ex.Message);
+        }
+        catch (TimeoutException ex)
+        {
+            _logger?.LogWarning(ex, "RPC method {Method} timed out.", method);
+            return CreateErrorResponse(requestId, TimeoutError, ex.Message);
+        }
+        catch (Exception ex) when (!(ex is OperationCanceledException && ct.IsCancellationRequested))
+        {
+            _logger?.LogWarning(ex, "RPC method {Method} failed.", method);
+            return CreateErrorResponse(requestId, InternalError, ex.Message);
+        }
     }
+
+    private static string CreateResultResponse(JsonNode? id, JsonNode? result)
+        => new JsonObject
+        {
+            ["jsonrpc"] = "2.0",
+            ["id"] = id,
+            ["result"] = result
+        }.ToJsonString();
 
     private static string CreateErrorResponse(JsonNode? id, int code, string message)
         => new JsonObject
