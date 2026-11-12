@@ -91,8 +91,8 @@ namespace TestProject1.Rpc
 
         [Theory]
         [InlineData("{}", "missing 'ski'")]
-        [InlineData("""{"ski":""}""", "'ski' must be a non-empty string")]
-        [InlineData("""{"ski":42}""", "'ski' must be a non-empty string")]
+        [InlineData("""{"ski":""}""", "invalid value for 'ski': \"\"")]
+        [InlineData("""{"ski":42}""", "invalid value for 'ski': 42")]
         [InlineData("""["abc"]""", "params must be an object")]
         public async Task TrustDevice_InvalidParams_ReturnsInvalidParamsWithoutCallingHandler(string paramsJson, string expectedDetail)
         {
@@ -163,10 +163,10 @@ namespace TestProject1.Rpc
         [Theory]
         [InlineData("""{"valueWatts":1,"active":true}""", "missing 'remoteSKI'")]
         [InlineData("""{"remoteSKI":"abc","active":true}""", "missing 'valueWatts'")]
-        [InlineData("""{"remoteSKI":"abc","valueWatts":"1","active":true}""", "'valueWatts' must be a number")]
+        [InlineData("""{"remoteSKI":"abc","valueWatts":"1","active":true}""", "invalid value for 'valueWatts': \"1\"")]
         [InlineData("""{"remoteSKI":"abc","valueWatts":1}""", "missing 'active'")]
-        [InlineData("""{"remoteSKI":"abc","valueWatts":1,"active":"true"}""", "'active' must be a boolean")]
-        [InlineData("""{"remoteSKI":"abc","valueWatts":1,"active":true,"durationSeconds":"60"}""", "'durationSeconds' must be a number or null")]
+        [InlineData("""{"remoteSKI":"abc","valueWatts":1,"active":"true"}""", "invalid value for 'active': \"true\"")]
+        [InlineData("""{"remoteSKI":"abc","valueWatts":1,"active":true,"durationSeconds":"60"}""", "invalid value for 'durationSeconds': \"60\"")]
         public async Task SetPowerConsumptionLimit_InvalidParams_ReturnsInvalidParams(string paramsJson, string expectedDetail)
         {
             bool called = false;

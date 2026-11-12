@@ -42,11 +42,11 @@ internal sealed class RpcDispatcher
         Task<JsonNode?> invocation = method switch
         {
             // Lifecycle
-            "WaitForOnline" => NoResult(h.WaitForOnlineAsync(GetRequiredNumber(args, method, "timeoutSeconds"), ct)),
+            "WaitForOnline" => NoResult(h.WaitForOnlineAsync(GetRequired<double>(args, method, "timeoutSeconds"), ct)),
             "TrustDevice" => NoResult(h.TrustDeviceAsync(GetRequiredString(args, method, "ski"), ct)),
             "DeleteTrustedDeviceSKI" => NoResult(h.DeleteTrustedDeviceSkiAsync(GetRequiredString(args, method, "ski"), ct)),
             "Reboot" => NoResult(h.RebootAsync(ct)),
-            "SwitchPower" => NoResult(h.SwitchPowerAsync(GetRequiredBoolean(args, method, "on"), ct)),
+            "SwitchPower" => NoResult(h.SwitchPowerAsync(GetRequired<bool>(args, method, "on"), ct)),
             "PerformFactoryReset" => NoResult(h.PerformFactoryResetAsync(ct)),
 
             // LPC - Controllable System
@@ -58,17 +58,17 @@ internal sealed class RpcDispatcher
             // LPC - Energy Guard
             "SetPowerConsumptionLimit" => Result(h.SetPowerConsumptionLimitAsync(
                 GetRequiredString(args, method, "remoteSKI"),
-                GetRequiredNumber(args, method, "valueWatts"),
-                GetRequiredBoolean(args, method, "active"),
-                GetOptionalNumber(args, method, "durationSeconds"),
+                GetRequired<double>(args, method, "valueWatts"),
+                GetRequired<bool>(args, method, "active"),
+                GetOptional<double>(args, method, "durationSeconds"),
                 ct)),
             "SetFailSafeValue" => Result(h.SetFailSafeValueAsync(
                 GetRequiredString(args, method, "remoteSKI"),
-                GetRequiredNumber(args, method, "valueWatts"),
+                GetRequired<double>(args, method, "valueWatts"),
                 ct)),
             "SetFailSafeDuration" => Result(h.SetFailSafeDurationAsync(
                 GetRequiredString(args, method, "remoteSKI"),
-                GetRequiredNumber(args, method, "duration"),
+                GetRequired<double>(args, method, "duration"),
                 ct)),
 
             // LPP - Controllable System
@@ -79,31 +79,31 @@ internal sealed class RpcDispatcher
             // LPP - Energy Guard
             "SetPowerProductionLimit" => Result(h.SetPowerProductionLimitAsync(
                 GetRequiredString(args, method, "remoteSKI"),
-                GetRequiredNumber(args, method, "valueWatts"),
-                GetRequiredBoolean(args, method, "active"),
-                GetOptionalNumber(args, method, "durationSeconds"),
+                GetRequired<double>(args, method, "valueWatts"),
+                GetRequired<bool>(args, method, "active"),
+                GetOptional<double>(args, method, "durationSeconds"),
                 ct)),
             "SetFailSafeProductionValue" => Result(h.SetFailSafeProductionValueAsync(
                 GetRequiredString(args, method, "remoteSKI"),
-                GetRequiredNumber(args, method, "valueWatts"),
+                GetRequired<double>(args, method, "valueWatts"),
                 ct)),
             "SetFailSafeProductionDuration" => Result(h.SetFailSafeProductionDurationAsync(
                 GetRequiredString(args, method, "remoteSKI"),
-                GetRequiredNumber(args, method, "duration"),
+                GetRequired<double>(args, method, "duration"),
                 ct)),
 
             // MPC
             "ApplyMeasurementChange" => Result(h.ApplyMeasurementChangeAsync(
-                GetRequiredEnum<RpcMeasurand>(args, method, "measurand"),
-                GetRequiredEnum<RpcPhase>(args, method, "phase"),
-                GetRequiredNumber(args, method, "value"),
-                GetRequiredEnum<RpcValueState>(args, method, "valueState"),
+                GetRequired<RpcMeasurand>(args, method, "measurand"),
+                GetRequired<RpcPhase>(args, method, "phase"),
+                GetRequired<double>(args, method, "value"),
+                GetRequired<RpcValueState>(args, method, "valueState"),
                 ct)),
             "GetMpcMeasurements" => Result(h.GetMpcMeasurementsAsync(GetRequiredString(args, method, "remoteSki"), ct)),
 
             // OHPCF - Customer Energy Manager
             "GetOHPCFProcess" => Result(h.GetOhpcfProcessAsync(ct)),
-            "ScheduleOHPCFProcess" => NoResult(h.ScheduleOhpcfProcessAsync(GetRequiredNumber(args, method, "secondsUntilStart"), ct)),
+            "ScheduleOHPCFProcess" => NoResult(h.ScheduleOhpcfProcessAsync(GetRequired<double>(args, method, "secondsUntilStart"), ct)),
             "StopOHPCFProcess" => NoResult(h.StopOhpcfProcessAsync(ct)),
             "PauseOHPCFProcess" => NoResult(h.PauseOhpcfProcessAsync(ct)),
             "ResumeOHPCFProcess" => NoResult(h.ResumeOhpcfProcessAsync(ct)),
@@ -135,58 +135,36 @@ internal sealed class RpcDispatcher
             ? JsonValue.Create(content)
             : throw new InvalidOperationException("GetQRCodeContent returned no content.");
 
-    private static JsonNode? GetRequired(JsonObject args, string method, string name)
-        => args.TryGetPropertyValue(name, out JsonNode? node) ? node : throw InvalidParamsException(method, $"missing '{name}'");
-
-    private static string GetRequiredString(JsonObject args, string method, string name)
+    // Types are checked strictly: numbers, booleans and strings are not converted into each other.
+    private static T GetRequired<T>(JsonObject args, string method, string name)
     {
-        JsonNode? node = GetRequired(args, method, name);
-        return node?.GetValueKind() == JsonValueKind.String && node.GetValue<string>() is { Length: > 0 } value
-            ? value
-            : throw InvalidParamsException(method, $"'{name}' must be a non-empty string");
-    }
+        if (!args.TryGetPropertyValue(name, out JsonNode? node))
+            throw InvalidParamsException(method, $"missing '{name}'");
 
-    private static double GetRequiredNumber(JsonObject args, string method, string name)
-        => TryGetNumber(GetRequired(args, method, name), out double value)
-            ? value
-            : throw InvalidParamsException(method, $"'{name}' must be a number");
-
-    private static double? GetOptionalNumber(JsonObject args, string method, string name)
-    {
-        if (!args.TryGetPropertyValue(name, out JsonNode? node) || node is null)
-            return null;
-
-        return TryGetNumber(node, out double value)
-            ? value
-            : throw InvalidParamsException(method, $"'{name}' must be a number or null");
-    }
-
-    private static bool GetRequiredBoolean(JsonObject args, string method, string name)
-        => GetRequired(args, method, name)?.GetValueKind() switch
-        {
-            JsonValueKind.True => true,
-            JsonValueKind.False => false,
-            _ => throw InvalidParamsException(method, $"'{name}' must be a boolean")
-        };
-
-    private static bool TryGetNumber(JsonNode? node, out double value)
-    {
-        value = 0;
-        return node is JsonValue jsonValue && jsonValue.GetValueKind() == JsonValueKind.Number && jsonValue.TryGetValue(out value);
-    }
-
-    private static T GetRequiredEnum<T>(JsonObject args, string method, string name) where T : struct, Enum
-    {
-        JsonNode? node = GetRequired(args, method, name);
+        T? value;
         try
         {
-            return node.Deserialize<T>(JsonOptions);
+            value = node.Deserialize<T>(JsonOptions);
         }
         catch (JsonException)
         {
-            throw InvalidParamsException(method, $"invalid value for '{name}': {node?.ToJsonString() ?? "null"}");
+            throw InvalidValueException(method, name, node);
         }
+
+        // Reference types deserialize JSON null to null instead of throwing.
+        return value ?? throw InvalidValueException(method, name, node);
     }
+
+    // Missing and null both mean "not set".
+    private static T? GetOptional<T>(JsonObject args, string method, string name) where T : struct
+        => args[name] is null ? null : GetRequired<T>(args, method, name);
+
+    // Like GetRequired<string>, but also rejects an empty string.
+    private static string GetRequiredString(JsonObject args, string method, string name)
+        => GetRequired<string>(args, method, name) is { Length: > 0 } value ? value : throw InvalidValueException(method, name, args[name]);
+
+    private static RpcException InvalidValueException(string method, string name, JsonNode? node)
+        => InvalidParamsException(method, $"invalid value for '{name}': {node?.ToJsonString() ?? "null"}");
 
     private static RpcException InvalidParamsException(string method, string detail)
         => new(RpcException.InvalidParams, $"Invalid params for {method}: {detail}");

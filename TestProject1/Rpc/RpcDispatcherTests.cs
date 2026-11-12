@@ -298,7 +298,7 @@ namespace TestProject1.Rpc
         [InlineData("""{"measurand":"current","phase":null,"value":1,"valueState":"normal"}""", "invalid value for 'phase': null")]
         [InlineData("""{"measurand":"current","phase":"a","value":1,"valueState":0}""", "invalid value for 'valueState': 0")]
         [InlineData("""{"measurand":"current","phase":"a","value":1,"valueState":"0"}""", "invalid value for 'valueState': \"0\"")]
-        [InlineData("""{"measurand":"current","phase":"a","value":"1","valueState":"normal"}""", "'value' must be a number")]
+        [InlineData("""{"measurand":"current","phase":"a","value":"1","valueState":"normal"}""", "invalid value for 'value': \"1\"")]
         public async Task ApplyMeasurementChange_InvalidParams_ThrowsInvalidParamsWithoutCallingHandler(string paramsJson, string expectedDetail)
         {
             RecordingHandler handler = new();
@@ -317,8 +317,12 @@ namespace TestProject1.Rpc
         [InlineData("SetFailSafeValue", """{"remoteSki":"abc","valueWatts":1}""", "missing 'remoteSKI'")]
         [InlineData("DeleteTrustedDeviceSKI", """{"remoteSKI":"abc"}""", "missing 'ski'")]
         [InlineData("WaitForOnline", """{"timeout":300}""", "missing 'timeoutSeconds'")]
-        [InlineData("SwitchPower", """{"on":1}""", "'on' must be a boolean")]
-        [InlineData("ScheduleOHPCFProcess", """{"secondsUntilStart":null}""", "'secondsUntilStart' must be a number")]
+        [InlineData("SwitchPower", """{"on":1}""", "invalid value for 'on': 1")]
+        [InlineData("SwitchPower", """{"on":"true"}""", "invalid value for 'on': \"true\"")]
+        [InlineData("ScheduleOHPCFProcess", """{"secondsUntilStart":null}""", "invalid value for 'secondsUntilStart': null")]
+        [InlineData("TrustDevice", """{"ski":null}""", "invalid value for 'ski': null")]
+        [InlineData("TrustDevice", """{"ski":true}""", "invalid value for 'ski': true")]
+        [InlineData("GetMpcMeasurements", """{"remoteSki":{"a":1}}""", "invalid value for 'remoteSki': {\"a\":1}")]
         public async Task ParameterNames_MustMatchExactly(string method, string paramsJson, string expectedDetail)
         {
             RecordingHandler handler = new();
