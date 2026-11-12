@@ -10,8 +10,11 @@ namespace EEBUS.Net.Rpc;
 /// <summary>
 /// TCP server speaking newline-delimited JSON-RPC 2.0 (one UTF-8 JSON object per line in both directions).
 /// Clients are served concurrently; each connection may send any number of requests.
+/// The server listens on all interfaces and can be started, stopped and restarted any number of times until it is disposed.
+/// Calls to <see cref="StartAsync"/> and <see cref="StopAsync"/> must not overlap.
+/// The protocol is unencrypted and unauthenticated; expose it only on trusted networks.
 /// </summary>
-internal sealed class RpcServer : IAsyncDisposable
+public sealed class RpcServer : IAsyncDisposable
 {
     private const int MethodNotFound = -32601;
     private const int InvalidRequest = -32600;
@@ -20,72 +23,89 @@ internal sealed class RpcServer : IAsyncDisposable
     // No byte order mark: a leading EF BB BF would make the client's JSON parser reject the first response.
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
 
-    private readonly TcpListener _listener;
     private readonly ILogger? _logger;
-    private readonly CancellationTokenSource _cts = new();
+    private TcpListener? _listener;
+    private CancellationTokenSource? _cts;
     private Task? _acceptLoop;
-    private int _stopped;
+    private bool _disposed;
 
-    public RpcServer(int port, ILogger? logger = null)
+    public RpcServer(ILogger? logger = null)
     {
-        _listener = new TcpListener(IPAddress.Any, port);
         _logger = logger;
     }
 
-    /// <summary>The port the server is bound to. Resolves the actual port when constructed with port 0.</summary>
-    public int Port => ((IPEndPoint)_listener.LocalEndpoint).Port;
+    public bool IsRunning => _listener != null;
 
-    /// <summary>Binds the listener and starts accepting clients. Throws if the port cannot be bound.</summary>
-    public void Start()
+    /// <summary>The port the server is bound to (the actual port when started with port 0), or null if not running.</summary>
+    public int? Port => _listener == null ? null : ((IPEndPoint)_listener.LocalEndpoint).Port;
+
+    /// <summary>
+    /// Starts accepting clients on <paramref name="port"/>. A running server is stopped first (dropping its open client connections).
+    /// If the port cannot be bound, the server is not running afterwards.
+    /// </summary>
+    /// <exception cref="SocketException">Thrown if the port cannot be bound.</exception>
+    /// <exception cref="ObjectDisposedException">Thrown if the server has been disposed.</exception>
+    public async Task StartAsync(int port)
     {
-        if (_acceptLoop != null)
-            throw new InvalidOperationException("RPC server has already been started.");
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
+        await StopAsync().ConfigureAwait(false);
+
+        TcpListener listener = new(IPAddress.Any, port);
         try
         {
-            _listener.Start();
+            listener.Start();
         }
         catch
         {
-            // TcpListener does not release its socket when Bind fails; clean up and mark as stopped so StopAsync is a no-op.
-            Interlocked.Exchange(ref _stopped, 1);
-            _listener.Dispose();
-            _cts.Dispose();
+            // TcpListener does not release its socket when Bind fails.
+            listener.Dispose();
             throw;
         }
 
-        _acceptLoop = AcceptLoopAsync(_cts.Token);
+        _listener = listener;
+        _cts = new CancellationTokenSource();
+        _acceptLoop = AcceptLoopAsync(listener, _cts.Token);
         _logger?.LogInformation("RPC server listening on port {Port}.", Port);
     }
 
     /// <summary>
     /// Stops accepting clients and cancels open client connections. Does not wait for in-flight requests to finish.
+    /// Does nothing if the server is not running.
     /// </summary>
     public async Task StopAsync()
     {
-        if (Interlocked.Exchange(ref _stopped, 1) == 1)
+        if (_listener == null || _cts == null || _acceptLoop == null)
             return;
 
-        _cts.Cancel();
-        _listener.Stop();
+        TcpListener listener = _listener;
+        CancellationTokenSource cts = _cts;
+        Task acceptLoop = _acceptLoop;
+        _listener = null;
+        _cts = null;
+        _acceptLoop = null;
 
-        if (_acceptLoop != null)
-            await _acceptLoop.ConfigureAwait(false);
-
-        _cts.Dispose();
+        cts.Cancel();
+        listener.Stop();
+        await acceptLoop.ConfigureAwait(false);
+        cts.Dispose();
         _logger?.LogInformation("RPC server stopped.");
     }
 
-    public ValueTask DisposeAsync() => new(StopAsync());
+    public ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        return new ValueTask(StopAsync());
+    }
 
-    private async Task AcceptLoopAsync(CancellationToken ct)
+    private async Task AcceptLoopAsync(TcpListener listener, CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
         {
             TcpClient client;
             try
             {
-                client = await _listener.AcceptTcpClientAsync(ct).ConfigureAwait(false);
+                client = await listener.AcceptTcpClientAsync(ct).ConfigureAwait(false);
             }
             catch (Exception ex) when (ct.IsCancellationRequested || ex is ObjectDisposedException)
             {

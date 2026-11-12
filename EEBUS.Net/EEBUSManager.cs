@@ -5,7 +5,6 @@ using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.Net.Events;
 using EEBUS.Net.Extensions;
 using EEBUS.Net.Handlers;
-using EEBUS.Net.Rpc;
 using EEBUS.SHIP.Messages;
 using EEBUS.StateMachines;
 using EEBUS.UseCases;
@@ -44,8 +43,6 @@ public class EEBUSManager : IDisposable
     private readonly MDNSClient _mDNSClient;
     private readonly MDNSService _mDNSService;
     private SHIPListener? _shipListener;
-
-    private RpcServer? _rpcServer;
 
     private readonly TrustPolicy _trust;
     private readonly ConnectionManager _connections;
@@ -174,15 +171,6 @@ public class EEBUSManager : IDisposable
             _logger?.LogWarning(ex, "StopAsync failed during dispose.");
         }
 
-        try
-        {
-            StopRpcServerAsync().GetAwaiter().GetResult();
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Stopping the RPC server failed during dispose.");
-        }
-
         _devices.RemoteDeviceFound -= OnRemoteDeviceFound;
         _devices.ServerStateChanged -= OnServerStateChanged;
         _devices.ClientStateChanged -= OnClientStateChanged;
@@ -199,39 +187,6 @@ public class EEBUSManager : IDisposable
         try { _cert.Dispose(); } catch { }
         try { _cts.Dispose(); } catch { }
     }
-    #endregion
-
-    #region RPC server
-    /// <summary>
-    /// Starts a JSON-RPC server (newline-delimited JSON over plain TCP) on all interfaces at the given <paramref name="port"/>.
-    /// If a server is already running, it is stopped first (dropping its open client connections) and replaced by the new one.
-    /// If the new server cannot be started, no server is running afterwards.
-    /// The protocol is unencrypted and unauthenticated; expose it only on trusted networks.
-    /// Calls to <see cref="StartRpcServerAsync"/> and <see cref="StopRpcServerAsync"/> must not overlap.
-    /// </summary>
-    /// <exception cref="System.Net.Sockets.SocketException">Thrown if the port cannot be bound.</exception>
-    public async Task StartRpcServerAsync(int port)
-    {
-        await StopRpcServerAsync().ConfigureAwait(false);
-
-        RpcServer server = new(port, _logger);
-        server.Start();
-        _rpcServer = server;
-    }
-
-    /// <summary>
-    /// Stops the RPC server and waits for open client connections to close. Does nothing if no server is running.
-    /// </summary>
-    public async Task StopRpcServerAsync()
-    {
-        RpcServer? server = _rpcServer;
-        _rpcServer = null;
-
-        if (server != null)
-            await server.StopAsync().ConfigureAwait(false);
-    }
-
-    public bool IsRpcServerRunning => _rpcServer != null;
     #endregion
 
     #region Trust

@@ -3,6 +3,7 @@ using EEBUS.Models;
 using EEBUS.Net;
 using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.Net.Events;
+using EEBUS.Net.Rpc;
 using System.Diagnostics;
 using System.IO.Abstractions;
 using System.Net.Security;
@@ -18,6 +19,7 @@ namespace ConsoleDemo
     public class EebusDemo
     {
         private EEBUSManager? _manager;
+        private readonly RpcServer _rpcServer = new(new RpcConsoleLogger());
 
         public async Task RunAsync(Settings settings)
         {
@@ -54,6 +56,8 @@ namespace ConsoleDemo
             Console.WriteLine("- read: prints out all properties of the local device");
             Console.WriteLine("- ski: sets trusted ski");
             Console.WriteLine("- visualize <message>: analyzes a ship message and prints the structure of a nodeManagementDetailedDiscoveryData or nodeManagementUseCaseData payload");
+            Console.WriteLine("- rpc start <port>: starts the JSON-RPC server on <port> (restarts it if already running) and logs RPC traffic");
+            Console.WriteLine("- rpc stop: stops the JSON-RPC server");
 
 
             while (true)
@@ -108,14 +112,51 @@ namespace ConsoleDemo
                     case "visualize":
                         MessageVisualizer.Visualize(input.Substring(tokens[0].Length));
                         break;
+                    case "rpc":
+                        await HandleRpcCommandAsync(tokens);
+                        break;
                     default:
-                        Console.WriteLine("Invalid input: valid commands: remotes; connect <index>; read; visualize <message>");
+                        Console.WriteLine("Invalid input: valid commands: remotes; connect <index>; read; visualize <message>; rpc start <port>; rpc stop");
                         break;
                 }
             }
-
-
+            await _rpcServer.StopAsync();
             _manager.Dispose();
+        }
+
+        private async Task HandleRpcCommandAsync(string[] tokens)
+        {
+            switch (tokens.ElementAtOrDefault(1))
+            {
+                case "start":
+                    if (!int.TryParse(tokens.ElementAtOrDefault(2), out int port))
+                    {
+                        Console.WriteLine("Usage: rpc start <port>");
+                        return;
+                    }
+
+                    try
+                    {
+                        await _rpcServer.StartAsync(port);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Failed to start RPC server on port {port}: {ex.Message}");
+                    }
+                    break;
+                case "stop":
+                    if (!_rpcServer.IsRunning)
+                    {
+                        Console.WriteLine("RPC server is not running.");
+                        return;
+                    }
+
+                    await _rpcServer.StopAsync();
+                    break;
+                default:
+                    Console.WriteLine("Usage: rpc start <port> | rpc stop");
+                    break;
+            }
         }
 
         private void Read()
