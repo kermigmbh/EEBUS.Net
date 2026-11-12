@@ -8,6 +8,6 @@ internal sealed class RpcException(int code, string message) : Exception(message
 
     public int Code { get; } = code;
 
-    /// <summary>For methods the <see cref="IRpcHandler"/> implementation does not support.</summary>
+    /// <summary>For methods the <see cref="RpcHandler"/> does not override.</summary>
     public static RpcException NotSupported(string method) => new(MethodNotFound, $"Method not supported: {method}");
 }

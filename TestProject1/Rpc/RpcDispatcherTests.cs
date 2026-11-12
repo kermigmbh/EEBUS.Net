@@ -10,7 +10,7 @@ namespace TestProject1.Rpc
         private const string Ski = "1451160ec72643a40f30f53f12d6c9815a7dc7aa";
 
         /// <summary>Implements every method: records the call and returns the configured result.</summary>
-        private sealed class RecordingHandler : IRpcHandler
+        private sealed class RecordingHandler : RpcHandler
         {
             public string? Method { get; private set; }
             public object?[]? Args { get; private set; }
@@ -34,47 +34,47 @@ namespace TestProject1.Rpc
                 return Task.FromResult(result);
             }
 
-            public Task WaitForOnlineAsync(double timeoutSeconds, CancellationToken ct) => Record("WaitForOnline", timeoutSeconds);
-            public Task TrustDeviceAsync(string ski, CancellationToken ct) => Record("TrustDevice", ski);
-            public Task DeleteTrustedDeviceSkiAsync(string ski, CancellationToken ct) => Record("DeleteTrustedDeviceSKI", ski);
-            public Task RebootAsync(CancellationToken ct) => Record("Reboot");
-            public Task SwitchPowerAsync(bool on, CancellationToken ct) => Record("SwitchPower", on);
-            public Task PerformFactoryResetAsync(CancellationToken ct) => Record("PerformFactoryReset");
+            public override Task WaitForOnlineAsync(double timeoutSeconds, CancellationToken ct) => Record("WaitForOnline", timeoutSeconds);
+            public override Task TrustDeviceAsync(string ski, CancellationToken ct) => Record("TrustDevice", ski);
+            public override Task DeleteTrustedDeviceSkiAsync(string ski, CancellationToken ct) => Record("DeleteTrustedDeviceSKI", ski);
+            public override Task RebootAsync(CancellationToken ct) => Record("Reboot");
+            public override Task SwitchPowerAsync(bool on, CancellationToken ct) => Record("SwitchPower", on);
+            public override Task PerformFactoryResetAsync(CancellationToken ct) => Record("PerformFactoryReset");
 
-            public Task<RpcLimitState> GetLpcStateAsync(CancellationToken ct) => Returns(State, "GetLPCState");
-            public Task<bool> IsHeartbeatReceivedAsync(CancellationToken ct) => Returns(true, "IsHeartbeatReceived");
-            public Task<double> GetOwnActivePowerConsumptionWattAsync(CancellationToken ct) => Returns(1234.5, "GetOwnActivePowerConsumptionWatt");
-            public Task<RpcPowerLimit?> GetOwnActivePowerConsumptionLimitAsync(CancellationToken ct) => Returns(PowerLimit, "GetOwnActivePowerConsumptionLimit");
+            public override Task<RpcLimitState> GetLpcStateAsync(CancellationToken ct) => Returns(State, "GetLPCState");
+            public override Task<bool> IsHeartbeatReceivedAsync(CancellationToken ct) => Returns(true, "IsHeartbeatReceived");
+            public override Task<double> GetOwnActivePowerConsumptionWattAsync(CancellationToken ct) => Returns(1234.5, "GetOwnActivePowerConsumptionWatt");
+            public override Task<RpcPowerLimit?> GetOwnActivePowerConsumptionLimitAsync(CancellationToken ct) => Returns(PowerLimit, "GetOwnActivePowerConsumptionLimit");
 
-            public Task<bool> SetPowerConsumptionLimitAsync(string remoteSki, double valueWatts, bool active, double? durationSeconds, CancellationToken ct)
+            public override Task<bool> SetPowerConsumptionLimitAsync(string remoteSki, double valueWatts, bool active, double? durationSeconds, CancellationToken ct)
                 => Returns(true, "SetPowerConsumptionLimit", remoteSki, valueWatts, active, durationSeconds);
-            public Task<bool> SetFailSafeValueAsync(string remoteSki, double valueWatts, CancellationToken ct) => Returns(true, "SetFailSafeValue", remoteSki, valueWatts);
-            public Task<bool> SetFailSafeDurationAsync(string remoteSki, double durationSeconds, CancellationToken ct) => Returns(true, "SetFailSafeDuration", remoteSki, durationSeconds);
+            public override Task<bool> SetFailSafeValueAsync(string remoteSki, double valueWatts, CancellationToken ct) => Returns(true, "SetFailSafeValue", remoteSki, valueWatts);
+            public override Task<bool> SetFailSafeDurationAsync(string remoteSki, double durationSeconds, CancellationToken ct) => Returns(true, "SetFailSafeDuration", remoteSki, durationSeconds);
 
-            public Task<RpcLimitState> GetLppStateAsync(CancellationToken ct) => Returns(State, "GetLPPState");
-            public Task<double> GetOwnActivePowerProductionWattAsync(CancellationToken ct) => Returns(1234.5, "GetOwnActivePowerProductionWatt");
-            public Task<RpcPowerLimit?> GetOwnActivePowerProductionLimitAsync(CancellationToken ct) => Returns(PowerLimit, "GetOwnActivePowerProductionLimit");
+            public override Task<RpcLimitState> GetLppStateAsync(CancellationToken ct) => Returns(State, "GetLPPState");
+            public override Task<double> GetOwnActivePowerProductionWattAsync(CancellationToken ct) => Returns(1234.5, "GetOwnActivePowerProductionWatt");
+            public override Task<RpcPowerLimit?> GetOwnActivePowerProductionLimitAsync(CancellationToken ct) => Returns(PowerLimit, "GetOwnActivePowerProductionLimit");
 
-            public Task<bool> SetPowerProductionLimitAsync(string remoteSki, double valueWatts, bool active, double? durationSeconds, CancellationToken ct)
+            public override Task<bool> SetPowerProductionLimitAsync(string remoteSki, double valueWatts, bool active, double? durationSeconds, CancellationToken ct)
                 => Returns(true, "SetPowerProductionLimit", remoteSki, valueWatts, active, durationSeconds);
-            public Task<bool> SetFailSafeProductionValueAsync(string remoteSki, double valueWatts, CancellationToken ct) => Returns(true, "SetFailSafeProductionValue", remoteSki, valueWatts);
-            public Task<bool> SetFailSafeProductionDurationAsync(string remoteSki, double durationSeconds, CancellationToken ct) => Returns(true, "SetFailSafeProductionDuration", remoteSki, durationSeconds);
+            public override Task<bool> SetFailSafeProductionValueAsync(string remoteSki, double valueWatts, CancellationToken ct) => Returns(true, "SetFailSafeProductionValue", remoteSki, valueWatts);
+            public override Task<bool> SetFailSafeProductionDurationAsync(string remoteSki, double durationSeconds, CancellationToken ct) => Returns(true, "SetFailSafeProductionDuration", remoteSki, durationSeconds);
 
-            public Task<bool> ApplyMeasurementChangeAsync(RpcMeasurand measurand, RpcPhase phase, double value, RpcValueState valueState, CancellationToken ct)
+            public override Task<bool> ApplyMeasurementChangeAsync(RpcMeasurand measurand, RpcPhase phase, double value, RpcValueState valueState, CancellationToken ct)
                 => Returns(true, "ApplyMeasurementChange", measurand, phase, value, valueState);
-            public Task<RpcMpcMeasurements> GetMpcMeasurementsAsync(string remoteSki, CancellationToken ct) => Returns(Measurements, "GetMpcMeasurements", remoteSki);
+            public override Task<RpcMpcMeasurements> GetMpcMeasurementsAsync(string remoteSki, CancellationToken ct) => Returns(Measurements, "GetMpcMeasurements", remoteSki);
 
-            public Task<RpcOhpcfProcess> GetOhpcfProcessAsync(CancellationToken ct) => Returns(Process, "GetOHPCFProcess");
-            public Task ScheduleOhpcfProcessAsync(double secondsUntilStart, CancellationToken ct) => Record("ScheduleOHPCFProcess", secondsUntilStart);
-            public Task StopOhpcfProcessAsync(CancellationToken ct) => Record("StopOHPCFProcess");
-            public Task PauseOhpcfProcessAsync(CancellationToken ct) => Record("PauseOHPCFProcess");
-            public Task ResumeOhpcfProcessAsync(CancellationToken ct) => Record("ResumeOHPCFProcess");
+            public override Task<RpcOhpcfProcess> GetOhpcfProcessAsync(CancellationToken ct) => Returns(Process, "GetOHPCFProcess");
+            public override Task ScheduleOhpcfProcessAsync(double secondsUntilStart, CancellationToken ct) => Record("ScheduleOHPCFProcess", secondsUntilStart);
+            public override Task StopOhpcfProcessAsync(CancellationToken ct) => Record("StopOHPCFProcess");
+            public override Task PauseOhpcfProcessAsync(CancellationToken ct) => Record("PauseOHPCFProcess");
+            public override Task ResumeOhpcfProcessAsync(CancellationToken ct) => Record("ResumeOHPCFProcess");
 
-            public Task<string> GetQrCodeContentAsync(CancellationToken ct) => Returns(QrCode, "GetQRCodeContent");
+            public override Task<string> GetQrCodeContentAsync(CancellationToken ct) => Returns(QrCode, "GetQRCodeContent");
         }
 
-        /// <summary>Implements no method, so every call uses the interface's default implementation.</summary>
-        private sealed class EmptyHandler : IRpcHandler { }
+        /// <summary>Overrides no method, so every call uses the base class's default.</summary>
+        private sealed class EmptyHandler : RpcHandler { }
 
         // Every method, with valid params as V360 sends them, the arguments the handler receives and the JSON result.
         public static TheoryData<string, string, object?[], string> AllMethods => new()
@@ -127,7 +127,7 @@ namespace TestProject1.Rpc
             }
         }
 
-        private static Task<JsonNode?> InvokeAsync(IRpcHandler handler, string method, string paramsJson = "{}")
+        private static Task<JsonNode?> InvokeAsync(RpcHandler handler, string method, string paramsJson = "{}")
             => new RpcDispatcher(handler).InvokeAsync(method, JsonNode.Parse(paramsJson), CancellationToken.None);
 
         private static void AssertJson(string expected, JsonNode? actual)

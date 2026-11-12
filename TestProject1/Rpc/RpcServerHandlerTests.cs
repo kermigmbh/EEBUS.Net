@@ -183,9 +183,9 @@ namespace TestProject1.Rpc
             Assert.False(called);
         }
 
-        private sealed class OfflineHandler : IRpcHandler
+        private sealed class OfflineHandler : RpcHandler
         {
-            public Task WaitForOnlineAsync(double timeoutSeconds, CancellationToken ct)
+            public override Task WaitForOnlineAsync(double timeoutSeconds, CancellationToken ct)
                 => throw new TimeoutException($"Device not online after {timeoutSeconds} s.");
         }
 

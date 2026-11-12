@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 namespace EEBUS.Net.Rpc;
 
 /// <summary>
-/// Calls the <see cref="IRpcHandler"/> method matching an RPC method name: reads and validates the parameters and converts the result to JSON.
+/// Calls the <see cref="RpcHandler"/> method matching an RPC method name: reads and validates the parameters and converts the result to JSON.
 /// Throws <see cref="RpcException"/> for unknown methods and invalid parameters; exceptions from the handler are passed on.
 /// Parameter names are deliberately inconsistent (ski, remoteSki, remoteSKI; duration, durationSeconds): they must match the client exactly.
 /// </summary>
@@ -20,9 +20,9 @@ internal sealed class RpcDispatcher
         Converters = { new JsonStringEnumConverter(allowIntegerValues: false) }
     };
 
-    private readonly IRpcHandler _handler;
+    private readonly RpcHandler _handler;
 
-    public RpcDispatcher(IRpcHandler handler)
+    public RpcDispatcher(RpcHandler handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
         _handler = handler;
@@ -38,7 +38,7 @@ internal sealed class RpcDispatcher
             _ => throw InvalidParamsException(method, "params must be an object")
         };
 
-        IRpcHandler h = _handler;
+        RpcHandler h = _handler;
         Task<JsonNode?> invocation = method switch
         {
             // Lifecycle

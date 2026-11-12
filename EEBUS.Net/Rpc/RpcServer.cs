@@ -11,7 +11,7 @@ namespace EEBUS.Net.Rpc;
 /// <summary>
 /// TCP server speaking newline-delimited JSON-RPC 2.0 (one UTF-8 JSON object per line in both directions).
 /// Clients are served concurrently; each connection may send any number of requests.
-/// Methods are answered by the <see cref="IRpcHandler"/> implementation passed to the constructor; unknown and unsupported methods
+/// Methods are answered by the <see cref="RpcHandler"/> passed to the constructor; unknown and unsupported methods
 /// are answered with error -32601, a <see cref="TimeoutException"/> with error -32001 and any other exception with error -32000.
 /// The server listens on all interfaces and can be started, stopped and restarted any number of times until it is disposed.
 /// Calls to <see cref="StartAsync"/> and <see cref="StopAsync"/> must not overlap.
@@ -34,7 +34,7 @@ public sealed class RpcServer : IAsyncDisposable
     private Task? _acceptLoop;
     private bool _disposed;
 
-    public RpcServer(IRpcHandler handler, ILogger? logger = null)
+    public RpcServer(RpcHandler handler, ILogger? logger = null)
     {
         _dispatcher = new RpcDispatcher(handler);
         _logger = logger;
