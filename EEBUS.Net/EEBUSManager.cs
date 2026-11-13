@@ -44,7 +44,7 @@ public class EEBUSManager : IDisposable
     private readonly MDNSService _mDNSService;
     private SHIPListener? _shipListener;
 
-    private readonly TrustPolicy _trust;
+    private readonly TrustStore _trust;
     private readonly ConnectionManager _connections;
 
     private readonly LpcLimitStateMachine _lpcStateMachine;
@@ -93,7 +93,7 @@ public class EEBUSManager : IDisposable
         _devices.ServerStateChanged += OnServerStateChanged;
         _devices.ClientStateChanged += OnClientStateChanged;
 
-        _trust = new TrustPolicy(_devices, settings, logger);
+        _trust = new TrustStore(_devices, settings, logger);
         _connections = new ConnectionManager(_devices, _trust, _cert, _timeProvider, logger)
         {
             StatusChanged = (remote, status) => OnDeviceConnectionStatusChanged?.Invoke(remote, status) ?? Task.CompletedTask
@@ -193,6 +193,8 @@ public class EEBUSManager : IDisposable
     public void AddTrustedSki(string ski) => _trust.Trust(ski);
 
     public void RemoveTrustedSki(string ski) => _trust.Distrust(ski);
+
+    internal List<string> GetTrustedSkis() => _trust.GetTrustedSkis();
     #endregion
 
     #region Connections

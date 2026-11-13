@@ -18,8 +18,10 @@ namespace ConsoleDemo
 {
     public class EebusDemo
     {
-        private EEBUSManager? _manager;
-        private readonly RpcServer _rpcServer = new(new DemoRpcHandler(), new RpcConsoleLogger());
+        private EEBUSManagerRpcAdapter? _adapter;
+
+        // Reboot replaces the manager, so always get the current one from the adapter.
+        private EEBUSManager? Manager => _adapter?.Manager;
 
         public async Task RunAsync(Settings settings)
         {
@@ -31,22 +33,16 @@ namespace ConsoleDemo
                 return true;
             };
 
-            _manager = new EEBUSManager(settings, fileSystem: new FileSystem());
-
-
-
-
-            _manager.OnLimitDataChanged = async (args) =>
+            _adapter = new EEBUSManagerRpcAdapter(settings, manager =>
             {
-                Console.WriteLine($"Limit data changed: {args}");
-            };
+                manager.OnLimitDataChanged = async (args) =>
+                {
+                    Console.WriteLine($"Limit data changed: {args}");
+                };
+            }, fileSystem: new FileSystem());
+            RpcServer rpcServer = new(new DemoRpcHandler(_adapter), new RpcConsoleLogger());
 
-
-
-
-            _manager.Start();
-
-            var localDevice = _manager.GetLocalData();
+            var localDevice = _adapter.Manager.GetLocalData();
             string ski = localDevice.SKI.ToString();
             Console.WriteLine("Local SKI: " + ski + "\n");
             Console.WriteLine("Supported Commands:");
@@ -76,7 +72,7 @@ namespace ConsoleDemo
                         break;
                     case "ski":
                         string trustedSki = tokens.ElementAtOrDefault(1);
-                        _manager.AddTrustedSki(trustedSki);
+                        _adapter.Manager.AddTrustedSki(trustedSki);
                         break;
                     case "remote":
                         if (int.TryParse(tokens.ElementAtOrDefault(1), out int remoteIndex))
@@ -113,18 +109,18 @@ namespace ConsoleDemo
                         MessageVisualizer.Visualize(input.Substring(tokens[0].Length));
                         break;
                     case "rpc":
-                        await HandleRpcCommandAsync(tokens);
+                        await HandleRpcCommandAsync(rpcServer, tokens);
                         break;
                     default:
                         Console.WriteLine("Invalid input: valid commands: remotes; connect <index>; read; visualize <message>; rpc start <port>; rpc stop");
                         break;
                 }
             }
-            await _rpcServer.StopAsync();
-            _manager.Dispose();
+            await rpcServer.StopAsync();
+            _adapter.Dispose();
         }
 
-        private async Task HandleRpcCommandAsync(string[] tokens)
+        private async Task HandleRpcCommandAsync(RpcServer rpcServer, string[] tokens)
         {
             switch (tokens.ElementAtOrDefault(1))
             {
@@ -137,7 +133,7 @@ namespace ConsoleDemo
 
                     try
                     {
-                        await _rpcServer.StartAsync(port);
+                        await rpcServer.StartAsync(port);
                     }
                     catch (Exception ex)
                     {
@@ -145,13 +141,13 @@ namespace ConsoleDemo
                     }
                     break;
                 case "stop":
-                    if (!_rpcServer.IsRunning)
+                    if (!rpcServer.IsRunning)
                     {
                         Console.WriteLine("RPC server is not running.");
                         return;
                     }
 
-                    await _rpcServer.StopAsync();
+                    await rpcServer.StopAsync();
                     break;
                 default:
                     Console.WriteLine("Usage: rpc start <port> | rpc stop");
@@ -161,7 +157,7 @@ namespace ConsoleDemo
 
         private void Read()
         {
-            var local = _manager?.GetLocalData();
+            var local = Manager?.GetLocalData();
             if (local == null)
             {
                 Console.WriteLine("No local device found");
@@ -173,7 +169,7 @@ namespace ConsoleDemo
 
         private void PrintRemotes()
         {
-            var remotes = _manager?.GetDiscoveredDevices();
+            var remotes = Manager?.GetDiscoveredDevices();
             if (remotes != null)
             {
                 foreach (var remote in remotes)
@@ -185,10 +181,10 @@ namespace ConsoleDemo
 
         private void PrintRemoteData(int index)
         {
-            IEnumerable<RemoteDeviceData>? remotes = _manager?.GetDiscoveredDevices();
+            IEnumerable<RemoteDeviceData>? remotes = Manager?.GetDiscoveredDevices();
             RemoteDeviceData? match = remotes?.ElementAtOrDefault(index);
             if (match == null) return;
-            DeviceData? remoteData = _manager?.GetRemoteData(match.Ski);
+            DeviceData? remoteData = Manager?.GetRemoteData(match.Ski);
 
             if (remoteData != null)
             {
@@ -198,9 +194,9 @@ namespace ConsoleDemo
 
         private async Task<bool> ConnectAsync(int remoteIndex)
         {
-            if (_manager == null) return false;
+            if (Manager == null) return false;
 
-            var remotes = _manager.GetDiscoveredDevices();
+            var remotes = Manager.GetDiscoveredDevices();
             if (remotes == null) return false;
 
             var remote = remotes.ElementAtOrDefault(remoteIndex);
@@ -210,7 +206,7 @@ namespace ConsoleDemo
 
             try
             {
-                return await _manager.TryConnectAsync(remote.Ski);
+                return await Manager.TryConnectAsync(remote.Ski);
             }
             catch (Exception ex)
             {

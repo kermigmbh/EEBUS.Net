@@ -13,7 +13,7 @@ namespace EEBUS.Net.Connections;
 /// Owns the lifecycle of all SHIP connections (one per remote SKI): opening client connections, registering incoming ones,
 /// resolving double connections (SHIP 12.2.3), closing, periodic reconnects of trusted devices and publishing status changes.
 /// </summary>
-internal sealed class ConnectionManager(Devices devices, TrustPolicy trust, X509Certificate2 certificate, TimeProvider timeProvider, ILogger? logger)
+internal sealed class ConnectionManager(Devices devices, TrustStore trust, X509Certificate2 certificate, TimeProvider timeProvider, ILogger? logger)
 {
     private const int DoubleConnectionTimeoutMs = 3000;   //SHIP 12.2.3: time the node with the smaller SKI waits for the bigger one to resolve a double connection
     private static readonly TimeSpan ReconnectInterval = TimeSpan.FromSeconds(10);

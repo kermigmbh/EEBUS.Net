@@ -10,7 +10,7 @@ namespace EEBUS.Net.Connections;
 /// Decides whether a remote device may communicate with the local device: the set of trusted SKIs, certificate checks
 /// (SKI / SHIP pairing fingerprint) for incoming and outgoing connections, and whether new SHIP pairing requests may be evaluated.
 /// </summary>
-internal sealed class TrustPolicy(Devices devices, Settings settings, ILogger? logger)
+internal sealed class TrustStore(Devices devices, Settings settings, ILogger? logger)
 {
     private static readonly TimeSpan PairingReleaseTimeout = TimeSpan.FromMinutes(15);
 
@@ -33,6 +33,12 @@ internal sealed class TrustPolicy(Devices devices, Settings settings, ILogger? l
     {
         lock (_lock)
             return _trustedSkis.Contains(ski);
+    }
+
+    internal List<string> GetTrustedSkis()
+    {
+        lock (_lock)
+            return _trustedSkis.ToList();
     }
 
     /// <summary>
