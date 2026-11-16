@@ -20,8 +20,8 @@ internal static class DeviceDataExtensions
     {
         public DeviceData ToDeviceData(EffectiveLimit lpcEffectiveLimit, EffectiveLimit lppEffectiveLimit)
         {
-            LpcLppData lpc = new() { LimitActive = false, Limit = 0, LimitDuration = 0, FailSafeLimit = 0, ContractualNominalMax = 0 };
-            LpcLppData lpp = new() { LimitActive = false, Limit = 0, LimitDuration = 0, FailSafeLimit = 0, ContractualNominalMax = 0 };
+            LpcLppData lpc = new() { LimitState = lpcEffectiveLimit.State, LimitActive = false, Limit = 0, LimitDuration = 0, FailSafeLimit = 0, ContractualNominalMax = 0 };
+            LpcLppData lpp = new() { LimitState = lppEffectiveLimit.State, LimitActive = false, Limit = 0, LimitDuration = 0, FailSafeLimit = 0, ContractualNominalMax = 0 };
 
             foreach (LoadControlLimitDataStructure data in local.GetDataStructures<LoadControlLimitDataStructure>())
             {

@@ -1,5 +1,8 @@
+using EEBUS.Net.EEBUS.Models.Data;
 using EEBUS.Net.Rpc;
+using EEBUS.Net.Rpc.Models;
 using EEBUS.SHIP.Messages;
+using EEBUS.StateMachines;
 
 namespace ConsoleDemo
 {
@@ -34,5 +37,30 @@ namespace ConsoleDemo
             adapter.Manager.RemoveTrustedSki(ski);
             await adapter.Manager.DisconnectAsync(ski, ConnectionCloseReasonType.removedConnection);
         }
+
+        public override Task<RpcLimitState> GetLpcStateAsync(CancellationToken ct)
+        {
+            LimitState state = adapter.Manager.GetLocalData().Lpc?.LimitState
+                ?? throw new InvalidOperationException("LPC state not available.");
+            return Task.FromResult(state.ToRpcLimitState());
+        }
+
+        // V360 treats any error as false, so this must not throw.
+        public override Task<bool> IsHeartbeatReceivedAsync(CancellationToken ct)
+        {
+            try
+            {
+                DeviceData data = adapter.Manager.GetLocalData();
+                return Task.FromResult(HasHeartbeat(data.Lpc?.LimitState) || HasHeartbeat(data.Lpp?.LimitState));
+            }
+            catch (Exception)
+            {
+                return Task.FromResult(false);
+            }
+        }
+
+        // A heartbeat timeout moves every state that has a live heartbeat to one without, so the state reflects whether it is currently arriving.
+        private static bool HasHeartbeat(LimitState? state) => state is LimitState.InitPlusHeartbeat or LimitState.FailsafePlusHeartbeat
+            or LimitState.UnlimitedAutonomousPlusHeartbeat or LimitState.Limited or LimitState.UnlimitedControlled;
     }
 }
